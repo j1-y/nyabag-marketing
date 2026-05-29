@@ -1,0 +1,120 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ShoppingBag, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+
+  const supabaseReady =
+    !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://your-project-id.supabase.co";
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!supabaseReady) {
+      setError("Supabase is not configured. See the setup guide on the home page.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (authError) {
+        setError(authError.message);
+        setLoading(false);
+      } else {
+        router.push("/");
+        router.refresh();
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Authentication failed");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-logo">
+          <span className="auth-logo-icon flex items-center justify-center p-1">
+            {!logoError ? (
+              <img
+                src="/assets/logo.svg"
+                alt="Logo"
+                className="w-full h-full object-contain"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <ShoppingBag size={18} />
+            )}
+          </span>
+          <span className="auth-logo-text">Nyabag</span>
+        </div>
+        <h1 className="auth-title">Welcome back</h1>
+        <p className="auth-subtitle">Sign in to access your bookmarks</p>
+        <form className="auth-form" onSubmit={handleSubmit}>
+          {error && <div className="auth-error">{error}</div>}
+          {!supabaseReady && (
+            <div className="auth-error">
+              ⚠️ Supabase env vars not configured. Fill in <code>.env.local</code> and restart the server.
+            </div>
+          )}
+          <div className="field">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
+          <button
+            type="submit"
+            className="btn-primary auth-submit"
+            disabled={loading}
+          >
+            {loading && (
+              <Loader2
+                size={15}
+                className="lucide"
+                style={{ animation: "spin 1s linear infinite" }}
+              />
+            )}
+            {loading ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+        <p className="auth-footer">
+          No account? <Link href="/signup">Create one</Link>
+        </p>
+      </div>
+    </div>
+  );
+}

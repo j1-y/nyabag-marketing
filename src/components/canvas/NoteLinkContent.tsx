@@ -1,0 +1,99 @@
+"use client";
+
+import { useState } from "react";
+import { ExternalLink } from "lucide-react";
+import { useNotes } from "@/hooks/useNotes";
+import { getScreenshotUrl, getDomain } from "@/lib/data";
+import type { CanvasNote } from "@/lib/types";
+
+export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSelected: boolean }) {
+  const { updateContent } = useNotes();
+  const [inputVal, setInputVal] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const hasUrl = note.content.startsWith("http");
+
+  function commitUrl(raw: string) {
+    const url = raw.trim();
+    if (!url) return;
+    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    updateContent(note.id, normalized);
+    setIsEditing(false);
+  }
+
+  if (!hasUrl || isEditing) {
+    return (
+      <div
+        style={{ padding: "10px 12px", height: "100%", display: "flex", flexDirection: "column", gap: 6 }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <input
+          autoFocus={isSelected}
+          type="url"
+          placeholder="Paste a URL and press Enter"
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitUrl(inputVal);
+            if (e.key === "Escape") { setIsEditing(false); setInputVal(""); }
+          }}
+          style={{
+            width: "100%",
+            padding: "6px 8px",
+            borderRadius: 6,
+            border: "1px solid var(--border2)",
+            background: "var(--bg)",
+            fontSize: 13,
+            outline: "none",
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <img
+        src={getScreenshotUrl(note.content)}
+        alt="Link preview"
+        style={{ width: "100%", flex: 1, objectFit: "cover", display: "block", minHeight: 0 }}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+      />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 10px",
+          borderTop: "1px solid var(--border2)",
+          fontSize: 12,
+          color: "var(--text2)",
+        }}
+      >
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {getDomain(note.content)}
+        </span>
+        <a
+          href={note.content}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open link"
+          style={{ color: "var(--text3)", flexShrink: 0 }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <ExternalLink size={12} />
+        </a>
+        {isSelected && (
+          <button
+            onClick={() => { setIsEditing(true); setInputVal(note.content); }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 11, padding: 0 }}
+          >
+            Edit
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
