@@ -52,6 +52,8 @@ export const TAG_COLORS = [
   "#ec4899","#14b8a6","#f97316","#8b5cf6","#84cc16",
 ];
 
+export const SCREENSHOT_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function getDomain(url: string): string {
   try { return new URL(url).hostname.replace("www.", ""); }
   catch { return ""; }
@@ -71,31 +73,59 @@ export function getDesignData(url: string): { palette: string[]; fonts: string[]
   };
 }
 
-export async function getScreenshotPalette(url: string): Promise<string[] | null> {
+export type MicrolinkPreviewData = {
+  palette: string[] | null;
+  screenshotUrl: string | null;
+  refreshedAt: string;
+};
+
+function normalizePalette(palette: unknown): string[] | null {
+  if (!Array.isArray(palette)) return null;
+
+  const colors = palette
+    .filter((color): color is string => /^#[0-9A-Fa-f]{6}$/.test(color))
+    .map((color) => color.toUpperCase());
+
+  const unique = Array.from(new Set(colors)).slice(0, 8);
+  return unique.length ? unique : null;
+}
+
+export async function getMicrolinkPreviewData(url: string): Promise<MicrolinkPreviewData | null> {
   try {
     const endpoint = new URL("https://api.microlink.io/");
     endpoint.searchParams.set("url", url);
     endpoint.searchParams.set("screenshot", "true");
+    endpoint.searchParams.set("fullPage", "true");
     endpoint.searchParams.set("palette", "true");
     endpoint.searchParams.set("filter", "screenshot");
 
     const response = await fetch(endpoint.toString(), {
-      next: { revalidate: 60 * 60 * 24 },
+      cache: "no-store",
     });
     if (!response.ok) return null;
 
     const json = await response.json();
-    const palette = json?.data?.screenshot?.palette;
-    if (!Array.isArray(palette)) return null;
+    const screenshotUrl = json?.data?.screenshot?.url;
 
-    const colors = palette
-      .filter((color): color is string => /^#[0-9A-Fa-f]{6}$/.test(color))
-      .map((color) => color.toUpperCase());
-
-    return Array.from(new Set(colors)).slice(0, 8) || null;
+    return {
+      palette: normalizePalette(json?.data?.screenshot?.palette),
+      screenshotUrl: typeof screenshotUrl === "string" ? screenshotUrl : null,
+      refreshedAt: new Date().toISOString(),
+    };
   } catch {
     return null;
   }
+}
+
+export async function getScreenshotPalette(url: string): Promise<string[] | null> {
+  return (await getMicrolinkPreviewData(url))?.palette ?? null;
+}
+
+export function isScreenshotStale(refreshedAt: string | null | undefined): boolean {
+  if (!refreshedAt) return true;
+  const refreshedTime = new Date(refreshedAt).getTime();
+  if (!Number.isFinite(refreshedTime)) return true;
+  return Date.now() - refreshedTime >= SCREENSHOT_REFRESH_INTERVAL_MS;
 }
 
 export function getTagColor(tag: string): string {

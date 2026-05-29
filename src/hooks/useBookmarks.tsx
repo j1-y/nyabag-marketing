@@ -105,6 +105,7 @@ export function BookmarksProvider({
         (b) =>
           b.title.toLowerCase().includes(q) ||
           b.url.toLowerCase().includes(q) ||
+          b.summary.toLowerCase().includes(q) ||
           b.tags.some((t) => t.toLowerCase().includes(q)) ||
           b.note.toLowerCase().includes(q)
       );

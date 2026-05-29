@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
-import { getDomain, getFaviconUrl, getScreenshotUrl } from "@/lib/data";
+import { getDomain, getFaviconUrl } from "@/lib/data";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import type { Bookmark } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ export function BookmarkCard({
 
   const domain = getDomain(bookmark.url);
   const favicon = getFaviconUrl(bookmark.url);
-  const screenshot = getScreenshotUrl(bookmark.url);
+  const screenshot = bookmark.screenshot_url;
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
@@ -41,7 +41,7 @@ export function BookmarkCard({
       >
         <div className="moodboard-shot">
           <div className="moodboard-shot-scroll">
-            {!imgError ? (
+            {screenshot && !imgError ? (
               <img
                 className="moodboard-img"
                 src={screenshot}

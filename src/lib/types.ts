@@ -6,6 +6,10 @@ export type Bookmark = {
   tags: string[];
   palette: string[];
   fonts: string[];
+  screenshot_url: string | null;
+  screenshot_refreshed_at: string | null;
+  summary: string;
+  metadata_refreshed_at: string | null;
   note: string;
   created_at: string;
   updated_at: string;

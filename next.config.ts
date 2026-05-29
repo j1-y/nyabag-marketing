@@ -7,7 +7,7 @@ const cspHeader = `
   script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""};
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' data: blob: https://www.google.com https://api.microlink.io https://*.supabase.co https://*.ytimg.com https://i.vimeocdn.com;
+  img-src 'self' data: blob: https://www.google.com https://api.microlink.io https://*.microlink.io https://*.supabase.co https://*.ytimg.com https://i.vimeocdn.com;
   media-src 'self' blob: https://*.supabase.co;
   frame-src https://www.youtube.com https://player.vimeo.com;
   connect-src 'self' https://*.supabase.co https://api.microlink.io;

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink, Palette, Pencil, Tags, Trash2, Type, StickyNote } from "lucide-react";
 import { deleteBookmark } from "@/lib/actions";
-import { getDomain, getScreenshotUrl } from "@/lib/data";
+import { getDomain } from "@/lib/data";
 import type { Bookmark } from "@/lib/types";
 import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,12 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const domain = getDomain(bookmark.url);
+  const savedDate = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(bookmark.created_at));
 
   function handleDelete() {
     startTransition(async () => {
@@ -44,6 +50,12 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             <p className="detail-url">{bookmark.url}</p>
           </div>
 
+          {bookmark.summary && (
+            <div className="detail-summary-card">
+              <p>{bookmark.summary}</p>
+            </div>
+          )}
+
           {bookmark.note && (
             <div className="detail-note-card">
               <StickyNote size={15} />
@@ -63,7 +75,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             </div>
             <div>
               <span>Saved</span>
-              <strong>{new Date(bookmark.created_at).toLocaleDateString()}</strong>
+              <strong>{savedDate}</strong>
             </div>
             <div>
               <span>Tags</span>
@@ -119,7 +131,13 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
               </a>
             </div>
             <div className="browser-shot">
-              <img src={getScreenshotUrl(bookmark.url)} alt={`${bookmark.title} full page screenshot`} />
+              {bookmark.screenshot_url ? (
+                <img src={bookmark.screenshot_url} alt={`${bookmark.title} full page screenshot`} />
+              ) : (
+                <div className="preview-fallback">
+                  <span>No screenshot yet</span>
+                </div>
+              )}
             </div>
           </div>
         </section>

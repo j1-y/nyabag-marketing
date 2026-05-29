@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getDesignData, getScreenshotPalette } from "@/lib/data";
+import { getDesignData, getMicrolinkPreviewData } from "@/lib/data";
 import { getDomain } from "@/lib/data";
+import { mergeTags, scrapeBookmarkMetadata } from "@/lib/metadata";
 import { bookmarkCreateSchema, bookmarkUpdateSchema } from "@/lib/validations";
 import type { ActionResult, Bookmark } from "@/lib/types";
 
@@ -27,18 +28,36 @@ export async function createBookmark(
 
   const { url, tags, note } = parsed.data;
   const domain = getDomain(url);
+
+  const [metadata, previewData] = await Promise.all([
+    scrapeBookmarkMetadata(url),
+    getMicrolinkPreviewData(url),
+  ]);
   const title =
     (parsed.data.title?.trim()) ||
+    metadata.title ||
     domain.charAt(0).toUpperCase() + domain.slice(1) ||
     url;
-
+  const finalTags = mergeTags(tags, metadata.tags);
   const designData = getDesignData(url);
-  const palette = await getScreenshotPalette(url) ?? designData.palette;
+  const palette = previewData?.palette ?? designData.palette;
   const { fonts } = designData;
 
   const { data, error } = await supabase
     .from("bookmarks")
-    .insert({ user_id: user.id, url, title, tags, note: note ?? "", palette, fonts })
+    .insert({
+      user_id: user.id,
+      url,
+      title,
+      tags: finalTags,
+      note: note ?? "",
+      palette,
+      fonts,
+      screenshot_url: previewData?.screenshotUrl ?? null,
+      screenshot_refreshed_at: previewData?.refreshedAt ?? null,
+      summary: metadata.summary,
+      metadata_refreshed_at: metadata.refreshedAt,
+    })
     .select()
     .single();
 
@@ -67,35 +86,55 @@ export async function updateBookmark(
   }
 
   const { id, url, tags, note } = parsed.data;
-  const domain = getDomain(url);
-  const title =
-    (parsed.data.title?.trim()) ||
-    domain.charAt(0).toUpperCase() + domain.slice(1) ||
-    url;
-
   // Fetch current bookmark to check if URL changed (re-fetch design data only if so)
   const { data: existing } = await supabase
     .from("bookmarks")
-    .select("url, palette, fonts")
+    .select("url, palette, fonts, screenshot_url, screenshot_refreshed_at, summary, metadata_refreshed_at")
     .eq("id", id)
     .single();
 
+  const domain = getDomain(url);
+  const urlChanged = !existing || existing.url !== url;
+  const [metadata, previewData] = await Promise.all([
+    urlChanged ? scrapeBookmarkMetadata(url) : Promise.resolve(null),
+    urlChanged ? getMicrolinkPreviewData(url) : Promise.resolve(null),
+  ]);
+  const title =
+    (parsed.data.title?.trim()) ||
+    metadata?.title ||
+    domain.charAt(0).toUpperCase() + domain.slice(1) ||
+    url;
+  const finalTags = mergeTags(tags, metadata?.tags ?? []);
   const designData = getDesignData(url);
-  const screenshotPalette = await getScreenshotPalette(url);
   const { palette, fonts } =
-    existing && existing.url === url
+    existing && !urlChanged
       ? {
-          palette: screenshotPalette ?? existing.palette ?? designData.palette,
+          palette: existing.palette ?? designData.palette,
           fonts: existing.fonts ?? designData.fonts,
         }
       : {
-          palette: screenshotPalette ?? designData.palette,
+          palette: previewData?.palette ?? designData.palette,
           fonts: designData.fonts,
         };
 
   const { data, error } = await supabase
     .from("bookmarks")
-    .update({ url, title, tags, note: note ?? "", palette, fonts })
+    .update({
+      url,
+      title,
+      tags: finalTags,
+      note: note ?? "",
+      palette,
+      fonts,
+      screenshot_url: urlChanged ? previewData?.screenshotUrl ?? null : existing?.screenshot_url ?? null,
+      screenshot_refreshed_at: urlChanged
+        ? previewData?.refreshedAt ?? null
+        : existing?.screenshot_refreshed_at ?? null,
+      summary: urlChanged ? metadata?.summary ?? "" : existing?.summary ?? "",
+      metadata_refreshed_at: urlChanged
+        ? metadata?.refreshedAt ?? null
+        : existing?.metadata_refreshed_at ?? null,
+    })
     .eq("id", id)
     .eq("user_id", user.id) // RLS enforced here too
     .select()

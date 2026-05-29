@@ -15,10 +15,20 @@ CREATE TABLE IF NOT EXISTS bookmarks (
   tags        TEXT[]      NOT NULL DEFAULT '{}',
   palette     TEXT[]      NOT NULL DEFAULT '{}',
   fonts       TEXT[]      NOT NULL DEFAULT '{}',
+  screenshot_url TEXT,
+  screenshot_refreshed_at TIMESTAMPTZ,
+  summary     TEXT        NOT NULL DEFAULT '' CHECK (char_length(summary) <= 1000),
+  metadata_refreshed_at TIMESTAMPTZ,
   note        TEXT        NOT NULL DEFAULT '' CHECK (char_length(note) <= 2000),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE bookmarks
+  ADD COLUMN IF NOT EXISTS screenshot_url TEXT,
+  ADD COLUMN IF NOT EXISTS screenshot_refreshed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS summary TEXT NOT NULL DEFAULT '' CHECK (char_length(summary) <= 1000),
+  ADD COLUMN IF NOT EXISTS metadata_refreshed_at TIMESTAMPTZ;
 
 -- Auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION set_updated_at()
