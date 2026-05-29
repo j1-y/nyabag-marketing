@@ -8,7 +8,6 @@ import { getDomain } from "@/lib/data";
 import type { Bookmark } from "@/lib/types";
 import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
-import { FeatureSwitch } from "@/components/layout/FeatureSwitch";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
 import { EditBookmarkModal } from "./EditBookmarkModal";
 import { BookmarkColorPalette } from "./BookmarkColorPalette";
@@ -36,7 +35,6 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
 
   return (
     <div className="bookmark-detail-page">
-      <FeatureSwitch />
       <main className="bookmark-detail-shell">
         <section className="bookmark-detail-info">
           <button className="detail-back" onClick={() => router.push("/")}>

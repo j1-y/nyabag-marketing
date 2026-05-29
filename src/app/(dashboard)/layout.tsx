@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { DashboardNav } from "@/components/layout/DashboardNav";
+import { FeatureSwitch } from "@/components/layout/FeatureSwitch";
 
 export default async function DashboardLayout({
   children,
@@ -46,5 +48,13 @@ export default async function DashboardLayout({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  return <>{children}</>;
+  return (
+    <div className="app-layout no-sidebar">
+      <FeatureSwitch />
+      <div className="main-content">
+        <DashboardNav userEmail={user.email ?? ""} />
+        {children}
+      </div>
+    </div>
+  );
 }

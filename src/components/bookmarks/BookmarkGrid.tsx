@@ -8,37 +8,24 @@ import { AddBookmarkModal } from "./AddBookmarkModal";
 import { EditBookmarkModal } from "./EditBookmarkModal";
 import type { Bookmark } from "@/lib/types";
 import { Topbar } from "../layout/Topbar";
-import { FeatureSwitch } from "../layout/FeatureSwitch";
 
 function GridInner() {
-  const { filtered, activeTag, setActiveTag, bookmarks, pendingBookmarks, openAdd } =
-    useBookmarks();
-
-  const tags = ["All", ...Array.from(new Set(bookmarks.flatMap((b) => b.tags)))];
+  const { filtered, pendingBookmarks, openAdd } = useBookmarks();
 
   return (
     <>
-      {/* Tag strip */}
-      <div className="tag-strip">
-        {tags.map((t) => (
-          <button
-            key={t}
-            className={`tag-chip ${activeTag === t ? "active" : ""}`}
-            onClick={() => setActiveTag(t)}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      <Topbar />
 
       {/* Grid */}
       {filtered.length === 0 && pendingBookmarks.length === 0 ? (
         <div className="empty-state">
-          <ShoppingBag size={42} strokeWidth={1.2} />
+          <div className="empty-state-icon" aria-hidden="true">
+            <ShoppingBag size={24} strokeWidth={1.6} />
+          </div>
           <h2>No bookmarks yet</h2>
-          <p>Save your first site to get started.</p>
-          <button className="btn-primary" onClick={openAdd}>
-            <Plus size={14} /> Add bookmark
+          <p>Save websites, references, and ideas into a visual board.</p>
+          <button className="btn-primary empty-state-action" onClick={openAdd}>
+            <Plus size={15} /> Add bookmark
           </button>
         </div>
       ) : (
@@ -59,16 +46,10 @@ function GridInner() {
   );
 }
 
-export function BookmarkGrid({ initialBookmarks, userEmail }: { initialBookmarks: Bookmark[], userEmail: string }) {
+export function BookmarkGrid({ initialBookmarks }: { initialBookmarks: Bookmark[], userEmail: string }) {
   return (
     <BookmarksProvider initial={initialBookmarks}>
-      <div className="app-layout no-sidebar">
-        <FeatureSwitch />
-        <div className="main-content">
-          <Topbar userEmail={userEmail} />
-          <GridInner />
-        </div>
-      </div>
+      <GridInner />
     </BookmarksProvider>
   );
 }

@@ -1,10 +1,9 @@
 "use client";
 
-import { Search, LogOut, Plus } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { useBookmarks } from "@/hooks/useBookmarks";
-import { signOut } from "@/lib/actions";
 
-export function Topbar({ userEmail }: { userEmail: string }) {
+export function Topbar() {
   const { search, setSearch, openAdd } = useBookmarks();
   const shortcutLabel =
     typeof navigator !== "undefined" && /mac/i.test(navigator.platform)
@@ -12,11 +11,7 @@ export function Topbar({ userEmail }: { userEmail: string }) {
       : "Ctrl K";
 
   return (
-    <header className="topbar">
-      <div className="topbar-brand">
-        <img src="/assets/logo.svg" alt="Nyabag" />
-      </div>
-
+    <section className="topbar bookmark-controls" aria-label="Bookmark controls">
       <div className="search-wrap">
         <Search size={13} />
         <input
@@ -26,24 +21,13 @@ export function Topbar({ userEmail }: { userEmail: string }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <kbd>{shortcutLabel}</kbd>
+        <kbd suppressHydrationWarning>{shortcutLabel}</kbd>
       </div>
 
       <button className="btn-primary btn-sm topbar-add" onClick={openAdd}>
         <Plus size={13} />
         Add
       </button>
-
-      <form action={signOut}>
-        <button
-          type="submit"
-          className="theme-toggle"
-          title={`Sign out (${userEmail})`}
-          aria-label="Sign out"
-        >
-          <LogOut size={14} />
-        </button>
-      </form>
-    </header>
+    </section>
   );
 }
