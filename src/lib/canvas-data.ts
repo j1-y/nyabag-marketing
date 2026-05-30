@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { CanvasNote } from "@/lib/types";
+import type { CanvasNote, CanvasSection } from "@/lib/types";
 
 export async function getNotes(): Promise<CanvasNote[]> {
   const supabase = await createClient();
@@ -22,4 +22,15 @@ export async function getNotes(): Promise<CanvasNote[]> {
       return signed?.signedUrl ? { ...note, media_url: signed.signedUrl } : note;
     })
   );
+}
+
+export async function getSections(): Promise<CanvasSection[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("canvas_sections")
+    .select("*")
+    .order("z_index", { ascending: true });
+
+  if (error || !data) return [];
+  return data as CanvasSection[];
 }

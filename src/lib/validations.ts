@@ -43,7 +43,8 @@ export const profileUpdateSchema = z.object({
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 
 export const noteCreateSchema = z.object({
-  type: z.enum(["text", "link", "image", "video"]),
+  type: z.enum(["text", "link", "image", "video", "social"]),
+  section_id: z.string().uuid().nullable().default(null),
   content: z.string().max(4000).default(""),
   media_source: z.enum(["url", "upload"]).nullable().default(null),
   media_path: z.string().max(1024).nullable().default(null),
@@ -72,4 +73,36 @@ export const noteSizeSchema = z.object({
   id: z.string().uuid(),
   width: z.number().min(100).max(1200),
   height: z.number().min(80).max(900),
+});
+
+export const noteDeleteSchema = z.object({
+  ids: z.string().uuid().array().min(1).max(100),
+});
+
+export const sectionCreateSchema = z.object({
+  label: z.string().trim().min(1, "Section label is required").max(120),
+  noteIds: z.string().uuid().array().min(1, "Select at least one note").max(100),
+});
+
+export const sectionUpdateSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string().trim().min(1, "Section label is required").max(120).optional(),
+  x: z.number().finite().optional(),
+  y: z.number().finite().optional(),
+  width: z.number().min(180).max(4000).optional(),
+  height: z.number().min(120).max(4000).optional(),
+});
+
+export const sectionMoveSchema = z.object({
+  id: z.string().uuid(),
+  x: z.number().finite(),
+  y: z.number().finite(),
+  notes: z
+    .object({
+      id: z.string().uuid(),
+      x: z.number().finite(),
+      y: z.number().finite(),
+    })
+    .array()
+    .max(100),
 });

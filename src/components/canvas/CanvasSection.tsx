@@ -1,0 +1,177 @@
+"use client";
+
+import { useMemo, useRef, useState } from "react";
+import { PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
+import { useNotes } from "@/hooks/useNotes";
+import type { CanvasSection as CanvasSectionType, CanvasViewport } from "@/lib/types";
+
+interface Props {
+  section: CanvasSectionType;
+  viewport: CanvasViewport;
+}
+
+const MIN_W = 180;
+const MIN_H = 120;
+const MAX_W = 4000;
+const MAX_H = 4000;
+
+export function CanvasSection({ section, viewport }: Props) {
+  const {
+    notes,
+    setNotePosition,
+    setSectionPosition,
+    setSectionSize,
+    commitSectionPosition,
+    commitSectionSize,
+    renameSection,
+    deleteSection,
+  } = useNotes();
+  const [isEditing, setIsEditing] = useState(false);
+  const [label, setLabel] = useState(section.label);
+  const memberNotes = useMemo(
+    () => notes.filter((note) => note.section_id === section.id),
+    [notes, section.id]
+  );
+  const dragRef = useRef<{
+    startPX: number;
+    startPY: number;
+    startX: number;
+    startY: number;
+    noteStarts: Array<{ id: string; x: number; y: number }>;
+    latestX: number;
+    latestY: number;
+  } | null>(null);
+  const resizeRef = useRef<{
+    startPX: number;
+    startPY: number;
+    startW: number;
+    startH: number;
+    latestW: number;
+    latestH: number;
+  } | null>(null);
+
+  function startDrag(e: React.PointerEvent<HTMLDivElement>) {
+    if (isEditing) return;
+    e.stopPropagation();
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    dragRef.current = {
+      startPX: e.clientX,
+      startPY: e.clientY,
+      startX: section.x,
+      startY: section.y,
+      noteStarts: memberNotes.map((note) => ({ id: note.id, x: note.x, y: note.y })),
+      latestX: section.x,
+      latestY: section.y,
+    };
+  }
+
+  function moveDrag(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragRef.current) return;
+    const dx = (e.clientX - dragRef.current.startPX) / viewport.scale;
+    const dy = (e.clientY - dragRef.current.startPY) / viewport.scale;
+    const nextX = dragRef.current.startX + dx;
+    const nextY = dragRef.current.startY + dy;
+    dragRef.current.latestX = nextX;
+    dragRef.current.latestY = nextY;
+    setSectionPosition(section.id, nextX, nextY);
+    dragRef.current.noteStarts.forEach((note) => {
+      setNotePosition(note.id, note.x + dx, note.y + dy);
+    });
+  }
+
+  function endDrag() {
+    if (!dragRef.current) return;
+    commitSectionPosition(section.id, dragRef.current.latestX, dragRef.current.latestY);
+    dragRef.current = null;
+  }
+
+  function startResize(e: React.PointerEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    resizeRef.current = {
+      startPX: e.clientX,
+      startPY: e.clientY,
+      startW: section.width,
+      startH: section.height,
+      latestW: section.width,
+      latestH: section.height,
+    };
+  }
+
+  function moveResize(e: React.PointerEvent<HTMLDivElement>) {
+    if (!resizeRef.current) return;
+    const dx = (e.clientX - resizeRef.current.startPX) / viewport.scale;
+    const dy = (e.clientY - resizeRef.current.startPY) / viewport.scale;
+    const width = Math.min(MAX_W, Math.max(MIN_W, resizeRef.current.startW + dx));
+    const height = Math.min(MAX_H, Math.max(MIN_H, resizeRef.current.startH + dy));
+    resizeRef.current.latestW = width;
+    resizeRef.current.latestH = height;
+    setSectionSize(section.id, width, height);
+  }
+
+  function endResize() {
+    if (!resizeRef.current) return;
+    commitSectionSize(section.id, resizeRef.current.latestW, resizeRef.current.latestH);
+    resizeRef.current = null;
+  }
+
+  async function saveLabel() {
+    const next = label.trim() || "Section";
+    setLabel(next);
+    setIsEditing(false);
+    await renameSection(section.id, next);
+  }
+
+  return (
+    <div
+      className="canvas-section"
+      style={{
+        transform: `translate(${section.x}px, ${section.y}px)`,
+        width: section.width,
+        height: section.height,
+        zIndex: section.z_index,
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <div
+        className="canvas-section-header"
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+      >
+        {isEditing ? (
+          <input
+            value={label}
+            autoFocus
+            onChange={(e) => setLabel(e.target.value)}
+            onBlur={saveLabel}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") saveLabel();
+              if (e.key === "Escape") {
+                setLabel(section.label);
+                setIsEditing(false);
+              }
+            }}
+          />
+        ) : (
+          <span>{section.label}</span>
+        )}
+        <div className="canvas-section-actions" onPointerDown={(e) => e.stopPropagation()}>
+          <button title="Rename section" onClick={() => setIsEditing(true)}>
+            <PencilSimpleIcon size={12} />
+          </button>
+          <button title="Delete section" onClick={() => deleteSection(section.id)}>
+            <TrashIcon size={12} />
+          </button>
+        </div>
+      </div>
+      <div
+        className="canvas-section-resize"
+        onPointerDown={startResize}
+        onPointerMove={moveResize}
+        onPointerUp={endResize}
+      />
+    </div>
+  );
+}

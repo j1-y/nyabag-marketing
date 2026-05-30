@@ -2,9 +2,15 @@ import { NoteTextContent } from "./NoteTextContent";
 import { NoteLinkContent } from "./NoteLinkContent";
 import { NoteImageContent } from "./NoteImageContent";
 import { NoteVideoContent } from "./NoteVideoContent";
+import { NoteSocialContent } from "./NoteSocialContent";
+import { isSocialNoteContent } from "@/lib/social-embeds";
 import type { CanvasNote } from "@/lib/types";
 
 export function NoteContent({ note, isSelected }: { note: CanvasNote; isSelected: boolean }) {
+  if (note.type === "social" || isSocialNoteContent(note.content)) {
+    return <NoteSocialContent note={note} isSelected={isSelected} />;
+  }
+
   switch (note.type) {
     case "text":
       return <NoteTextContent note={note} isSelected={isSelected} />;

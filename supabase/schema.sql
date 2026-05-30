@@ -25,16 +25,16 @@ $$;
 CREATE TABLE IF NOT EXISTS bookmarks (
   id                       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                  UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  url                      TEXT        NOT NULL CHECK (char_length(url) <= 2048),
-  title                    TEXT        NOT NULL CHECK (char_length(title) <= 255),
+  url                      TEXT        NOT NULL,
+  title                    TEXT        NOT NULL,
   tags                     TEXT[]      NOT NULL DEFAULT '{}',
   palette                  TEXT[]      NOT NULL DEFAULT '{}',
   fonts                    TEXT[]      NOT NULL DEFAULT '{}',
   screenshot_url           TEXT,
   screenshot_refreshed_at  TIMESTAMPTZ,
-  summary                  TEXT        NOT NULL DEFAULT '' CHECK (char_length(summary) <= 1000),
+  summary                  TEXT        NOT NULL DEFAULT '',
   metadata_refreshed_at    TIMESTAMPTZ,
-  note                     TEXT        NOT NULL DEFAULT '' CHECK (char_length(note) <= 2000),
+  note                     TEXT        NOT NULL DEFAULT '',
   created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -42,8 +42,18 @@ CREATE TABLE IF NOT EXISTS bookmarks (
 ALTER TABLE bookmarks
   ADD COLUMN IF NOT EXISTS screenshot_url TEXT,
   ADD COLUMN IF NOT EXISTS screenshot_refreshed_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS summary TEXT NOT NULL DEFAULT '' CHECK (char_length(summary) <= 1000),
+  ADD COLUMN IF NOT EXISTS summary TEXT NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS metadata_refreshed_at TIMESTAMPTZ;
+
+ALTER TABLE bookmarks
+  DROP CONSTRAINT IF EXISTS bookmarks_url_check,
+  DROP CONSTRAINT IF EXISTS bookmarks_title_check,
+  DROP CONSTRAINT IF EXISTS bookmarks_summary_check,
+  DROP CONSTRAINT IF EXISTS bookmarks_note_check,
+  ADD CONSTRAINT bookmarks_url_check CHECK (char_length(url) <= 2048),
+  ADD CONSTRAINT bookmarks_title_check CHECK (char_length(title) <= 255),
+  ADD CONSTRAINT bookmarks_summary_check CHECK (char_length(summary) <= 1000),
+  ADD CONSTRAINT bookmarks_note_check CHECK (char_length(note) <= 2000);
 
 DROP TRIGGER IF EXISTS bookmarks_updated_at ON bookmarks;
 CREATE TRIGGER bookmarks_updated_at
@@ -78,21 +88,31 @@ CREATE POLICY "delete_own_bookmarks" ON bookmarks
 
 CREATE TABLE IF NOT EXISTS profiles (
   user_id      UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  name         TEXT        NOT NULL DEFAULT '' CHECK (char_length(name) <= 120),
-  email        TEXT        NOT NULL DEFAULT '' CHECK (char_length(email) <= 255),
-  phone        TEXT        NOT NULL DEFAULT '' CHECK (char_length(phone) <= 40),
-  avatar_path  TEXT        CHECK (avatar_path IS NULL OR char_length(avatar_path) <= 1024),
+  name         TEXT        NOT NULL DEFAULT '',
+  email        TEXT        NOT NULL DEFAULT '',
+  phone        TEXT        NOT NULL DEFAULT '',
+  avatar_path  TEXT,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE profiles
-  ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT '' CHECK (char_length(name) <= 120),
-  ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT '' CHECK (char_length(email) <= 255),
-  ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '' CHECK (char_length(phone) <= 40),
-  ADD COLUMN IF NOT EXISTS avatar_path TEXT CHECK (avatar_path IS NULL OR char_length(avatar_path) <= 1024),
+  ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS avatar_path TEXT,
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE profiles
+  DROP CONSTRAINT IF EXISTS profiles_name_check,
+  DROP CONSTRAINT IF EXISTS profiles_email_check,
+  DROP CONSTRAINT IF EXISTS profiles_phone_check,
+  DROP CONSTRAINT IF EXISTS profiles_avatar_path_check,
+  ADD CONSTRAINT profiles_name_check CHECK (char_length(name) <= 120),
+  ADD CONSTRAINT profiles_email_check CHECK (char_length(email) <= 255),
+  ADD CONSTRAINT profiles_phone_check CHECK (char_length(phone) <= 40),
+  ADD CONSTRAINT profiles_avatar_path_check CHECK (avatar_path IS NULL OR char_length(avatar_path) <= 1024);
 
 DROP TRIGGER IF EXISTS profiles_updated_at ON profiles;
 CREATE TRIGGER profiles_updated_at
@@ -120,18 +140,71 @@ CREATE POLICY "delete_own_profile" ON profiles
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ============================================================
+-- Canvas sections
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS canvas_sections (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  label       TEXT        NOT NULL DEFAULT 'Section',
+  x           REAL        NOT NULL DEFAULT 60,
+  y           REAL        NOT NULL DEFAULT 60,
+  width       REAL        NOT NULL DEFAULT 420,
+  height      REAL        NOT NULL DEFAULT 300,
+  color       TEXT        NOT NULL DEFAULT '#FFFFFF',
+  z_index     INTEGER     NOT NULL DEFAULT 1,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE canvas_sections
+  DROP CONSTRAINT IF EXISTS canvas_sections_label_check,
+  DROP CONSTRAINT IF EXISTS canvas_sections_color_check,
+  DROP CONSTRAINT IF EXISTS canvas_sections_size_check,
+  ADD CONSTRAINT canvas_sections_label_check CHECK (char_length(label) BETWEEN 1 AND 120),
+  ADD CONSTRAINT canvas_sections_color_check CHECK (color ~ '^#[0-9A-Fa-f]{6}$'),
+  ADD CONSTRAINT canvas_sections_size_check CHECK (width >= 180 AND height >= 120);
+
+DROP TRIGGER IF EXISTS canvas_sections_updated_at ON canvas_sections;
+CREATE TRIGGER canvas_sections_updated_at
+  BEFORE UPDATE ON canvas_sections
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_sections_user_id ON canvas_sections(user_id);
+CREATE INDEX IF NOT EXISTS idx_sections_user_created ON canvas_sections(user_id, created_at DESC);
+
+ALTER TABLE canvas_sections ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_sections" ON canvas_sections;
+CREATE POLICY "select_own_sections" ON canvas_sections
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_sections" ON canvas_sections;
+CREATE POLICY "insert_own_sections" ON canvas_sections
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "update_own_sections" ON canvas_sections;
+CREATE POLICY "update_own_sections" ON canvas_sections
+  FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_sections" ON canvas_sections;
+CREATE POLICY "delete_own_sections" ON canvas_sections
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- ============================================================
 -- Canvas notes
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS canvas_notes (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  type          TEXT        NOT NULL CHECK (type IN ('text','link','image','video')),
+  section_id    UUID        REFERENCES canvas_sections(id) ON DELETE SET NULL,
+  type          TEXT        NOT NULL,
   content       TEXT        NOT NULL DEFAULT '',
-  media_source  TEXT        CHECK (media_source IN ('url','upload')),
-  media_path    TEXT        CHECK (media_path IS NULL OR char_length(media_path) <= 1024),
-  media_mime    TEXT        CHECK (media_mime IS NULL OR char_length(media_mime) <= 255),
-  media_name    TEXT        CHECK (media_name IS NULL OR char_length(media_name) <= 255),
+  media_source  TEXT,
+  media_path    TEXT,
+  media_mime    TEXT,
+  media_name    TEXT,
   x             REAL        NOT NULL DEFAULT 100,
   y             REAL        NOT NULL DEFAULT 100,
   width         REAL        NOT NULL DEFAULT 240,
@@ -143,10 +216,25 @@ CREATE TABLE IF NOT EXISTS canvas_notes (
 );
 
 ALTER TABLE canvas_notes
-  ADD COLUMN IF NOT EXISTS media_source TEXT CHECK (media_source IN ('url','upload')),
-  ADD COLUMN IF NOT EXISTS media_path TEXT CHECK (media_path IS NULL OR char_length(media_path) <= 1024),
-  ADD COLUMN IF NOT EXISTS media_mime TEXT CHECK (media_mime IS NULL OR char_length(media_mime) <= 255),
-  ADD COLUMN IF NOT EXISTS media_name TEXT CHECK (media_name IS NULL OR char_length(media_name) <= 255);
+  ADD COLUMN IF NOT EXISTS section_id UUID,
+  ADD COLUMN IF NOT EXISTS media_source TEXT,
+  ADD COLUMN IF NOT EXISTS media_path TEXT,
+  ADD COLUMN IF NOT EXISTS media_mime TEXT,
+  ADD COLUMN IF NOT EXISTS media_name TEXT;
+
+ALTER TABLE canvas_notes
+  DROP CONSTRAINT IF EXISTS canvas_notes_section_id_fkey,
+  DROP CONSTRAINT IF EXISTS canvas_notes_type_check,
+  DROP CONSTRAINT IF EXISTS canvas_notes_media_source_check,
+  DROP CONSTRAINT IF EXISTS canvas_notes_media_path_check,
+  DROP CONSTRAINT IF EXISTS canvas_notes_media_mime_check,
+  DROP CONSTRAINT IF EXISTS canvas_notes_media_name_check,
+  ADD CONSTRAINT canvas_notes_section_id_fkey FOREIGN KEY (section_id) REFERENCES canvas_sections(id) ON DELETE SET NULL,
+  ADD CONSTRAINT canvas_notes_type_check CHECK (type IN ('text','link','image','video','social')),
+  ADD CONSTRAINT canvas_notes_media_source_check CHECK (media_source IS NULL OR media_source IN ('url','upload')),
+  ADD CONSTRAINT canvas_notes_media_path_check CHECK (media_path IS NULL OR char_length(media_path) <= 1024),
+  ADD CONSTRAINT canvas_notes_media_mime_check CHECK (media_mime IS NULL OR char_length(media_mime) <= 255),
+  ADD CONSTRAINT canvas_notes_media_name_check CHECK (media_name IS NULL OR char_length(media_name) <= 255);
 
 DROP TRIGGER IF EXISTS canvas_notes_updated_at ON canvas_notes;
 CREATE TRIGGER canvas_notes_updated_at
@@ -155,6 +243,7 @@ CREATE TRIGGER canvas_notes_updated_at
 
 CREATE INDEX IF NOT EXISTS idx_notes_user_id ON canvas_notes(user_id);
 CREATE INDEX IF NOT EXISTS idx_notes_user_created ON canvas_notes(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notes_section_id ON canvas_notes(section_id);
 
 ALTER TABLE canvas_notes ENABLE ROW LEVEL SECURITY;
 
@@ -245,3 +334,7 @@ CREATE POLICY "canvas_media_delete_own" ON storage.objects
     bucket_id = 'canvas-media'
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
+
+-- Force Supabase/PostgREST to refresh its schema cache after new columns,
+-- tables, constraints, and policies are created.
+NOTIFY pgrst, 'reload schema';
