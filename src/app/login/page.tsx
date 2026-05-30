@@ -48,21 +48,9 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">
-          <span className="auth-logo-icon flex items-center justify-center p-1">
-            {!logoError ? (
-              <img
-                src="/assets/logo.svg"
-                alt="Logo"
-                className="w-full h-full object-contain"
-                onError={() => setLogoError(true)}
-              />
-            ) : (
-              <ShoppingBagIcon size={18} weight="duotone" />
-            )}
-          </span>
-          <span className="auth-logo-text">Nyabag</span>
-        </div>
+          <div className="auth-logo">
+            <img src="/assets/logo.svg" alt="Nyabag logo" className="h-8 w-auto object-contain"/>
+            </div>
         <h1 className="auth-title">Welcome back</h1>
         <p className="auth-subtitle">Sign in to access your bookmarks</p>
         <form className="auth-form" onSubmit={handleSubmit}>

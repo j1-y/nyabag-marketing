@@ -53,20 +53,8 @@ export default function SignupPage() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-logo">
-          <span className="auth-logo-icon flex items-center justify-center p-1">
-            {!logoError ? (
-              <img
-                src="/assets/logo.svg"
-                alt="Logo"
-                className="w-full h-full object-contain"
-                onError={() => setLogoError(true)}
-              />
-            ) : (
-              <ShoppingBagIcon size={18} weight="duotone" />
-            )}
-          </span>
-          <span className="auth-logo-text">Nyabag</span>
-        </div>
+            <img src="/assets/logo.svg" alt="Nyabag logo" className="h-8 w-auto object-contain"/>
+            </div>
         <h1 className="auth-title">Create account</h1>
         <p className="auth-subtitle">Start saving your favourite sites</p>
         <form className="auth-form" onSubmit={handleSubmit}>
