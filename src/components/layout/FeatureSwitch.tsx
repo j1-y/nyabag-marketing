@@ -16,7 +16,7 @@ export function FeatureSwitch() {
       </Link>
       <Link href="/canvas" className={`feature-switch-item ${isNotes ? "active" : ""}`}>
         <NoteIcon size={14} weight="bold" />
-        Notes
+        Canvas
       </Link>
     </nav>
   );
