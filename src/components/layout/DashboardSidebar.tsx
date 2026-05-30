@@ -7,7 +7,6 @@ import {
   BookmarkSimpleIcon,
   CaretLeftIcon,
   CaretRightIcon,
-  FolderIcon,
   GearSixIcon,
   MagnifyingGlassIcon,
   NoteIcon,
@@ -50,21 +49,6 @@ const primaryItems = [
     label: "Canvas",
     icon: NoteIcon,
     isActive: (pathname: string) => pathname.startsWith("/canvas"),
-  },
-];
-
-const workspaceItems = [
-  {
-    href: "/profile",
-    label: "Profile",
-    icon: UserIcon,
-    isActive: (pathname: string) => pathname.startsWith("/profile"),
-  },
-  {
-    href: "/",
-    label: "Personal workspace",
-    icon: FolderIcon,
-    isActive: () => false,
   },
 ];
 
@@ -139,25 +123,6 @@ export function DashboardSidebar({
           })}
         </div>
 
-        <div className="dashboard-sidebar-section">
-          <p className="dashboard-sidebar-label">Workspace</p>
-          {workspaceItems.map((item) => {
-            const Icon = item.icon as Icon;
-            const active = item.isActive(pathname);
-
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`dashboard-sidebar-item ${active ? "active" : ""}`}
-                title={collapsed ? item.label : undefined}
-              >
-                <Icon size={20} weight="regular" />
-                <span className="dashboard-sidebar-item-copy">{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
       </nav>
 
       <div className="dashboard-sidebar-profile" ref={profileRef}>
