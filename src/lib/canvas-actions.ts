@@ -137,6 +137,26 @@ async function getCanvasSnapshot(supabase: Supabase): Promise<CanvasSnapshot> {
   };
 }
 
+async function getNextNoteZIndex(supabase: Supabase, userId: string): Promise<number> {
+  const { data: maxRow } = await supabase
+    .from("canvas_notes")
+    .select("z_index")
+    .eq("user_id", userId)
+    .order("z_index", { ascending: false })
+    .limit(1)
+    .single();
+
+  return (maxRow?.z_index ?? 0) + 1;
+}
+
+function isMediaNoteType(type: NoteType): type is "image" | "video" {
+  return type === "image" || type === "video";
+}
+
+function isAllowedMediaFile(type: "image" | "video", file: File): boolean {
+  return type === "image" ? file.type.startsWith("image/") : file.type.startsWith("video/");
+}
+
 export async function createNote(
   type: NoteType,
   x: number,
@@ -149,15 +169,7 @@ export async function createNote(
   const user = await getUser(supabase);
   if (!user) return { success: false, error: "Not authenticated" };
 
-  const { data: maxRow } = await supabase
-    .from("canvas_notes")
-    .select("z_index")
-    .eq("user_id", user.id)
-    .order("z_index", { ascending: false })
-    .limit(1)
-    .single();
-
-  const z_index = (maxRow?.z_index ?? 0) + 1;
+  const z_index = await getNextNoteZIndex(supabase, user.id);
   const isSocial = type === "social";
   const noteWidth = width ?? (isSocial ? 420 : 240);
   const noteHeight = height ?? (isSocial ? 520 : 180);
@@ -190,6 +202,159 @@ export async function createNote(
   if (error) return { success: false, error: error.message };
   revalidatePath("/canvas");
   return { success: true, data: data as CanvasNote };
+}
+
+export async function createMediaNoteFromUrl(
+  type: NoteType,
+  url: string,
+  x: number,
+  y: number,
+  color: string,
+  width?: number,
+  height?: number
+): Promise<ActionResult<CanvasNote>> {
+  const supabase = await createClient();
+  const user = await getUser(supabase);
+  if (!user) return { success: false, error: "Not authenticated" };
+  if (!isMediaNoteType(type)) {
+    return { success: false, error: "Only image and video notes support media URLs" };
+  }
+
+  const normalizedUrl = normalizeUrl(url);
+  if (!normalizedUrl) return { success: false, error: "Must be a valid URL" };
+
+  const z_index = await getNextNoteZIndex(supabase, user.id);
+  const parsed = noteCreateSchema.safeParse({
+    type,
+    content: normalizedUrl,
+    media_source: "url",
+    media_path: null,
+    media_mime: null,
+    media_name: null,
+    x,
+    y,
+    width: width ?? 240,
+    height: height ?? 180,
+    color,
+    z_index,
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const { section_id, ...noteInput } = parsed.data;
+  const { data, error } = await supabase
+    .from("canvas_notes")
+    .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/canvas");
+  return { success: true, data: data as CanvasNote };
+}
+
+export async function createMediaNoteWithUpload(
+  type: NoteType,
+  formData: FormData,
+  x: number,
+  y: number,
+  color: string,
+  width?: number,
+  height?: number
+): Promise<ActionResult<CanvasNote>> {
+  const supabase = await createClient();
+  const user = await getUser(supabase);
+  if (!user) return { success: false, error: "Not authenticated" };
+  if (!isMediaNoteType(type)) {
+    return { success: false, error: "Only image and video notes support uploads" };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { success: false, error: "No file was selected" };
+  }
+  if (!isAllowedMediaFile(type, file)) {
+    return { success: false, error: `Please upload a ${type} file` };
+  }
+
+  const maxBytes = type === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
+  if (file.size > maxBytes) {
+    const mb = Math.floor(maxBytes / 1024 / 1024);
+    return { success: false, error: `File must be ${mb}MB or smaller` };
+  }
+
+  const z_index = await getNextNoteZIndex(supabase, user.id);
+  const parsed = noteCreateSchema.safeParse({
+    type,
+    content: "",
+    media_source: null,
+    media_path: null,
+    media_mime: null,
+    media_name: null,
+    x,
+    y,
+    width: width ?? 240,
+    height: height ?? 180,
+    color,
+    z_index,
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const { section_id, ...noteInput } = parsed.data;
+  const { data: created, error: createError } = await supabase
+    .from("canvas_notes")
+    .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
+    .select()
+    .single();
+
+  if (createError || !created) {
+    return { success: false, error: createError?.message ?? "Failed to create note" };
+  }
+
+  const note = created as CanvasNote;
+  const path = `${user.id}/${note.id}/${crypto.randomUUID()}-${safeFilename(file.name)}`;
+  const { error: uploadError } = await supabase.storage
+    .from(MEDIA_BUCKET)
+    .upload(path, file, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+
+  if (uploadError) {
+    await supabase.from("canvas_notes").delete().eq("id", note.id).eq("user_id", user.id);
+    return { success: false, error: uploadError.message };
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from("canvas_notes")
+    .update({
+      content: "",
+      media_source: "upload",
+      media_path: path,
+      media_mime: file.type,
+      media_name: file.name.slice(0, 255),
+    })
+    .eq("id", note.id)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (updateError || !updated) {
+    await Promise.all([
+      supabase.storage.from(MEDIA_BUCKET).remove([path]),
+      supabase.from("canvas_notes").delete().eq("id", note.id).eq("user_id", user.id),
+    ]);
+    return { success: false, error: updateError?.message ?? "Failed to attach media" };
+  }
+
+  revalidatePath("/canvas");
+  const signed = await withSignedUrl(supabase, updated as CanvasNote);
+  return { success: true, data: signed };
 }
 
 export async function updateNoteContent(
@@ -266,9 +431,7 @@ export async function uploadNoteMedia(
     return { success: false, error: "No file was selected" };
   }
 
-  const isImage = note.type === "image" && file.type.startsWith("image/");
-  const isVideo = note.type === "video" && file.type.startsWith("video/");
-  if (!isImage && !isVideo) {
+  if (!isMediaNoteType(note.type) || !isAllowedMediaFile(note.type, file)) {
     return { success: false, error: `Please upload a ${note.type} file` };
   }
 

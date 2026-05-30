@@ -3,6 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { DashboardNav } from "./DashboardNav";
 import { DashboardSidebar } from "./DashboardSidebar";
+import { MobileBookmarkCapture } from "./MobileBookmarkCapture";
 
 type DashboardShellProps = {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ type DashboardShellProps = {
 
 const SIDEBAR_KEY = "nyabag-sidebar-collapsed";
 const SIDEBAR_EVENT = "nyabag-sidebar-collapsed-change";
+const MOBILE_BREAKPOINT = 768;
 
 function getStoredSidebarState() {
   if (typeof window === "undefined") return false;
@@ -36,6 +38,22 @@ function subscribeToSidebarState(onStoreChange: () => void) {
   };
 }
 
+function getMobileState() {
+  if (typeof window === "undefined") return false;
+  return window.innerWidth <= MOBILE_BREAKPOINT;
+}
+
+function getServerMobileState() {
+  return false;
+}
+
+function subscribeToMobileState(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+
+  window.addEventListener("resize", onStoreChange);
+  return () => window.removeEventListener("resize", onStoreChange);
+}
+
 export function DashboardShell({
   children,
   userEmail,
@@ -47,6 +65,11 @@ export function DashboardShell({
     getStoredSidebarState,
     getServerSidebarState
   );
+  const isMobile = useSyncExternalStore(
+    subscribeToMobileState,
+    getMobileState,
+    getServerMobileState
+  );
 
   const toggleSidebar = useCallback(() => {
     const next = !getStoredSidebarState();
@@ -54,7 +77,9 @@ export function DashboardShell({
     window.dispatchEvent(new Event(SIDEBAR_EVENT));
   }, []);
 
-  return (
+  return isMobile ? (
+    <MobileBookmarkCapture profileName={profileName} userEmail={userEmail} />
+  ) : (
     <div className={`app-layout ${collapsed ? "sidebar-collapsed" : ""}`}>
       <DashboardSidebar
         collapsed={collapsed}

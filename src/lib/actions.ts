@@ -28,9 +28,9 @@ export async function createBookmark(
 
   const parsed = bookmarkCreateSchema.safeParse({
     url: formData.get("url"),
-    title: formData.get("title"),
+    title: formData.get("title") ?? undefined,
     tags: formData.get("tags") ?? "",
-    note: formData.get("note"),
+    note: formData.get("note") ?? undefined,
   });
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };

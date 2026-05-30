@@ -11,6 +11,7 @@ const MAX_SCALE = 4.0;
 const MIN_NOTE_WIDTH = 100;
 const MIN_NOTE_HEIGHT = 80;
 const DRAG_CREATE_THRESHOLD = 8;
+const WHEEL_LINE_HEIGHT = 16;
 
 const NOTE_DEFAULT_SIZE: Record<NoteType, { width: number; height: number }> = {
   text: { width: 240, height: 180 },
@@ -25,14 +26,20 @@ export function CanvasContainer() {
     notes,
     sections,
     toolMode,
+    setToolMode,
     activeNoteTool,
     setActiveNoteTool,
+    pendingMediaNote,
+    setPendingMediaNote,
+    isCreatingMediaNote,
+    mediaPlacementError,
     viewport,
     setViewport,
     setSelectedId,
     setSelectedIds,
     selectedIds,
     addNote,
+    addMediaNote,
     deleteNotes,
     wrapSelectionInSection,
   } = useNotes();
@@ -60,6 +67,7 @@ export function CanvasContainer() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [isSectionDialogOpen, setIsSectionDialogOpen] = useState(false);
   const [sectionLabel, setSectionLabel] = useState("Section");
+  const [isPanning, setIsPanning] = useState(false);
 
   useEffect(() => {
     viewportRef.current = viewport;
@@ -69,6 +77,7 @@ export function CanvasContainer() {
     (e: React.PointerEvent<HTMLDivElement>) => {
       setContextMenu(null);
       isPanningRef.current = true;
+      setIsPanning(true);
       panStartRef.current = {
         x: e.clientX - viewport.x,
         y: e.clientY - viewport.y,
@@ -88,7 +97,9 @@ export function CanvasContainer() {
       );
       const noteEl = target.closest<HTMLElement>("[data-note-id]");
       const isSelectedNote = Boolean(noteEl?.dataset.noteId && selectedIds.includes(noteEl.dataset.noteId));
-      if (activeNoteTool && e.button === 0 && !isControl) {
+      const canPlaceActiveTool =
+        activeNoteTool && (activeNoteTool !== "image" && activeNoteTool !== "video" || pendingMediaNote);
+      if (canPlaceActiveTool && e.button === 0 && !isControl && !isCreatingMediaNote) {
         const rect = wrapperRef.current?.getBoundingClientRect();
         if (!rect) return;
         setContextMenu(null);
@@ -110,7 +121,18 @@ export function CanvasContainer() {
       if (!isPanGesture || isControl || isSelectedNote) return;
       startPan(e);
     },
-    [activeNoteTool, selectedIds, setSelectedId, startPan, toolMode, viewport.x, viewport.y, viewport.scale]
+    [
+      activeNoteTool,
+      pendingMediaNote,
+      isCreatingMediaNote,
+      selectedIds,
+      setSelectedId,
+      startPan,
+      toolMode,
+      viewport.x,
+      viewport.y,
+      viewport.scale,
+    ]
   );
 
   const handlePointerDown = useCallback(
@@ -168,6 +190,7 @@ export function CanvasContainer() {
 
   const handlePointerUp = useCallback(() => {
     isPanningRef.current = false;
+    setIsPanning(false);
     if (isPlacingNoteRef.current && activeNoteTool) {
       const defaultSize = NOTE_DEFAULT_SIZE[activeNoteTool];
       const wrapperRect = wrapperRef.current?.getBoundingClientRect();
@@ -188,7 +211,11 @@ export function CanvasContainer() {
           ? (placementRect.top - wrapperRect.top - viewport.y) / viewport.scale
           : placeStartRef.current.canvasY;
 
-      addNote(activeNoteTool, x, y, width, height);
+      if ((activeNoteTool === "image" || activeNoteTool === "video") && pendingMediaNote) {
+        addMediaNote(x, y, width, height);
+      } else {
+        addNote(activeNoteTool, x, y, width, height);
+      }
       isPlacingNoteRef.current = false;
       setPlacementRect(null);
       return;
@@ -217,7 +244,9 @@ export function CanvasContainer() {
     setSelectionRect(null);
   }, [
     activeNoteTool,
+    pendingMediaNote,
     addNote,
+    addMediaNote,
     notes,
     placementRect,
     selectionRect,
@@ -233,11 +262,27 @@ export function CanvasContainer() {
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
+      const prev = viewportRef.current;
+      const deltaFactor =
+        e.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? WHEEL_LINE_HEIGHT
+          : e.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? el.clientHeight
+            : 1;
+
+      if (!e.ctrlKey) {
+        setViewport({
+          ...prev,
+          x: prev.x - e.deltaX * deltaFactor,
+          y: prev.y - e.deltaY * deltaFactor,
+        });
+        return;
+      }
+
       const rect = el.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
-      const prev = viewportRef.current;
-      const delta = e.ctrlKey ? -e.deltaY * 0.01 : -e.deltaY * 0.002;
+      const delta = -e.deltaY * deltaFactor * 0.01;
       const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev.scale * (1 + delta)));
       const ratio = newScale / prev.scale;
       setViewport({
@@ -254,18 +299,32 @@ export function CanvasContainer() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space") isSpaceDownRef.current = true;
+      const target = e.target as HTMLElement;
+      const tag = target.tagName;
+      const isTyping =
+        tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
+
+      if (!isTyping && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        setToolMode("select");
+        setActiveNoteTool(null);
+      }
+      if (!isTyping && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        setToolMode("pan");
+        setActiveNoteTool(null);
+      }
       if (e.key === "Escape") {
         setSelectedId(null);
         setActiveNoteTool(null);
+        setPendingMediaNote(null);
         isPlacingNoteRef.current = false;
         setPlacementRect(null);
         setContextMenu(null);
         setIsSectionDialogOpen(false);
       }
       if (e.key === "Delete" || e.key === "Backspace") {
-        const target = e.target as HTMLElement;
-        const tag = target.tagName;
-        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return;
+        if (isTyping) return;
         if (selectedIds.length > 0) {
           e.preventDefault();
           deleteNotes(selectedIds);
@@ -281,7 +340,7 @@ export function CanvasContainer() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [deleteNotes, selectedIds, setActiveNoteTool, setSelectedId]);
+  }, [deleteNotes, selectedIds, setActiveNoteTool, setPendingMediaNote, setSelectedId, setToolMode]);
 
   function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault();
@@ -312,7 +371,7 @@ export function CanvasContainer() {
   return (
     <div
       ref={wrapperRef}
-      className={`canvas-wrapper canvas-wrapper--${toolMode}${activeNoteTool ? " canvas-wrapper--placing" : ""}`}
+      className={`canvas-wrapper canvas-wrapper--${toolMode}${isPanning ? " canvas-wrapper--panning" : ""}${activeNoteTool ? " canvas-wrapper--placing" : ""}`}
       style={
         {
           "--canvas-x": `${x}px`,
@@ -325,6 +384,7 @@ export function CanvasContainer() {
       onPointerDownCapture={handlePointerDownCapture}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       onContextMenu={handleContextMenu}
     >
       {notes.length === 0 && (
@@ -342,6 +402,16 @@ export function CanvasContainer() {
           }}
         >
           Click a note type below to add your first note
+        </div>
+      )}
+      {isCreatingMediaNote && (
+        <div className="canvas-creation-status" role="status">
+          Creating media note...
+        </div>
+      )}
+      {!isCreatingMediaNote && mediaPlacementError && (
+        <div className="canvas-creation-status canvas-creation-status--error" role="alert">
+          {mediaPlacementError}
         </div>
       )}
       <div

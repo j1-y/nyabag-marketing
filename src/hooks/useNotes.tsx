@@ -10,6 +10,8 @@ import {
 } from "react";
 import {
   bringNoteToFront,
+  createMediaNoteFromUrl,
+  createMediaNoteWithUpload,
   createSectionFromNotes,
   createNote,
   deleteSection as deleteSectionAction,
@@ -34,6 +36,13 @@ import type {
   NoteType,
 } from "@/lib/types";
 
+export type PendingMediaNote = {
+  type: "image" | "video";
+  source: "upload" | "url";
+  file?: File;
+  url?: string;
+};
+
 export const NOTE_COLORS = [
   "#FFF9C4",
   "#C8E6C9",
@@ -52,6 +61,10 @@ interface NotesCtx {
   setToolMode: (mode: CanvasToolMode) => void;
   activeNoteTool: NoteType | null;
   setActiveNoteTool: (type: NoteType | null) => void;
+  pendingMediaNote: PendingMediaNote | null;
+  setPendingMediaNote: (media: PendingMediaNote | null) => void;
+  isCreatingMediaNote: boolean;
+  mediaPlacementError: string;
   viewport: CanvasViewport;
   setViewport: (v: CanvasViewport) => void;
   selectedId: string | null;
@@ -65,6 +78,12 @@ interface NotesCtx {
     width?: number,
     height?: number
   ) => Promise<void>;
+  addMediaNote: (
+    canvasX: number,
+    canvasY: number,
+    width?: number,
+    height?: number
+  ) => Promise<ActionResult<CanvasNote>>;
   deleteNote: (id: string) => Promise<void>;
   deleteNotes: (ids: string[]) => Promise<void>;
   updateContent: (
@@ -103,7 +122,10 @@ export function NotesProvider({
   const [notes, setNotes] = useState<CanvasNote[]>(initial);
   const [sections, setSections] = useState<CanvasSection[]>(initialSections);
   const [toolMode, setToolMode] = useState<CanvasToolMode>("select");
-  const [activeNoteTool, setActiveNoteTool] = useState<NoteType | null>(null);
+  const [activeNoteTool, setActiveNoteToolState] = useState<NoteType | null>(null);
+  const [pendingMediaNote, setPendingMediaNoteState] = useState<PendingMediaNote | null>(null);
+  const [isCreatingMediaNote, setIsCreatingMediaNote] = useState(false);
+  const [mediaPlacementError, setMediaPlacementError] = useState("");
   const [viewport, setViewport] = useState<CanvasViewport>({ x: 0, y: 0, scale: 1 });
   const [selectedIds, setSelectedIdsState] = useState<string[]>([]);
   const colorIndexRef = useRef(0);
@@ -120,6 +142,21 @@ export function NotesProvider({
     [setSelectedIds]
   );
 
+  const setActiveNoteTool = useCallback((type: NoteType | null) => {
+    setActiveNoteToolState(type);
+    if (!type || (type !== "image" && type !== "video")) {
+      setPendingMediaNoteState(null);
+      setMediaPlacementError("");
+    }
+  }, []);
+
+  const setPendingMediaNote = useCallback((media: PendingMediaNote | null) => {
+    setPendingMediaNoteState(media);
+    setActiveNoteToolState(media?.type ?? null);
+    setMediaPlacementError("");
+    if (media) setToolMode("select");
+  }, []);
+
   const addNote = useCallback(
     async (type: NoteType, canvasX: number, canvasY: number, width?: number, height?: number) => {
       const color = NOTE_COLORS[colorIndexRef.current % NOTE_COLORS.length];
@@ -129,12 +166,80 @@ export function NotesProvider({
       if (result.success) {
         setNotes((prev) => [...prev, result.data]);
         setSelectedId(result.data.id);
-        setActiveNoteTool(null);
+        setActiveNoteToolState(null);
       } else {
         console.error("Failed to create note:", result.error);
       }
     },
     [setSelectedId]
+  );
+
+  const addMediaNote = useCallback(
+    async (
+      canvasX: number,
+      canvasY: number,
+      width?: number,
+      height?: number
+    ): Promise<ActionResult<CanvasNote>> => {
+      if (!pendingMediaNote) {
+        return { success: false, error: "Choose media before placing the note" };
+      }
+
+      const color = NOTE_COLORS[colorIndexRef.current % NOTE_COLORS.length];
+      colorIndexRef.current++;
+      setIsCreatingMediaNote(true);
+      setMediaPlacementError("");
+
+      let result: ActionResult<CanvasNote>;
+      try {
+        result =
+          pendingMediaNote.source === "upload"
+            ? await (async () => {
+                if (!pendingMediaNote.file) {
+                  return { success: false, error: "No file was selected" } as ActionResult<CanvasNote>;
+                }
+                const formData = new FormData();
+                formData.append("file", pendingMediaNote.file);
+                return createMediaNoteWithUpload(
+                  pendingMediaNote.type,
+                  formData,
+                  canvasX,
+                  canvasY,
+                  color,
+                  width,
+                  height
+                );
+              })()
+            : await createMediaNoteFromUrl(
+                pendingMediaNote.type,
+                pendingMediaNote.url ?? "",
+                canvasX,
+                canvasY,
+                color,
+                width,
+                height
+              );
+      } catch (error) {
+        result = {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to create media note",
+        };
+      } finally {
+        setIsCreatingMediaNote(false);
+      }
+      if (result.success) {
+        setNotes((prev) => [...prev, result.data]);
+        setSelectedId(result.data.id);
+        setPendingMediaNote(null);
+      } else {
+        colorIndexRef.current = Math.max(0, colorIndexRef.current - 1);
+        setMediaPlacementError(result.error);
+        console.error("Failed to create media note:", result.error);
+      }
+
+      return result;
+    },
+    [pendingMediaNote, setPendingMediaNote, setSelectedId]
   );
 
   const applyServerSnapshot = useCallback((snapshot: { notes: CanvasNote[]; sections: CanvasSection[] }) => {
@@ -391,6 +496,10 @@ export function NotesProvider({
       setToolMode,
       activeNoteTool,
       setActiveNoteTool,
+      pendingMediaNote,
+      setPendingMediaNote,
+      isCreatingMediaNote,
+      mediaPlacementError,
       viewport,
       setViewport,
       selectedId,
@@ -398,6 +507,7 @@ export function NotesProvider({
       selectedIds,
       setSelectedIds,
       addNote,
+      addMediaNote,
       deleteNote,
       deleteNotes,
       updateContent,
@@ -421,12 +531,18 @@ export function NotesProvider({
       sections,
       toolMode,
       activeNoteTool,
+      setActiveNoteTool,
+      pendingMediaNote,
+      setPendingMediaNote,
+      isCreatingMediaNote,
+      mediaPlacementError,
       viewport,
       selectedId,
       selectedIds,
       setSelectedId,
       setSelectedIds,
       addNote,
+      addMediaNote,
       deleteNote,
       deleteNotes,
       updateContent,
