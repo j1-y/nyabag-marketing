@@ -13,9 +13,8 @@ const inter = Inter({
 
 
 export const metadata: Metadata = {
-  title: "Nyabag — Visual Bookmark Manager",
-  description:
-    "Nyabag is a visual bookmark manager. Save, organise, and explore your favourite sites with colour palettes, font detection, and live previews.",
+  title: "Nyabag - Your Second Memory for Design",
+  description: "Nyabag is a visual memory system for designers to save, organize, and rediscover websites, screenshots, UI references, color palettes, fonts, and creative inspiration.",
 };
 
 export default function RootLayout({
