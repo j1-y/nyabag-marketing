@@ -141,7 +141,9 @@ export async function createNote(
   type: NoteType,
   x: number,
   y: number,
-  color: string
+  color: string,
+  width?: number,
+  height?: number
 ): Promise<ActionResult<CanvasNote>> {
   const supabase = await createClient();
   const user = await getUser(supabase);
@@ -157,6 +159,8 @@ export async function createNote(
 
   const z_index = (maxRow?.z_index ?? 0) + 1;
   const isSocial = type === "social";
+  const noteWidth = width ?? (isSocial ? 420 : 240);
+  const noteHeight = height ?? (isSocial ? 520 : 180);
   const parsed = noteCreateSchema.safeParse({
     type: isSocial ? "link" : type,
     content: isSocial ? SOCIAL_NOTE_PREFIX : "",
@@ -166,8 +170,8 @@ export async function createNote(
     media_name: null,
     x,
     y,
-    width: isSocial ? 420 : 240,
-    height: isSocial ? 520 : 180,
+    width: noteWidth,
+    height: noteHeight,
     color,
     z_index,
   });

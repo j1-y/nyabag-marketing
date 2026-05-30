@@ -25,6 +25,7 @@ export function CanvasSection({ section, viewport }: Props) {
     commitSectionSize,
     renameSection,
     deleteSection,
+    toolMode,
   } = useNotes();
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(section.label);
@@ -51,6 +52,7 @@ export function CanvasSection({ section, viewport }: Props) {
   } | null>(null);
 
   function startDrag(e: React.PointerEvent<HTMLDivElement>) {
+    if (toolMode === "pan") return;
     if (isEditing) return;
     e.stopPropagation();
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);

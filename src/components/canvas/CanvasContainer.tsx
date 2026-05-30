@@ -4,31 +4,54 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNotes } from "@/hooks/useNotes";
 import { CanvasNote } from "./CanvasNote";
 import { CanvasSection } from "./CanvasSection";
+import type { NoteType } from "@/lib/types";
 
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 4.0;
+const MIN_NOTE_WIDTH = 100;
+const MIN_NOTE_HEIGHT = 80;
+const DRAG_CREATE_THRESHOLD = 8;
+
+const NOTE_DEFAULT_SIZE: Record<NoteType, { width: number; height: number }> = {
+  text: { width: 240, height: 180 },
+  link: { width: 240, height: 180 },
+  image: { width: 240, height: 180 },
+  video: { width: 240, height: 180 },
+  social: { width: 420, height: 520 },
+};
 
 export function CanvasContainer() {
   const {
     notes,
     sections,
     toolMode,
+    activeNoteTool,
+    setActiveNoteTool,
     viewport,
     setViewport,
     setSelectedId,
     setSelectedIds,
     selectedIds,
+    addNote,
     deleteNotes,
     wrapSelectionInSection,
   } = useNotes();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isPanningRef = useRef(false);
   const isSelectingRef = useRef(false);
+  const isPlacingNoteRef = useRef(false);
   const isSpaceDownRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const selectStartRef = useRef({ x: 0, y: 0 });
+  const placeStartRef = useRef({ clientX: 0, clientY: 0, canvasX: 0, canvasY: 0 });
   const viewportRef = useRef(viewport);
   const [selectionRect, setSelectionRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [placementRect, setPlacementRect] = useState<{
     left: number;
     top: number;
     width: number;
@@ -42,18 +65,64 @@ export function CanvasContainer() {
     viewportRef.current = viewport;
   }, [viewport]);
 
+  const startPan = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      setContextMenu(null);
+      isPanningRef.current = true;
+      panStartRef.current = {
+        x: e.clientX - viewport.x,
+        y: e.clientY - viewport.y,
+      };
+      (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    },
+    [viewport.x, viewport.y]
+  );
+
+  const handlePointerDownCapture = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      const isControl = Boolean(
+        target.closest(
+          "button,input,textarea,a,video,iframe,.canvas-toolbar,.canvas-zoom-controls,.note-toolbar,.color-picker-popover,.resize-handle,.canvas-section-resize"
+        )
+      );
+      const noteEl = target.closest<HTMLElement>("[data-note-id]");
+      const isSelectedNote = Boolean(noteEl?.dataset.noteId && selectedIds.includes(noteEl.dataset.noteId));
+      if (activeNoteTool && e.button === 0 && !isControl) {
+        const rect = wrapperRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        setContextMenu(null);
+        setSelectedId(null);
+        isPlacingNoteRef.current = true;
+        placeStartRef.current = {
+          clientX: e.clientX,
+          clientY: e.clientY,
+          canvasX: (e.clientX - rect.left - viewport.x) / viewport.scale,
+          canvasY: (e.clientY - rect.top - viewport.y) / viewport.scale,
+        };
+        setPlacementRect({ left: e.clientX, top: e.clientY, width: 0, height: 0 });
+        (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+        return;
+      }
+      const isPanGesture =
+        e.button === 1 || isSpaceDownRef.current || (toolMode === "pan" && e.button === 0);
+
+      if (!isPanGesture || isControl || isSelectedNote) return;
+      startPan(e);
+    },
+    [activeNoteTool, selectedIds, setSelectedId, startPan, toolMode, viewport.x, viewport.y, viewport.scale]
+  );
+
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      if (isPlacingNoteRef.current) return;
+      if (isPanningRef.current) return;
       if (e.target !== wrapperRef.current) return;
       setContextMenu(null);
       (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
 
       if (e.button === 1 || isSpaceDownRef.current || toolMode === "pan") {
-        isPanningRef.current = true;
-        panStartRef.current = {
-          x: e.clientX - viewport.x,
-          y: e.clientY - viewport.y,
-        };
+        startPan(e);
         return;
       }
 
@@ -63,7 +132,7 @@ export function CanvasContainer() {
       selectStartRef.current = { x: e.clientX, y: e.clientY };
       setSelectionRect({ left: e.clientX, top: e.clientY, width: 0, height: 0 });
     },
-    [toolMode, viewport.x, viewport.y, setSelectedId]
+    [startPan, toolMode, setSelectedId]
   );
 
   const handlePointerMove = useCallback(
@@ -74,6 +143,15 @@ export function CanvasContainer() {
           x: e.clientX - panStartRef.current.x,
           y: e.clientY - panStartRef.current.y,
         });
+        return;
+      }
+
+      if (isPlacingNoteRef.current) {
+        const left = Math.min(placeStartRef.current.clientX, e.clientX);
+        const top = Math.min(placeStartRef.current.clientY, e.clientY);
+        const width = Math.abs(e.clientX - placeStartRef.current.clientX);
+        const height = Math.abs(e.clientY - placeStartRef.current.clientY);
+        setPlacementRect({ left, top, width, height });
         return;
       }
 
@@ -90,6 +168,31 @@ export function CanvasContainer() {
 
   const handlePointerUp = useCallback(() => {
     isPanningRef.current = false;
+    if (isPlacingNoteRef.current && activeNoteTool) {
+      const defaultSize = NOTE_DEFAULT_SIZE[activeNoteTool];
+      const wrapperRect = wrapperRef.current?.getBoundingClientRect();
+      const width =
+        placementRect && placementRect.width >= DRAG_CREATE_THRESHOLD
+          ? Math.max(MIN_NOTE_WIDTH, placementRect.width / viewport.scale)
+          : defaultSize.width;
+      const height =
+        placementRect && placementRect.height >= DRAG_CREATE_THRESHOLD
+          ? Math.max(MIN_NOTE_HEIGHT, placementRect.height / viewport.scale)
+          : defaultSize.height;
+      const x =
+        placementRect && placementRect.width >= DRAG_CREATE_THRESHOLD && wrapperRect
+          ? (placementRect.left - wrapperRect.left - viewport.x) / viewport.scale
+          : placeStartRef.current.canvasX;
+      const y =
+        placementRect && placementRect.height >= DRAG_CREATE_THRESHOLD && wrapperRect
+          ? (placementRect.top - wrapperRect.top - viewport.y) / viewport.scale
+          : placeStartRef.current.canvasY;
+
+      addNote(activeNoteTool, x, y, width, height);
+      isPlacingNoteRef.current = false;
+      setPlacementRect(null);
+      return;
+    }
     if (isSelectingRef.current && selectionRect && wrapperRef.current) {
       const rect = wrapperRef.current.getBoundingClientRect();
       const canvasLeft = (selectionRect.left - rect.left - viewport.x) / viewport.scale;
@@ -112,7 +215,17 @@ export function CanvasContainer() {
     }
     isSelectingRef.current = false;
     setSelectionRect(null);
-  }, [notes, selectionRect, setSelectedIds, viewport.x, viewport.y, viewport.scale]);
+  }, [
+    activeNoteTool,
+    addNote,
+    notes,
+    placementRect,
+    selectionRect,
+    setSelectedIds,
+    viewport.x,
+    viewport.y,
+    viewport.scale,
+  ]);
 
   useEffect(() => {
     const el = wrapperRef.current;
@@ -143,6 +256,9 @@ export function CanvasContainer() {
       if (e.code === "Space") isSpaceDownRef.current = true;
       if (e.key === "Escape") {
         setSelectedId(null);
+        setActiveNoteTool(null);
+        isPlacingNoteRef.current = false;
+        setPlacementRect(null);
         setContextMenu(null);
         setIsSectionDialogOpen(false);
       }
@@ -165,7 +281,7 @@ export function CanvasContainer() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [deleteNotes, selectedIds, setSelectedId]);
+  }, [deleteNotes, selectedIds, setActiveNoteTool, setSelectedId]);
 
   function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault();
@@ -196,7 +312,7 @@ export function CanvasContainer() {
   return (
     <div
       ref={wrapperRef}
-      className={`canvas-wrapper canvas-wrapper--${toolMode}`}
+      className={`canvas-wrapper canvas-wrapper--${toolMode}${activeNoteTool ? " canvas-wrapper--placing" : ""}`}
       style={
         {
           "--canvas-x": `${x}px`,
@@ -206,6 +322,7 @@ export function CanvasContainer() {
         } as React.CSSProperties
       }
       onPointerDown={handlePointerDown}
+      onPointerDownCapture={handlePointerDownCapture}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onContextMenu={handleContextMenu}
@@ -246,6 +363,17 @@ export function CanvasContainer() {
             top: selectionRect.top,
             width: selectionRect.width,
             height: selectionRect.height,
+          }}
+        />
+      )}
+      {placementRect && (
+        <div
+          className="canvas-placement-preview"
+          style={{
+            left: placementRect.left,
+            top: placementRect.top,
+            width: placementRect.width,
+            height: placementRect.height,
           }}
         />
       )}

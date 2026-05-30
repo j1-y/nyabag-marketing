@@ -50,13 +50,21 @@ interface NotesCtx {
   sections: CanvasSection[];
   toolMode: CanvasToolMode;
   setToolMode: (mode: CanvasToolMode) => void;
+  activeNoteTool: NoteType | null;
+  setActiveNoteTool: (type: NoteType | null) => void;
   viewport: CanvasViewport;
   setViewport: (v: CanvasViewport) => void;
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
   selectedIds: string[];
   setSelectedIds: (ids: string[]) => void;
-  addNote: (type: NoteType, canvasX: number, canvasY: number) => Promise<void>;
+  addNote: (
+    type: NoteType,
+    canvasX: number,
+    canvasY: number,
+    width?: number,
+    height?: number
+  ) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
   deleteNotes: (ids: string[]) => Promise<void>;
   updateContent: (
@@ -95,6 +103,7 @@ export function NotesProvider({
   const [notes, setNotes] = useState<CanvasNote[]>(initial);
   const [sections, setSections] = useState<CanvasSection[]>(initialSections);
   const [toolMode, setToolMode] = useState<CanvasToolMode>("select");
+  const [activeNoteTool, setActiveNoteTool] = useState<NoteType | null>(null);
   const [viewport, setViewport] = useState<CanvasViewport>({ x: 0, y: 0, scale: 1 });
   const [selectedIds, setSelectedIdsState] = useState<string[]>([]);
   const colorIndexRef = useRef(0);
@@ -112,14 +121,15 @@ export function NotesProvider({
   );
 
   const addNote = useCallback(
-    async (type: NoteType, canvasX: number, canvasY: number) => {
+    async (type: NoteType, canvasX: number, canvasY: number, width?: number, height?: number) => {
       const color = NOTE_COLORS[colorIndexRef.current % NOTE_COLORS.length];
       colorIndexRef.current++;
-      const result = await createNote(type, canvasX, canvasY, color);
+      const result = await createNote(type, canvasX, canvasY, color, width, height);
 
       if (result.success) {
         setNotes((prev) => [...prev, result.data]);
         setSelectedId(result.data.id);
+        setActiveNoteTool(null);
       } else {
         console.error("Failed to create note:", result.error);
       }
@@ -379,6 +389,8 @@ export function NotesProvider({
       sections,
       toolMode,
       setToolMode,
+      activeNoteTool,
+      setActiveNoteTool,
       viewport,
       setViewport,
       selectedId,
@@ -408,6 +420,7 @@ export function NotesProvider({
       notes,
       sections,
       toolMode,
+      activeNoteTool,
       viewport,
       selectedId,
       selectedIds,

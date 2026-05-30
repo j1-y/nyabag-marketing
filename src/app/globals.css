@@ -2192,6 +2192,11 @@
   cursor: grabbing;
 }
 
+.canvas-wrapper--placing,
+.canvas-wrapper--placing:active {
+  cursor: crosshair;
+}
+
 .canvas-page {
   position: relative;
   flex: 1;
@@ -2309,6 +2314,18 @@
   border: 1px solid var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border-radius: 8px;
+}
+
+.canvas-placement-preview {
+  position: fixed;
+  z-index: 121;
+  pointer-events: none;
+  min-width: 100px;
+  min-height: 80px;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .canvas-context-menu {
@@ -2738,6 +2755,12 @@
   background: var(--bg4);
   color: var(--text);
   transform: translateY(-1px);
+}
+
+.canvas-toolbar-btn.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 .canvas-toolbar-btn:active {

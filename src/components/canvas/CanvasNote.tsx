@@ -31,6 +31,7 @@ export function CanvasNote({ note, viewport }: Props) {
     setNotePosition,
     commitPosition,
     bringToFront,
+    toolMode,
   } = useNotes();
   const isSelected = selectedIds.includes(note.id);
   const isPrimarySelected = selectedId === note.id;
@@ -44,6 +45,7 @@ export function CanvasNote({ note, viewport }: Props) {
   const noteRef = useRef<HTMLDivElement>(null);
 
   function handleHeaderPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (toolMode === "pan" && !isSelected) return;
     e.stopPropagation();
     if (!isSelected) setSelectedId(note.id);
     bringToFront(note.id);
@@ -80,6 +82,7 @@ export function CanvasNote({ note, viewport }: Props) {
   }
 
   function handleNotePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (toolMode === "pan" && !isSelected) return;
     e.stopPropagation();
     if (e.shiftKey) {
       setSelectedIds(

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import {
   CursorIcon,
   HandPalmIcon,
@@ -22,33 +21,11 @@ const NOTE_TYPES: { type: NoteType; icon: Icon; label: string }[] = [
   { type: "social", icon: ShareNetworkIcon, label: "Social post" },
 ];
 
-const NOTE_DEFAULT_SIZE: Record<NoteType, { width: number; height: number }> = {
-  text: { width: 240, height: 180 },
-  link: { width: 240, height: 180 },
-  image: { width: 240, height: 180 },
-  video: { width: 240, height: 180 },
-  social: { width: 420, height: 520 },
-};
-
 export function CanvasToolbar() {
-  const { addNote, viewport, toolMode, setToolMode } = useNotes();
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  function addNoteAtCenter(type: NoteType) {
-    const wrapper = containerRef.current?.closest(".main-content")?.querySelector(".canvas-wrapper");
-    let cx = 400;
-    let cy = 300;
-    if (wrapper) {
-      const rect = wrapper.getBoundingClientRect();
-      cx = (rect.width / 2 - viewport.x) / viewport.scale;
-      cy = (rect.height / 2 - viewport.y) / viewport.scale;
-    }
-    const size = NOTE_DEFAULT_SIZE[type];
-    addNote(type, cx - size.width / 2, cy - size.height / 2);
-  }
+  const { toolMode, setToolMode, activeNoteTool, setActiveNoteTool } = useNotes();
 
   return (
-    <div ref={containerRef} className="canvas-toolbar">
+    <div className="canvas-toolbar">
       <div className="canvas-tool-switch" aria-label="Canvas tool mode">
         <button
           type="button"
@@ -77,10 +54,14 @@ export function CanvasToolbar() {
       {NOTE_TYPES.map(({ type, icon: Icon, label }) => (
         <button
           key={type}
-          className="canvas-toolbar-btn"
+          className={`canvas-toolbar-btn${activeNoteTool === type ? " active" : ""}`}
           title={label}
           aria-label={label}
-          onClick={() => addNoteAtCenter(type)}
+          aria-pressed={activeNoteTool === type}
+          onClick={() => {
+            setActiveNoteTool(activeNoteTool === type ? null : type);
+            setToolMode("select");
+          }}
         >
           <Icon size={20} weight="regular" />
         </button>
