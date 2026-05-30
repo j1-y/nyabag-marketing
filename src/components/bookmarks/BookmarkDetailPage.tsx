@@ -54,7 +54,6 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
           <div>
             <p className="detail-domain">{domain}</p>
             <h1>{bookmark.title}</h1>
-            <p className="detail-url">{bookmark.url}</p>
           </div>
 
           {bookmark.summary && (
