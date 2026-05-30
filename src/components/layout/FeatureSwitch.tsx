@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, StickyNote } from "lucide-react";
+import { NoteIcon, SquaresFourIcon } from "@phosphor-icons/react";
 
 export function FeatureSwitch() {
   const pathname = usePathname();
@@ -11,11 +11,11 @@ export function FeatureSwitch() {
   return (
     <nav className="feature-switch" aria-label="Primary">
       <Link href="/" className={`feature-switch-item ${!isNotes ? "active" : ""}`}>
-        <LayoutGrid size={14} />
+        <SquaresFourIcon size={14} weight="bold" />
         Bookmarks
       </Link>
       <Link href="/canvas" className={`feature-switch-item ${isNotes ? "active" : ""}`}>
-        <StickyNote size={14} />
+        <NoteIcon size={14} weight="bold" />
         Notes
       </Link>
     </nav>

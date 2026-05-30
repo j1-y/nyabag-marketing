@@ -2,7 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ExternalLink, Palette, Pencil, Tags, Trash2, Type, StickyNote } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ArrowSquareOutIcon,
+  NoteIcon,
+  PaletteIcon,
+  PencilSimpleIcon,
+  TagIcon,
+  TextTIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { deleteBookmark } from "@/lib/actions";
 import { getDomain } from "@/lib/data";
 import type { Bookmark } from "@/lib/types";
@@ -38,7 +47,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
       <main className="bookmark-detail-shell">
         <section className="bookmark-detail-info">
           <button className="detail-back" onClick={() => router.push("/")}>
-            <ArrowLeft size={15} />
+            <ArrowLeftIcon size={15} />
             Back to bookmarks
           </button>
 
@@ -56,14 +65,14 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
 
           {bookmark.note && (
             <div className="detail-note-card">
-              <StickyNote size={15} />
+              <NoteIcon size={15} />
               <p>{bookmark.note}</p>
             </div>
           )}
 
           <a className="detail-visit" href={bookmark.url} target="_blank" rel="noopener noreferrer">
             Visit website
-            <ExternalLink size={14} />
+            <ArrowSquareOutIcon size={14} />
           </a>
 
           <div className="detail-table">
@@ -82,19 +91,19 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
           </div>
 
           <div className="detail-section">
-            <h2><Palette size={15} /> Extracted colors</h2>
+            <h2><PaletteIcon size={15} /> Extracted colors</h2>
             <BookmarkColorPalette colors={bookmark.palette} />
           </div>
 
           <div className="detail-section">
-            <h2><Type size={15} /> Detected fonts</h2>
+            <h2><TextTIcon size={15} /> Detected fonts</h2>
             <div className="detail-chip-list">
               {bookmark.fonts.map((font) => <span key={font}>{font}</span>)}
             </div>
           </div>
 
           <div className="detail-section">
-            <h2><Tags size={15} /> Tags</h2>
+            <h2><TagIcon size={15} /> Tags</h2>
             <div className="detail-chip-list">
               {bookmark.tags.length
                 ? bookmark.tags.map((tag) => <span key={tag}>{tag}</span>)
@@ -104,14 +113,14 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
 
           <div className="detail-actions">
             <Button variant="destructive" onClick={() => setDeleteOpen(true)} disabled={isPending}>
-              <Trash2 /> Delete
+              <TrashIcon /> Delete
             </Button>
             <Button variant="outline" onClick={() => openEdit(bookmark)}>
-              <Pencil /> Edit
+              <PencilSimpleIcon /> Edit
             </Button>
             <Button asChild>
               <a href={bookmark.url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink /> Visit site
+                <ArrowSquareOutIcon /> Visit site
               </a>
             </Button>
           </div>
@@ -125,7 +134,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
               <span />
               <strong>{domain}</strong>
               <a href={bookmark.url} target="_blank" rel="noopener noreferrer" aria-label="Open site">
-                <ExternalLink size={14} />
+                <ArrowSquareOutIcon size={14} />
               </a>
             </div>
             <div className="browser-shot">

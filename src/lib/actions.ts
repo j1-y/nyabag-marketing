@@ -5,8 +5,18 @@ import { createClient } from "@/lib/supabase/server";
 import { getDesignData, getMicrolinkPreviewData } from "@/lib/data";
 import { getDomain } from "@/lib/data";
 import { mergeTags, scrapeBookmarkMetadata } from "@/lib/metadata";
-import { bookmarkCreateSchema, bookmarkUpdateSchema } from "@/lib/validations";
-import type { ActionResult, Bookmark } from "@/lib/types";
+import { PROFILE_AVATAR_BUCKET } from "@/lib/profile";
+import { bookmarkCreateSchema, bookmarkUpdateSchema, profileUpdateSchema } from "@/lib/validations";
+import type { ActionResult, Bookmark, UserProfile } from "@/lib/types";
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+function avatarExtension(file: File) {
+  const fromName = file.name.split(".").pop()?.toLowerCase();
+  if (fromName && /^[a-z0-9]+$/.test(fromName)) return fromName;
+  return file.type.split("/")[1] || "png";
+}
 
 // ── Create ────────────────────────────────────────────────────
 export async function createBookmark(
@@ -201,6 +211,90 @@ export async function deleteBookmark(id: string): Promise<ActionResult> {
 }
 
 // ── Auth ──────────────────────────────────────────────────────
+export async function updateProfile(
+  formData: FormData
+): Promise<ActionResult<UserProfile>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const parsed = profileUpdateSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    phone: formData.get("phone"),
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("avatar_path")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  let avatarPath = existing?.avatar_path ?? null;
+  const avatar = formData.get("avatar");
+
+  if (avatar instanceof File && avatar.size > 0) {
+    if (!AVATAR_TYPES.has(avatar.type)) {
+      return { success: false, error: "Profile picture must be a JPG, PNG, WEBP, or GIF" };
+    }
+
+    if (avatar.size > MAX_AVATAR_BYTES) {
+      return { success: false, error: "Profile picture must be 5MB or smaller" };
+    }
+
+    const nextPath = `${user.id}/avatar-${Date.now()}.${avatarExtension(avatar)}`;
+    const { error: uploadError } = await supabase.storage
+      .from(PROFILE_AVATAR_BUCKET)
+      .upload(nextPath, avatar, {
+        cacheControl: "3600",
+        contentType: avatar.type,
+        upsert: true,
+      });
+
+    if (uploadError) return { success: false, error: uploadError.message };
+
+    if (avatarPath) {
+      await supabase.storage.from(PROFILE_AVATAR_BUCKET).remove([avatarPath]);
+    }
+
+    avatarPath = nextPath;
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .upsert({
+      user_id: user.id,
+      name: parsed.data.name ?? "",
+      email: parsed.data.email || user.email || "",
+      phone: parsed.data.phone ?? "",
+      avatar_path: avatarPath,
+    })
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+
+  const avatarUrl = avatarPath
+    ? supabase.storage.from(PROFILE_AVATAR_BUCKET).getPublicUrl(avatarPath).data.publicUrl
+    : null;
+
+  revalidatePath("/profile");
+  revalidatePath("/");
+  revalidatePath("/canvas");
+
+  return {
+    success: true,
+    data: {
+      ...(data as UserProfile),
+      avatar_url: avatarUrl,
+    },
+  };
+}
+
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();

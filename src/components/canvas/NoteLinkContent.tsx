@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { useNotes } from "@/hooks/useNotes";
 import { getScreenshotUrl, getDomain } from "@/lib/data";
 import type { CanvasNote } from "@/lib/types";
@@ -39,7 +39,7 @@ export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSele
           style={{
             width: "100%",
             padding: "6px 8px",
-            borderRadius: 6,
+            borderRadius: 10,
             border: "1px solid var(--border2)",
             background: "var(--bg)",
             fontSize: 13,
@@ -83,7 +83,7 @@ export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSele
           style={{ color: "var(--text3)", flexShrink: 0 }}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <ExternalLink size={12} />
+          <ArrowSquareOutIcon size={12} />
         </a>
         {isSelected && (
           <button

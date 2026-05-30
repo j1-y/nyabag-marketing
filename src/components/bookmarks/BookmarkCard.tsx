@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
+import {
+  ArrowSquareOutIcon,
+  ImageIcon,
+  PencilSimpleIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { getDomain, getFaviconUrl } from "@/lib/data";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import type { Bookmark } from "@/lib/types";
@@ -83,7 +88,7 @@ export function BookmarkCard({
                 aria-label={`Open ${bookmark.title}`}
                 onClick={(e) => { e.stopPropagation(); window.open(bookmark.url, "_blank", "noopener,noreferrer"); }}
               >
-                <ExternalLink className="h-3.5 w-3.5" />
+                <ArrowSquareOutIcon className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost" size="icon" className="moodboard-action"
@@ -91,7 +96,7 @@ export function BookmarkCard({
                 aria-label={`Edit ${bookmark.title}`}
                 onClick={(e) => { e.stopPropagation(); openEdit(bookmark); }}
               >
-                <Pencil className="h-3.5 w-3.5" />
+                <PencilSimpleIcon className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost" size="icon" className="moodboard-action moodboard-action-danger"
@@ -99,7 +104,7 @@ export function BookmarkCard({
                 aria-label={`Delete ${bookmark.title}`}
                 onClick={handleDelete}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <TrashIcon className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>

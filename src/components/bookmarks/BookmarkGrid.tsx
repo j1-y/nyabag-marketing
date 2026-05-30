@@ -1,6 +1,8 @@
 "use client";
 
-import { ShoppingBag, Plus } from "lucide-react";
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { PlusIcon, ShoppingBagIcon } from "@phosphor-icons/react";
 import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
 import { BookmarkCard } from "./BookmarkCard";
 import { PendingBookmarkCard } from "./PendingBookmarkCard";
@@ -11,6 +13,15 @@ import { Topbar } from "../layout/Topbar";
 
 function GridInner() {
   const { filtered, pendingBookmarks, openAdd } = useBookmarks();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("add") === "1") {
+      openAdd();
+      router.replace("/");
+    }
+  }, [openAdd, router, searchParams]);
 
   return (
     <>
@@ -20,12 +31,12 @@ function GridInner() {
       {filtered.length === 0 && pendingBookmarks.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon" aria-hidden="true">
-            <ShoppingBag size={24} strokeWidth={1.6} />
+            <ShoppingBagIcon size={24} weight="duotone" />
           </div>
           <h2>No bookmarks yet</h2>
           <p>Save websites, references, and ideas into a visual board.</p>
           <button className="btn-primary empty-state-action" onClick={openAdd}>
-            <Plus size={15} /> Add bookmark
+            <PlusIcon size={15} weight="bold" /> Add bookmark
           </button>
         </div>
       ) : (

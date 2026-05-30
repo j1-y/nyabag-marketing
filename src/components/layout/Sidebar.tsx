@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LayoutGrid, Clock, Plus, StickyNote } from "lucide-react";
+import { ClockIcon, NoteIcon, PlusIcon, SquaresFourIcon } from "@phosphor-icons/react";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { getTagColor } from "@/lib/data";
 
@@ -30,18 +30,18 @@ export function Sidebar() {
           className={`nav-item ${activeFilter === "all" && activeTag === "All" ? "active" : ""}`}
           onClick={() => { setActiveFilter("all"); setActiveTag("All"); }}
         >
-          <LayoutGrid size={13} />
+          <SquaresFourIcon size={13} />
           All bookmarks
         </button>
         <button
           className={`nav-item ${activeFilter === "recent" ? "active" : ""}`}
           onClick={() => setActiveFilter("recent")}
         >
-          <Clock size={13} />
+          <ClockIcon size={13} />
           Recent
         </button>
         <Link href="/canvas" className="nav-item">
-          <StickyNote size={13} />
+          <NoteIcon size={13} />
           Notes
         </Link>
       </nav>
@@ -68,7 +68,7 @@ export function Sidebar() {
 
       <div className="sidebar-footer">
         <button className="add-btn-sidebar" onClick={openAdd}>
-          <Plus size={14} /> Add bookmark
+          <PlusIcon size={14} weight="bold" /> Add bookmark
         </button>
       </div>
     </aside>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, StickyNote } from "lucide-react";
+import { NoteIcon, SquaresFourIcon } from "@phosphor-icons/react";
 
 export function CanvasSidebar() {
   const pathname = usePathname();
@@ -19,14 +19,14 @@ export function CanvasSidebar() {
           href="/"
           className={`nav-item ${pathname === "/" ? "active" : ""}`}
         >
-          <LayoutGrid size={13} />
+          <SquaresFourIcon size={13} />
           All bookmarks
         </Link>
         <Link
           href="/canvas"
           className={`nav-item ${pathname === "/canvas" ? "active" : ""}`}
         >
-          <StickyNote size={13} />
+          <NoteIcon size={13} />
           Canvas
         </Link>
       </nav>

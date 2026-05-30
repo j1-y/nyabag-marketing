@@ -29,6 +29,19 @@ export const bookmarkUpdateSchema = bookmarkCreateSchema.extend({
 export type BookmarkCreateInput = z.infer<typeof bookmarkCreateSchema>;
 export type BookmarkUpdateInput = z.infer<typeof bookmarkUpdateSchema>;
 
+export const profileUpdateSchema = z.object({
+  name: z.string().trim().max(120, "Name must be 120 characters or less").optional(),
+  email: z
+    .string()
+    .trim()
+    .max(255, "Email must be 255 characters or less")
+    .optional()
+    .refine((value) => !value || z.email().safeParse(value).success, "Must be a valid email"),
+  phone: z.string().trim().max(40, "Phone must be 40 characters or less").optional(),
+});
+
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
 export const noteCreateSchema = z.object({
   type: z.enum(["text", "link", "image", "video"]),
   content: z.string().max(4000).default(""),

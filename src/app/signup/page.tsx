@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, Loader2 } from "lucide-react";
+import { ShoppingBagIcon, SpinnerIcon } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
@@ -62,7 +62,7 @@ export default function SignupPage() {
                 onError={() => setLogoError(true)}
               />
             ) : (
-              <ShoppingBag size={18} />
+              <ShoppingBagIcon size={18} weight="duotone" />
             )}
           </span>
           <span className="auth-logo-text">Nyabag</span>
@@ -109,9 +109,9 @@ export default function SignupPage() {
             disabled={loading}
           >
             {loading && (
-              <Loader2
+              <SpinnerIcon
                 size={15}
-                className="lucide"
+                className="phosphor"
                 style={{ animation: "spin 1s linear infinite" }}
               />
             )}

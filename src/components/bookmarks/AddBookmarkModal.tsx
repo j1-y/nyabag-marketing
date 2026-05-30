@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useTransition, useState } from "react";
-import { X, Save } from "lucide-react";
+import { FloppyDiskIcon, XIcon } from "@phosphor-icons/react";
 import { createBookmark } from "@/lib/actions";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
@@ -70,7 +70,7 @@ export function AddBookmarkModal() {
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="add-modal-title">
         <div className="modal-header">
           <h2 id="add-modal-title">Add bookmark</h2>
-          <button className="modal-close" onClick={closeAdd} aria-label="Close"><X size={13} /></button>
+          <button className="modal-close" onClick={closeAdd} aria-label="Close"><XIcon size={13} weight="bold" /></button>
         </div>
         <form ref={formRef} onSubmit={handleSubmit}>
           <div className="modal-body gap-4">
@@ -95,7 +95,7 @@ export function AddBookmarkModal() {
           <div className="modal-footer">
             <Button type="button" variant="outline" onClick={closeAdd}>Cancel</Button>
             <Button type="submit" disabled={isPending}>
-              <Save /> {isPending ? "Saving…" : "Save"}
+              <FloppyDiskIcon /> {isPending ? "Saving…" : "Save"}
             </Button>
           </div>
         </form>

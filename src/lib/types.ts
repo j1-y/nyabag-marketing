@@ -19,6 +19,17 @@ export type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string };
 
+export type UserProfile = {
+  user_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  avatar_path: string | null;
+  avatar_url?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type NoteType = "text" | "link" | "image" | "video";
 export type NoteMediaSource = "url" | "upload";
 

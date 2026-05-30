@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useTransition } from "react";
-import { X, Check } from "lucide-react";
+import { CheckIcon, XIcon } from "@phosphor-icons/react";
 import { updateBookmark } from "@/lib/actions";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ export function EditBookmarkModal() {
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
         <div className="modal-header">
           <h2 id="edit-modal-title">Edit bookmark</h2>
-          <button className="modal-close" onClick={closeEdit} aria-label="Close"><X size={13} /></button>
+          <button className="modal-close" onClick={closeEdit} aria-label="Close"><XIcon size={13} weight="bold" /></button>
         </div>
         <form ref={formRef} onSubmit={handleSubmit}>
           <input type="hidden" name="id" value={editTarget.id} />
@@ -60,7 +60,7 @@ export function EditBookmarkModal() {
           <div className="modal-footer">
             <Button type="button" variant="outline" onClick={closeEdit}>Cancel</Button>
             <Button type="submit" disabled={isPending}>
-              <Check /> {isPending ? "Saving…" : "Update"}
+              <CheckIcon /> {isPending ? "Saving…" : "Update"}
             </Button>
           </div>
         </form>

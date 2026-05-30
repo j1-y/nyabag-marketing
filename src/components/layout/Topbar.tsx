@@ -1,20 +1,33 @@
 "use client";
 
-import { Search, Plus } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { MagnifyingGlassIcon, PlusIcon } from "@phosphor-icons/react";
 import { useBookmarks } from "@/hooks/useBookmarks";
 
 export function Topbar() {
   const { search, setSearch, openAdd } = useBookmarks();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const shortcutLabel =
     typeof navigator !== "undefined" && /mac/i.test(navigator.platform)
-      ? "⌘ K"
+      ? "Cmd K"
       : "Ctrl K";
+
+  useEffect(() => {
+    if (searchParams.get("search") === "1") {
+      inputRef.current?.focus();
+      router.replace("/");
+    }
+  }, [router, searchParams]);
 
   return (
     <section className="topbar bookmark-controls" aria-label="Bookmark controls">
       <div className="search-wrap">
-        <Search size={13} />
+        <MagnifyingGlassIcon size={13} />
         <input
+          ref={inputRef}
           type="text"
           placeholder="Search bookmarks, tags, URLs..."
           autoComplete="off"
@@ -25,7 +38,7 @@ export function Topbar() {
       </div>
 
       <button className="btn-primary btn-sm topbar-add" onClick={openAdd}>
-        <Plus size={13} />
+        <PlusIcon size={13} weight="bold" />
         Add
       </button>
     </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { TrashIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,7 +26,7 @@ export function DeleteBookmarkDialog({
 }: DeleteBookmarkDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm rounded-xl">
+      <DialogContent className="max-w-sm rounded-[10px]">
         <DialogHeader>
           <DialogTitle>Delete bookmark?</DialogTitle>
           <DialogDescription>
@@ -44,7 +44,7 @@ export function DeleteBookmarkDialog({
               onOpenChange(false);
             }}
           >
-            <Trash2 className="h-4 w-4" />
+            <TrashIcon className="h-4 w-4" />
             Delete
           </Button>
         </DialogFooter>

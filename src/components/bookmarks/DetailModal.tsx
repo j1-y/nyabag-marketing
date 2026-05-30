@@ -1,7 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { X, ExternalLink, Palette, Type, StickyNote, Tags, Trash2, Pencil, Image as ImageIcon, Maximize2 } from "lucide-react";
+import {
+  ArrowSquareOutIcon,
+  CornersOutIcon,
+  ImageIcon,
+  NoteIcon,
+  PaletteIcon,
+  PencilSimpleIcon,
+  TagIcon,
+  TextTIcon,
+  TrashIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 import { getDomain, getTagColor, getScreenshotUrl } from "@/lib/data";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
@@ -27,7 +38,7 @@ export function DetailModal() {
         <div className="modal modal-detail" role="dialog" aria-modal="true" aria-labelledby="detail-title">
         <div className="modal-header">
           <h2 id="detail-title">{b.title}</h2>
-          <button className="modal-close" onClick={closeDetail} aria-label="Close"><X size={13} /></button>
+          <button className="modal-close" onClick={closeDetail} aria-label="Close"><XIcon size={13} weight="bold" /></button>
         </div>
 
         <div className="relative h-[220px] bg-muted overflow-hidden border-b flex-shrink-0 group">
@@ -41,7 +52,7 @@ export function DetailModal() {
               />
             ) : (
               <div className="preview-fallback" style={{ position: "absolute", inset: 0, display: "flex" }}>
-                <ImageIcon size={36} strokeWidth={1} />
+                <ImageIcon size={36} weight="light" />
                 <span style={{ fontSize: 12, color: "var(--text3)" }}>{domain}</span>
               </div>
             )}
@@ -49,12 +60,12 @@ export function DetailModal() {
           <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button size="sm" variant="secondary" className="h-7 px-3 text-xs shadow-md" asChild>
               <a href={getScreenshotUrl(b.url)} target="_blank" rel="noopener noreferrer">
-                <Maximize2 className="mr-1.5 h-3 w-3" /> Expand
+                <CornersOutIcon className="mr-1.5 h-3 w-3" /> Expand
               </a>
             </Button>
             <Button size="sm" variant="default" className="h-7 px-3 text-xs shadow-md" asChild>
               <a href={b.url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-1.5 h-3 w-3" /> Open site
+                <ArrowSquareOutIcon className="mr-1.5 h-3 w-3" /> Open site
               </a>
             </Button>
           </div>
@@ -62,7 +73,7 @@ export function DetailModal() {
 
         <div className="detail-meta">
           <div className="meta-block">
-            <p className="meta-label"><Palette /> Extracted colors</p>
+            <p className="meta-label"><PaletteIcon /> Extracted colors</p>
             <div className="palette-row">
               {b.palette.map((c) => (
                 <div key={c} className="palette-swatch">
@@ -74,7 +85,7 @@ export function DetailModal() {
           </div>
 
           <div className="meta-block">
-            <p className="meta-label"><Type /> Detected fonts</p>
+            <p className="meta-label"><TextTIcon /> Detected fonts</p>
             <div className="font-row">
               {b.fonts.map((f) => <span key={f} className="font-badge">{f}</span>)}
             </div>
@@ -82,13 +93,13 @@ export function DetailModal() {
 
           {b.note && (
             <div className="meta-block">
-              <p className="meta-label"><StickyNote /> Note</p>
+              <p className="meta-label"><NoteIcon /> Note</p>
               <p className="meta-note">{b.note}</p>
             </div>
           )}
 
           <div className="meta-block">
-            <p className="meta-label"><Tags /> Tags</p>
+            <p className="meta-label"><TagIcon /> Tags</p>
             <div className="tag-row">
               {b.tags.length ? b.tags.map((t) => (
                 <span key={t} className="ctag" style={{ borderColor: `${getTagColor(t)}33`, color: getTagColor(t) }}>
@@ -101,14 +112,14 @@ export function DetailModal() {
 
         <div className="modal-footer">
           <Button variant="destructive" onClick={handleDelete}>
-            <Trash2 /> Delete
+            <TrashIcon /> Delete
           </Button>
           <Button variant="outline" onClick={() => { closeDetail(); openEdit(b); }}>
-            <Pencil /> Edit
+            <PencilSimpleIcon /> Edit
           </Button>
           <Button asChild>
             <a href={b.url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink /> Visit site
+              <ArrowSquareOutIcon /> Visit site
             </a>
           </Button>
         </div>
