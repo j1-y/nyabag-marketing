@@ -1,6 +1,10 @@
+import nextDynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { getNotes, getSections } from "@/lib/canvas-data";
-import { CanvasBoard } from "@/components/canvas/CanvasBoard";
+
+const CanvasBoard = nextDynamic(() =>
+  import("@/components/canvas/CanvasBoard").then((mod) => mod.CanvasBoard)
+);
 
 export const dynamic = "force-dynamic";
 

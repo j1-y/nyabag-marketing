@@ -95,6 +95,7 @@ interface NotesCtx {
   uploadMedia: (id: string, file: File) => Promise<ActionResult<CanvasNote>>;
   removeMedia: (id: string) => Promise<ActionResult<CanvasNote>>;
   setNotePosition: (id: string, x: number, y: number) => void;
+  setNotePositions: (positions: Array<{ id: string; x: number; y: number }>) => void;
   setNoteSize: (id: string, width: number, height: number) => void;
   commitPosition: (id: string, x: number, y: number) => Promise<void>;
   commitSize: (id: string, width: number, height: number) => Promise<void>;
@@ -364,6 +365,16 @@ export function NotesProvider({
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, x, y } : n)));
   }, []);
 
+  const setNotePositions = useCallback((positions: Array<{ id: string; x: number; y: number }>) => {
+    const nextPositions = new Map(positions.map((position) => [position.id, position]));
+    setNotes((prev) =>
+      prev.map((note) => {
+        const position = nextPositions.get(note.id);
+        return position ? { ...note, x: position.x, y: position.y } : note;
+      })
+    );
+  }, []);
+
   const setNoteSize = useCallback((id: string, width: number, height: number) => {
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, width, height } : n)));
   }, []);
@@ -514,6 +525,7 @@ export function NotesProvider({
       uploadMedia,
       removeMedia,
       setNotePosition,
+      setNotePositions,
       setNoteSize,
       commitPosition,
       commitSize,
@@ -549,6 +561,7 @@ export function NotesProvider({
       uploadMedia,
       removeMedia,
       setNotePosition,
+      setNotePositions,
       setNoteSize,
       commitPosition,
       commitSize,

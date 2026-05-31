@@ -18,7 +18,7 @@ const MAX_H = 4000;
 export function CanvasSection({ section, viewport }: Props) {
   const {
     notes,
-    setNotePosition,
+    setNotePositions,
     setSectionPosition,
     setSectionSize,
     commitSectionPosition,
@@ -50,6 +50,28 @@ export function CanvasSection({ section, viewport }: Props) {
     latestW: number;
     latestH: number;
   } | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
+  const pendingSectionMoveRef = useRef<{
+    x: number;
+    y: number;
+    notes: Array<{ id: string; x: number; y: number }>;
+  } | null>(null);
+
+  function scheduleSectionMove(
+    x: number,
+    y: number,
+    notePositions: Array<{ id: string; x: number; y: number }>
+  ) {
+    pendingSectionMoveRef.current = { x, y, notes: notePositions };
+    if (dragFrameRef.current !== null) return;
+    dragFrameRef.current = requestAnimationFrame(() => {
+      dragFrameRef.current = null;
+      const pending = pendingSectionMoveRef.current;
+      if (!pending) return;
+      setSectionPosition(section.id, pending.x, pending.y);
+      setNotePositions(pending.notes);
+    });
+  }
 
   function startDrag(e: React.PointerEvent<HTMLDivElement>) {
     if (toolMode === "pan") return;
@@ -75,14 +97,24 @@ export function CanvasSection({ section, viewport }: Props) {
     const nextY = dragRef.current.startY + dy;
     dragRef.current.latestX = nextX;
     dragRef.current.latestY = nextY;
-    setSectionPosition(section.id, nextX, nextY);
-    dragRef.current.noteStarts.forEach((note) => {
-      setNotePosition(note.id, note.x + dx, note.y + dy);
-    });
+    scheduleSectionMove(
+      nextX,
+      nextY,
+      dragRef.current.noteStarts.map((note) => ({ id: note.id, x: note.x + dx, y: note.y + dy }))
+    );
   }
 
   function endDrag() {
     if (!dragRef.current) return;
+    if (dragFrameRef.current !== null) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+      const pending = pendingSectionMoveRef.current;
+      if (pending) {
+        setSectionPosition(section.id, pending.x, pending.y);
+        setNotePositions(pending.notes);
+      }
+    }
     commitSectionPosition(section.id, dragRef.current.latestX, dragRef.current.latestY);
     dragRef.current = null;
   }

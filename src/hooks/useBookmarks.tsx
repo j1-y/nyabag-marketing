@@ -2,7 +2,9 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
+  useMemo,
   useState,
   type Dispatch,
   type ReactNode,
@@ -62,7 +64,7 @@ export function BookmarksProvider({
   const [editTarget, setEditTarget] = useState<Bookmark | null>(null);
   const [detailTarget, setDetailTarget] = useState<Bookmark | null>(null);
 
-  const deleteItem = async (id: string) => {
+  const deleteItem = useCallback(async (id: string) => {
     // Keep reference to previous state for rollback
     const previousBookmarks = bookmarks;
     
@@ -85,17 +87,24 @@ export function BookmarksProvider({
       // Revert optimistic update
       setBookmarks(previousBookmarks);
     }
-  };
+  }, [bookmarks, detailTarget?.id, editTarget?.id]);
 
-  const addPendingBookmark = (bookmark: PendingBookmark) => {
+  const addPendingBookmark = useCallback((bookmark: PendingBookmark) => {
     setPendingBookmarks((prev) => [bookmark, ...prev]);
-  };
+  }, []);
 
-  const removePendingBookmark = (id: string) => {
+  const removePendingBookmark = useCallback((id: string) => {
     setPendingBookmarks((prev) => prev.filter((bookmark) => bookmark.id !== id));
-  };
+  }, []);
 
-  const filtered = (() => {
+  const openAdd = useCallback(() => setAddOpen(true), []);
+  const closeAdd = useCallback(() => setAddOpen(false), []);
+  const openEdit = useCallback((b: Bookmark) => setEditTarget(b), []);
+  const closeEdit = useCallback(() => setEditTarget(null), []);
+  const openDetail = useCallback((b: Bookmark) => setDetailTarget(b), []);
+  const closeDetail = useCallback(() => setDetailTarget(null), []);
+
+  const filtered = useMemo(() => {
     let list = [...bookmarks];
     if (activeFilter === "recent") list = list.slice(0, 10);
     if (activeTag !== "All") list = list.filter((b) => b.tags.includes(activeTag));
@@ -110,31 +119,53 @@ export function BookmarksProvider({
           b.note.toLowerCase().includes(q)
       );
     return list;
-  })();
+  }, [activeFilter, activeTag, bookmarks, search]);
+
+  const value = useMemo<BookmarksCtx>(
+    () => ({
+      bookmarks, setBookmarks,
+      pendingBookmarks,
+      addPendingBookmark,
+      removePendingBookmark,
+      activeTag, setActiveTag,
+      activeFilter, setActiveFilter,
+      search, setSearch,
+      addOpen,
+      openAdd,
+      closeAdd,
+      editTarget,
+      openEdit,
+      closeEdit,
+      detailTarget,
+      openDetail,
+      closeDetail,
+      deleteItem,
+      filtered,
+    }),
+    [
+      activeFilter,
+      activeTag,
+      addOpen,
+      addPendingBookmark,
+      bookmarks,
+      closeAdd,
+      closeDetail,
+      closeEdit,
+      deleteItem,
+      detailTarget,
+      editTarget,
+      filtered,
+      openAdd,
+      openDetail,
+      openEdit,
+      pendingBookmarks,
+      removePendingBookmark,
+      search,
+    ]
+  );
 
   return (
-    <Ctx.Provider
-      value={{
-        bookmarks, setBookmarks,
-        pendingBookmarks,
-        addPendingBookmark,
-        removePendingBookmark,
-        activeTag, setActiveTag,
-        activeFilter, setActiveFilter,
-        search, setSearch,
-        addOpen,
-        openAdd: () => setAddOpen(true),
-        closeAdd: () => setAddOpen(false),
-        editTarget,
-        openEdit: (b) => setEditTarget(b),
-        closeEdit: () => setEditTarget(null),
-        detailTarget,
-        openDetail: (b) => setDetailTarget(b),
-        closeDetail: () => setDetailTarget(null),
-        deleteItem,
-        filtered,
-      }}
-    >
+    <Ctx.Provider value={value}>
       {children}
     </Ctx.Provider>
   );

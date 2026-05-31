@@ -52,6 +52,8 @@ export function CanvasContainer() {
   const selectStartRef = useRef({ x: 0, y: 0 });
   const placeStartRef = useRef({ clientX: 0, clientY: 0, canvasX: 0, canvasY: 0 });
   const viewportRef = useRef(viewport);
+  const viewportFrameRef = useRef<number | null>(null);
+  const nextViewportRef = useRef(viewport);
   const [selectionRect, setSelectionRect] = useState<{
     left: number;
     top: number;
@@ -71,7 +73,28 @@ export function CanvasContainer() {
 
   useEffect(() => {
     viewportRef.current = viewport;
+    nextViewportRef.current = viewport;
   }, [viewport]);
+
+  useEffect(
+    () => () => {
+      if (viewportFrameRef.current !== null) cancelAnimationFrame(viewportFrameRef.current);
+    },
+    []
+  );
+
+  const scheduleViewport = useCallback(
+    (nextViewport: typeof viewport) => {
+      nextViewportRef.current = nextViewport;
+      viewportRef.current = nextViewport;
+      if (viewportFrameRef.current !== null) return;
+      viewportFrameRef.current = requestAnimationFrame(() => {
+        viewportFrameRef.current = null;
+        setViewport(nextViewportRef.current);
+      });
+    },
+    [setViewport]
+  );
 
   const startPan = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -160,8 +183,8 @@ export function CanvasContainer() {
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (isPanningRef.current) {
-        setViewport({
-          ...viewport,
+        scheduleViewport({
+          ...viewportRef.current,
           x: e.clientX - panStartRef.current.x,
           y: e.clientY - panStartRef.current.y,
         });
@@ -185,7 +208,7 @@ export function CanvasContainer() {
         setSelectionRect({ left, top, width, height });
       }
     },
-    [viewport, setViewport]
+    [scheduleViewport]
   );
 
   const handlePointerUp = useCallback(() => {
@@ -271,7 +294,7 @@ export function CanvasContainer() {
             : 1;
 
       if (!e.ctrlKey) {
-        setViewport({
+        scheduleViewport({
           ...prev,
           x: prev.x - e.deltaX * deltaFactor,
           y: prev.y - e.deltaY * deltaFactor,
@@ -285,7 +308,7 @@ export function CanvasContainer() {
       const delta = -e.deltaY * deltaFactor * 0.01;
       const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev.scale * (1 + delta)));
       const ratio = newScale / prev.scale;
-      setViewport({
+      scheduleViewport({
         x: mouseX - (mouseX - prev.x) * ratio,
         y: mouseY - (mouseY - prev.y) * ratio,
         scale: newScale,
@@ -294,7 +317,7 @@ export function CanvasContainer() {
 
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
-  }, [setViewport]);
+  }, [scheduleViewport]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

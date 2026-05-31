@@ -251,8 +251,7 @@
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.42);
   z-index: 200;
   align-items: center;
   justify-content: center;
@@ -488,11 +487,10 @@
   justify-self: center;
   gap: 4px;
   padding: 4px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.96);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07);
 }
 
 .feature-switch-item {
@@ -1012,11 +1010,10 @@
   min-height: 68px;
   padding: 0 1.5rem;
   border-bottom: 1px solid var(--border);
-  background: rgba(246, 246, 247, 0.92);
+  background: rgba(246, 246, 247, 0.98);
   position: sticky;
   top: 0;
   z-index: 40;
-  backdrop-filter: blur(14px);
 }
 
 .dashboard-nav-spacer {
@@ -1303,19 +1300,18 @@
   align-items: center;
   gap: 10px;
   min-height: 58px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.98);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0 18px;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.14);
-  backdrop-filter: blur(18px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.11);
   transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
 
 .search-wrap:focus-within {
   background: var(--bg2);
   border-color: var(--border2);
-  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.13);
 }
 
 .search-wrap svg {
@@ -1606,23 +1602,20 @@
   cursor: pointer;
   transition:
     opacity 0.58s cubic-bezier(0.2, 0.8, 0.2, 1),
-    filter 0.58s cubic-bezier(0.2, 0.8, 0.2, 1),
     border-color var(--transition),
     transform 0.58s cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow var(--transition);
-  will-change: opacity, transform, filter;
+  will-change: opacity, transform;
 }
 
 .bm-card.is-pending-reveal {
   opacity: 0;
   transform: translateY(18px) scale(0.985);
-  filter: blur(10px);
 }
 
 .bm-card.is-visible {
   opacity: 1;
   transform: translateY(0) scale(1);
-  filter: blur(0);
 }
 
 .bm-card:hover {
@@ -1633,39 +1626,31 @@
 
 .moodboard-card {
   position: relative;
-  min-height: clamp(360px, 58svh, 720px);
+  min-height: clamp(420px, 62svh, 780px);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .moodboard-shot {
   position: relative;
-  height: clamp(360px, 58svh, 720px);
+  height: clamp(420px, 62svh, 780px);
   background: var(--bg3);
   overflow: hidden;
 }
 
-.moodboard-shot-scroll {
+.moodboard-shot-frame {
   position: absolute;
   inset: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-}
-
-.moodboard-shot-scroll::-webkit-scrollbar {
-  width: 0;
+  overflow: hidden;
 }
 
 .moodboard-img {
-  width: auto;
-  max-width: 100%;
-  min-width: 100%;
-  height: auto;
+  width: 100%;
+  height: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: cover;
   object-position: top center;
 }
 
@@ -1680,10 +1665,9 @@
   gap: 10px;
   padding: 9px;
   color: #fff;
-  background: rgba(17, 17, 17, 0.72);
+  background: rgba(17, 17, 17, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 10px;
-  backdrop-filter: blur(14px);
   opacity: 0;
   transform: translateY(6px);
   transition: opacity var(--transition), transform var(--transition);
@@ -1873,12 +1857,11 @@
   gap: 8px;
   padding: 10px 12px;
   color: var(--text2);
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.96);
   border: 1px solid var(--border);
   border-radius: 10px;
   font-size: 12px;
   font-weight: 600;
-  backdrop-filter: blur(12px);
 }
 
 .pending-status svg {
@@ -2176,6 +2159,37 @@
   padding-top: 0.5rem;
 }
 
+.detail-refresh-error {
+  margin: -4px 0 0;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.canvas-loading-overlay {
+  min-height: calc(100svh - 68px);
+  display: grid;
+  place-items: center;
+  color: var(--text2);
+}
+
+.canvas-loading-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+  box-shadow: var(--shadow-card);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.canvas-loading-pill svg {
+  animation: spin 0.9s linear infinite;
+}
+
 .bookmark-detail-preview {
   min-width: 0;
 }
@@ -2249,13 +2263,11 @@
 @keyframes dashboardBlurIn {
   from {
     opacity: 0;
-    filter: blur(14px);
     transform: translateY(16px);
   }
 
   to {
     opacity: 1;
-    filter: blur(0);
     transform: translateY(0);
   }
 }
@@ -2731,8 +2743,7 @@
   z-index: 150;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.42);
-  backdrop-filter: blur(6px);
+  background: rgba(255, 255, 255, 0.58);
 }
 
 .section-dialog {
@@ -3169,8 +3180,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(15, 23, 42, 0.28);
-  backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.32);
 }
 
 .media-note-dialog {
@@ -3823,11 +3833,11 @@
   }
 
   .moodboard-card {
-    min-height: clamp(330px, 56svh, 620px);
+    min-height: clamp(420px, 62svh, 780px);
   }
 
   .moodboard-shot {
-    height: clamp(330px, 56svh, 620px);
+    height: clamp(420px, 62svh, 780px);
   }
 
   .bookmark-detail-shell {
@@ -3912,11 +3922,11 @@
   }
 
   .moodboard-card {
-    min-height: clamp(300px, 52svh, 540px);
+    min-height: clamp(420px, 62svh, 780px);
   }
 
   .moodboard-shot {
-    height: clamp(300px, 52svh, 540px);
+    height: clamp(420px, 62svh, 780px);
   }
 
   .bookmark-detail-shell {

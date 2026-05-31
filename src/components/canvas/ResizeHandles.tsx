@@ -27,6 +27,20 @@ export function ResizeHandles({ note, viewport }: ResizeHandlesProps) {
     startX: number;
     startY: number;
   } | null>(null);
+  const resizeFrameRef = useRef<number | null>(null);
+  const pendingResizeRef = useRef<{ width: number; height: number; x: number; y: number; movePosition: boolean } | null>(null);
+
+  function scheduleResize(width: number, height: number, x: number, y: number, movePosition: boolean) {
+    pendingResizeRef.current = { width, height, x, y, movePosition };
+    if (resizeFrameRef.current !== null) return;
+    resizeFrameRef.current = requestAnimationFrame(() => {
+      resizeFrameRef.current = null;
+      const pending = pendingResizeRef.current;
+      if (!pending) return;
+      setNoteSize(note.id, pending.width, pending.height);
+      if (pending.movePosition) setNotePosition(note.id, pending.x, pending.y);
+    });
+  }
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>, dir: Direction) {
     e.stopPropagation();
@@ -65,18 +79,26 @@ export function ResizeHandles({ note, viewport }: ResizeHandlesProps) {
       newY = startY + (startH - newH);
     }
 
-    setNoteSize(note.id, newW, newH);
-    if (dir.includes("w") || dir.includes("n")) {
-      setNotePosition(note.id, newX, newY);
-    }
+    scheduleResize(newW, newH, newX, newY, dir.includes("w") || dir.includes("n"));
   }
 
   function handlePointerUp() {
     if (!dragRef.current) return;
-    commitSize(note.id, note.width, note.height);
-    if (dragRef.current.dir.includes("w") || dragRef.current.dir.includes("n")) {
-      commitPosition(note.id, note.x, note.y);
+    if (resizeFrameRef.current !== null) {
+      cancelAnimationFrame(resizeFrameRef.current);
+      resizeFrameRef.current = null;
+      const pending = pendingResizeRef.current;
+      if (pending) {
+        setNoteSize(note.id, pending.width, pending.height);
+        if (pending.movePosition) setNotePosition(note.id, pending.x, pending.y);
+      }
     }
+    const pending = pendingResizeRef.current;
+    commitSize(note.id, pending?.width ?? note.width, pending?.height ?? note.height);
+    if (dragRef.current.dir.includes("w") || dragRef.current.dir.includes("n")) {
+      commitPosition(note.id, pending?.x ?? note.x, pending?.y ?? note.y);
+    }
+    pendingResizeRef.current = null;
     dragRef.current = null;
   }
 

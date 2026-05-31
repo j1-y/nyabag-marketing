@@ -8,11 +8,13 @@ import {
   NoteIcon,
   PaletteIcon,
   PencilSimpleIcon,
+  SpinnerIcon,
+  ArrowsClockwiseIcon,
   TagIcon,
   TextTIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { deleteBookmark } from "@/lib/actions";
+import { deleteBookmark, refreshBookmarkScreenshot } from "@/lib/actions";
 import { getDomain } from "@/lib/data";
 import type { Bookmark } from "@/lib/types";
 import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
@@ -24,21 +26,37 @@ import { BookmarkColorPalette } from "./BookmarkColorPalette";
 function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
   const router = useRouter();
   const { openEdit } = useBookmarks();
+  const [currentBookmark, setCurrentBookmark] = useState(bookmark);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const domain = getDomain(bookmark.url);
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const [refreshError, setRefreshError] = useState("");
+  const domain = getDomain(currentBookmark.url);
   const savedDate = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     timeZone: "UTC",
-  }).format(new Date(bookmark.created_at));
+  }).format(new Date(currentBookmark.created_at));
 
   function handleDelete() {
     startTransition(async () => {
-      const result = await deleteBookmark(bookmark.id);
+      const result = await deleteBookmark(currentBookmark.id);
       if (result.success) router.push("/");
       else console.error("Failed to delete bookmark:", result.error);
+    });
+  }
+
+  function handleRefreshScreenshot() {
+    setRefreshError("");
+    startRefreshTransition(async () => {
+      const result = await refreshBookmarkScreenshot(currentBookmark.id);
+      if (result.success) {
+        setCurrentBookmark(result.data);
+        router.refresh();
+      } else {
+        setRefreshError(result.error);
+      }
     });
   }
 
@@ -53,23 +71,23 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
 
           <div>
             <p className="detail-domain">{domain}</p>
-            <h1>{bookmark.title}</h1>
+            <h1>{currentBookmark.title}</h1>
           </div>
 
-          {bookmark.summary && (
+          {currentBookmark.summary && (
             <div className="detail-summary-card">
-              <p>{bookmark.summary}</p>
+              <p>{currentBookmark.summary}</p>
             </div>
           )}
 
-          {bookmark.note && (
+          {currentBookmark.note && (
             <div className="detail-note-card">
               <NoteIcon size={15} />
-              <p>{bookmark.note}</p>
+              <p>{currentBookmark.note}</p>
             </div>
           )}
 
-          <a className="detail-visit" href={bookmark.url} target="_blank" rel="noopener noreferrer">
+          <a className="detail-visit" href={currentBookmark.url} target="_blank" rel="noopener noreferrer">
             Visit website
             <ArrowSquareOutIcon size={14} />
           </a>
@@ -85,27 +103,27 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             </div>
             <div>
               <span>Tags</span>
-              <strong>{bookmark.tags.length ? bookmark.tags.join(", ") : "No tags"}</strong>
+              <strong>{currentBookmark.tags.length ? currentBookmark.tags.join(", ") : "No tags"}</strong>
             </div>
           </div>
 
           <div className="detail-section">
             <h2><PaletteIcon size={15} /> Extracted colors</h2>
-            <BookmarkColorPalette colors={bookmark.palette} />
+            <BookmarkColorPalette colors={currentBookmark.palette} />
           </div>
 
           <div className="detail-section">
             <h2><TextTIcon size={15} /> Detected fonts</h2>
             <div className="detail-chip-list">
-              {bookmark.fonts.map((font) => <span key={font}>{font}</span>)}
+              {currentBookmark.fonts.map((font) => <span key={font}>{font}</span>)}
             </div>
           </div>
 
           <div className="detail-section">
             <h2><TagIcon size={15} /> Tags</h2>
             <div className="detail-chip-list">
-              {bookmark.tags.length
-                ? bookmark.tags.map((tag) => <span key={tag}>{tag}</span>)
+              {currentBookmark.tags.length
+                ? currentBookmark.tags.map((tag) => <span key={tag}>{tag}</span>)
                 : <span>No tags</span>}
             </div>
           </div>
@@ -114,31 +132,36 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             <Button variant="destructive" onClick={() => setDeleteOpen(true)} disabled={isPending}>
               <TrashIcon /> Delete
             </Button>
-            <Button variant="outline" onClick={() => openEdit(bookmark)}>
+            <Button variant="outline" onClick={() => openEdit(currentBookmark)}>
               <PencilSimpleIcon /> Edit
             </Button>
+            <Button variant="outline" onClick={handleRefreshScreenshot} disabled={isRefreshing}>
+              {isRefreshing ? <SpinnerIcon className="animate-spin" /> : <ArrowsClockwiseIcon />}
+              {isRefreshing ? "Refreshing..." : "Refresh screenshot"}
+            </Button>
             <Button asChild>
-              <a href={bookmark.url} target="_blank" rel="noopener noreferrer">
+              <a href={currentBookmark.url} target="_blank" rel="noopener noreferrer">
                 <ArrowSquareOutIcon /> Visit site
               </a>
             </Button>
           </div>
+          {refreshError && <p className="detail-refresh-error" role="alert">{refreshError}</p>}
         </section>
 
-        <section className="bookmark-detail-preview" aria-label={`${bookmark.title} screenshot`}>
+        <section className="bookmark-detail-preview" aria-label={`${currentBookmark.title} screenshot`}>
           <div className="browser-frame">
             <div className="browser-topbar">
               <span />
               <span />
               <span />
               <strong>{domain}</strong>
-              <a href={bookmark.url} target="_blank" rel="noopener noreferrer" aria-label="Open site">
+              <a href={currentBookmark.url} target="_blank" rel="noopener noreferrer" aria-label="Open site">
                 <ArrowSquareOutIcon size={14} />
               </a>
             </div>
             <div className="browser-shot">
-              {bookmark.screenshot_url ? (
-                <img src={bookmark.screenshot_url} alt={`${bookmark.title} full page screenshot`} />
+              {currentBookmark.screenshot_url ? (
+                <img src={currentBookmark.screenshot_url} alt={`${currentBookmark.title} full page screenshot`} />
               ) : (
                 <div className="preview-fallback">
                   <span>No screenshot yet</span>
@@ -151,7 +174,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
 
       <EditBookmarkModal />
       <DeleteBookmarkDialog
-        title={bookmark.title}
+        title={currentBookmark.title}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={handleDelete}

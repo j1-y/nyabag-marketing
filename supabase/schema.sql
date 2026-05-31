@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS bookmarks (
   palette                  TEXT[]      NOT NULL DEFAULT '{}',
   fonts                    TEXT[]      NOT NULL DEFAULT '{}',
   screenshot_url           TEXT,
+  screenshot_path          TEXT,
   screenshot_refreshed_at  TIMESTAMPTZ,
   summary                  TEXT        NOT NULL DEFAULT '',
   metadata_refreshed_at    TIMESTAMPTZ,
@@ -41,6 +42,7 @@ CREATE TABLE IF NOT EXISTS bookmarks (
 
 ALTER TABLE bookmarks
   ADD COLUMN IF NOT EXISTS screenshot_url TEXT,
+  ADD COLUMN IF NOT EXISTS screenshot_path TEXT,
   ADD COLUMN IF NOT EXISTS screenshot_refreshed_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS summary TEXT NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS metadata_refreshed_at TIMESTAMPTZ;
@@ -48,10 +50,12 @@ ALTER TABLE bookmarks
 ALTER TABLE bookmarks
   DROP CONSTRAINT IF EXISTS bookmarks_url_check,
   DROP CONSTRAINT IF EXISTS bookmarks_title_check,
+  DROP CONSTRAINT IF EXISTS bookmarks_screenshot_path_check,
   DROP CONSTRAINT IF EXISTS bookmarks_summary_check,
   DROP CONSTRAINT IF EXISTS bookmarks_note_check,
   ADD CONSTRAINT bookmarks_url_check CHECK (char_length(url) <= 2048),
   ADD CONSTRAINT bookmarks_title_check CHECK (char_length(title) <= 255),
+  ADD CONSTRAINT bookmarks_screenshot_path_check CHECK (screenshot_path IS NULL OR char_length(screenshot_path) <= 1024),
   ADD CONSTRAINT bookmarks_summary_check CHECK (char_length(summary) <= 1000),
   ADD CONSTRAINT bookmarks_note_check CHECK (char_length(note) <= 2000);
 
@@ -266,6 +270,41 @@ CREATE POLICY "delete_own_notes" ON canvas_notes
 -- ============================================================
 -- Storage buckets and policies
 -- ============================================================
+
+-- Public bookmark screenshots cached from Microlink. Writes are restricted to each user's own folder.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('bookmark-screenshots', 'bookmark-screenshots', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "bookmark_screenshots_select_public" ON storage.objects;
+CREATE POLICY "bookmark_screenshots_select_public" ON storage.objects
+  FOR SELECT USING (bucket_id = 'bookmark-screenshots');
+
+DROP POLICY IF EXISTS "bookmark_screenshots_insert_own" ON storage.objects;
+CREATE POLICY "bookmark_screenshots_insert_own" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'bookmark-screenshots'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+DROP POLICY IF EXISTS "bookmark_screenshots_update_own" ON storage.objects;
+CREATE POLICY "bookmark_screenshots_update_own" ON storage.objects
+  FOR UPDATE
+  USING (
+    bucket_id = 'bookmark-screenshots'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  )
+  WITH CHECK (
+    bucket_id = 'bookmark-screenshots'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+DROP POLICY IF EXISTS "bookmark_screenshots_delete_own" ON storage.objects;
+CREATE POLICY "bookmark_screenshots_delete_own" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'bookmark-screenshots'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
 
 -- Public profile avatars. Writes are restricted to each user's own folder.
 INSERT INTO storage.buckets (id, name, public)

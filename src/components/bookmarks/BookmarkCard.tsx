@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowSquareOutIcon,
@@ -9,20 +9,22 @@ import {
   TrashIcon,
 } from "@phosphor-icons/react";
 import { getDomain, getFaviconUrl } from "@/lib/data";
-import { useBookmarks } from "@/hooks/useBookmarks";
 import type { Bookmark } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
 
-export function BookmarkCard({
+function BookmarkCardComponent({
   bookmark,
   index,
+  onEdit,
+  onDelete,
 }: {
   bookmark: Bookmark;
   index: number;
+  onEdit: (bookmark: Bookmark) => void;
+  onDelete: (id: string) => void;
 }) {
   const router = useRouter();
-  const { openEdit, deleteItem } = useBookmarks();
   const [imgError, setImgError] = useState(false);
   const [faviconError, setFaviconError] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -71,7 +73,7 @@ export function BookmarkCard({
         aria-label={bookmark.title}
       >
         <div className="moodboard-shot">
-          <div className="moodboard-shot-scroll">
+          <div className="moodboard-shot-frame">
             {screenshot && !imgError ? (
               <img
                 className="moodboard-img"
@@ -120,7 +122,7 @@ export function BookmarkCard({
                 variant="ghost" size="icon" className="moodboard-action"
                 title="Edit"
                 aria-label={`Edit ${bookmark.title}`}
-                onClick={(e) => { e.stopPropagation(); openEdit(bookmark); }}
+                onClick={(e) => { e.stopPropagation(); onEdit(bookmark); }}
               >
                 <PencilSimpleIcon className="h-3.5 w-3.5" />
               </Button>
@@ -140,8 +142,10 @@ export function BookmarkCard({
         title={bookmark.title}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        onConfirm={() => deleteItem(bookmark.id)}
+        onConfirm={() => onDelete(bookmark.id)}
       />
     </>
   );
 }
+
+export const BookmarkCard = memo(BookmarkCardComponent);

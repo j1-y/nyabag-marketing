@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookmarksIcon, PlusIcon, ShoppingBagIcon } from "@phosphor-icons/react";
+import { BookmarksIcon, PlusIcon } from "@phosphor-icons/react";
 import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
 import { BookmarkCard } from "./BookmarkCard";
 import { PendingBookmarkCard } from "./PendingBookmarkCard";
@@ -73,7 +73,7 @@ function GridInner({
   profileName: string;
   userEmail: string;
 }) {
-  const { filtered, pendingBookmarks, openAdd } = useBookmarks();
+  const { filtered, pendingBookmarks, openAdd, openEdit, deleteItem } = useBookmarks();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -107,7 +107,7 @@ function GridInner({
             <PendingBookmarkCard key={bookmark.id} bookmark={bookmark} />
           ))}
           {filtered.map((b, i) => (
-            <BookmarkCard key={b.id} bookmark={b} index={i} />
+            <BookmarkCard key={b.id} bookmark={b} index={i} onEdit={openEdit} onDelete={deleteItem} />
           ))}
         </div>
       )}

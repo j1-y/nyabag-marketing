@@ -28,7 +28,7 @@ export function CanvasNote({ note, viewport }: Props) {
     selectedIds,
     setSelectedId,
     setSelectedIds,
-    setNotePosition,
+    setNotePositions,
     commitPosition,
     bringToFront,
     toolMode,
@@ -42,7 +42,18 @@ export function CanvasNote({ note, viewport }: Props) {
     starts: Array<{ id: string; x: number; y: number }>;
     latest: Array<{ id: string; x: number; y: number }>;
   } | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
+  const pendingPositionsRef = useRef<Array<{ id: string; x: number; y: number }>>([]);
   const noteRef = useRef<HTMLDivElement>(null);
+
+  function schedulePositions(positions: Array<{ id: string; x: number; y: number }>) {
+    pendingPositionsRef.current = positions;
+    if (dragFrameRef.current !== null) return;
+    dragFrameRef.current = requestAnimationFrame(() => {
+      dragFrameRef.current = null;
+      setNotePositions(pendingPositionsRef.current);
+    });
+  }
 
   function handleHeaderPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (toolMode === "pan" && !isSelected) return;
@@ -72,11 +83,16 @@ export function CanvasNote({ note, viewport }: Props) {
       y: start.y + dy,
     }));
     dragRef.current.latest = latest;
-    latest.forEach((position) => setNotePosition(position.id, position.x, position.y));
+    schedulePositions(latest);
   }
 
   function handleHeaderPointerUp() {
     if (!dragRef.current) return;
+    if (dragFrameRef.current !== null) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+      setNotePositions(dragRef.current.latest);
+    }
     dragRef.current.latest.forEach((position) => commitPosition(position.id, position.x, position.y));
     dragRef.current = null;
   }

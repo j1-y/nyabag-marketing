@@ -2,11 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MagnifyingGlassIcon, PlusIcon } from "@phosphor-icons/react";
+import { MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { useBookmarks } from "@/hooks/useBookmarks";
 
 export function Topbar() {
-  const { search, setSearch, openAdd } = useBookmarks();
+  const { search, setSearch } = useBookmarks();
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();

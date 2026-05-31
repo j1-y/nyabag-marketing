@@ -11,11 +11,78 @@ import type { ActionResult, Bookmark, UserProfile } from "@/lib/types";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const BOOKMARK_SCREENSHOT_BUCKET = "bookmark-screenshots";
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+type CachedScreenshot = {
+  palette: string[] | null;
+  screenshotUrl: string;
+  screenshotPath: string;
+  refreshedAt: string;
+};
 
 function avatarExtension(file: File) {
   const fromName = file.name.split(".").pop()?.toLowerCase();
   if (fromName && /^[a-z0-9]+$/.test(fromName)) return fromName;
   return file.type.split("/")[1] || "png";
+}
+
+function screenshotExtension(contentType: string | null, sourceUrl: string) {
+  if (contentType?.includes("jpeg")) return "jpg";
+  if (contentType?.includes("png")) return "png";
+  if (contentType?.includes("webp")) return "webp";
+
+  try {
+    const ext = new URL(sourceUrl).pathname.split(".").pop()?.toLowerCase();
+    if (ext && /^(jpg|jpeg|png|webp)$/.test(ext)) return ext === "jpeg" ? "jpg" : ext;
+  } catch {}
+
+  return "png";
+}
+
+async function cacheBookmarkScreenshot(
+  supabase: Supabase,
+  userId: string,
+  bookmarkId: string,
+  url: string
+): Promise<CachedScreenshot | null> {
+  const previewData = await getMicrolinkPreviewData(url);
+  if (!previewData?.screenshotUrl) return null;
+
+  const response = await fetch(previewData.screenshotUrl, { cache: "no-store" });
+  if (!response.ok) return null;
+
+  const contentType = response.headers.get("content-type") || "image/png";
+  if (!contentType.toLowerCase().startsWith("image/")) return null;
+
+  const bytes = await response.arrayBuffer();
+  const ext = screenshotExtension(contentType, previewData.screenshotUrl);
+  const screenshotPath = `${userId}/${bookmarkId}/screenshot-${Date.now()}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from(BOOKMARK_SCREENSHOT_BUCKET)
+    .upload(screenshotPath, bytes, {
+      cacheControl: "31536000",
+      contentType,
+      upsert: true,
+    });
+
+  if (uploadError) return null;
+
+  const screenshotUrl = supabase.storage
+    .from(BOOKMARK_SCREENSHOT_BUCKET)
+    .getPublicUrl(screenshotPath).data.publicUrl;
+
+  return {
+    palette: previewData.palette,
+    screenshotUrl,
+    screenshotPath,
+    refreshedAt: previewData.refreshedAt,
+  };
+}
+
+async function removeBookmarkScreenshot(supabase: Supabase, path: string | null | undefined) {
+  if (path) await supabase.storage.from(BOOKMARK_SCREENSHOT_BUCKET).remove([path]);
 }
 
 // ── Create ────────────────────────────────────────────────────
@@ -38,10 +105,11 @@ export async function createBookmark(
 
   const { url, tags, note } = parsed.data;
   const domain = getDomain(url);
+  const id = crypto.randomUUID();
 
   const [metadata, previewData] = await Promise.all([
     scrapeBookmarkMetadata(url),
-    getMicrolinkPreviewData(url),
+    cacheBookmarkScreenshot(supabase, user.id, id, url),
   ]);
   const title =
     (parsed.data.title?.trim()) ||
@@ -56,6 +124,7 @@ export async function createBookmark(
   const { data, error } = await supabase
     .from("bookmarks")
     .insert({
+      id,
       user_id: user.id,
       url,
       title,
@@ -64,6 +133,7 @@ export async function createBookmark(
       palette,
       fonts,
       screenshot_url: previewData?.screenshotUrl ?? null,
+      screenshot_path: previewData?.screenshotPath ?? null,
       screenshot_refreshed_at: previewData?.refreshedAt ?? null,
       summary: metadata.summary,
       metadata_refreshed_at: metadata.refreshedAt,
@@ -71,7 +141,10 @@ export async function createBookmark(
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    await removeBookmarkScreenshot(supabase, previewData?.screenshotPath);
+    return { success: false, error: error.message };
+  }
   revalidatePath("/");
   return { success: true, data };
 }
@@ -99,15 +172,16 @@ export async function updateBookmark(
   // Fetch current bookmark to check if URL changed (re-fetch design data only if so)
   const { data: existing } = await supabase
     .from("bookmarks")
-    .select("url, palette, fonts, screenshot_url, screenshot_refreshed_at, summary, metadata_refreshed_at")
+    .select("url, palette, fonts, screenshot_url, screenshot_path, screenshot_refreshed_at, summary, metadata_refreshed_at")
     .eq("id", id)
+    .eq("user_id", user.id)
     .single();
 
   const domain = getDomain(url);
   const urlChanged = !existing || existing.url !== url;
   const [metadata, previewData] = await Promise.all([
     urlChanged ? scrapeBookmarkMetadata(url) : Promise.resolve(null),
-    urlChanged ? getMicrolinkPreviewData(url) : Promise.resolve(null),
+    urlChanged ? cacheBookmarkScreenshot(supabase, user.id, id, url) : Promise.resolve(null),
   ]);
   const title =
     (parsed.data.title?.trim()) ||
@@ -137,6 +211,7 @@ export async function updateBookmark(
       palette,
       fonts,
       screenshot_url: urlChanged ? previewData?.screenshotUrl ?? null : existing?.screenshot_url ?? null,
+      screenshot_path: urlChanged ? previewData?.screenshotPath ?? null : existing?.screenshot_path ?? null,
       screenshot_refreshed_at: urlChanged
         ? previewData?.refreshedAt ?? null
         : existing?.screenshot_refreshed_at ?? null,
@@ -150,8 +225,55 @@ export async function updateBookmark(
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    await removeBookmarkScreenshot(supabase, previewData?.screenshotPath);
+    return { success: false, error: error.message };
+  }
+  if (urlChanged && previewData?.screenshotPath && existing?.screenshot_path) {
+    await removeBookmarkScreenshot(supabase, existing.screenshot_path);
+  }
   revalidatePath("/");
+  return { success: true, data };
+}
+
+export async function refreshBookmarkScreenshot(id: string): Promise<ActionResult<Bookmark>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const { data: existing, error: existingError } = await supabase
+    .from("bookmarks")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (existingError || !existing) return { success: false, error: "Bookmark not found" };
+
+  const cached = await cacheBookmarkScreenshot(supabase, user.id, id, existing.url);
+  if (!cached) return { success: false, error: "Could not refresh screenshot" };
+
+  const { data, error } = await supabase
+    .from("bookmarks")
+    .update({
+      palette: cached.palette ?? existing.palette,
+      screenshot_url: cached.screenshotUrl,
+      screenshot_path: cached.screenshotPath,
+      screenshot_refreshed_at: cached.refreshedAt,
+    })
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) {
+    await removeBookmarkScreenshot(supabase, cached.screenshotPath);
+    return { success: false, error: error.message };
+  }
+
+  await removeBookmarkScreenshot(supabase, existing.screenshot_path);
+  revalidatePath("/");
+  revalidatePath(`/bookmarks/${id}`);
   return { success: true, data };
 }
 
@@ -171,6 +293,12 @@ export async function deleteBookmark(id: string): Promise<ActionResult> {
     }
 
     console.log(`[deleteBookmark] Authenticated user: ${user.email} (${user.id})`);
+    const { data: bookmarkForCleanup } = await supabase
+      .from("bookmarks")
+      .select("screenshot_path")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     const { error, count } = await supabase
       .from("bookmarks")
@@ -203,6 +331,7 @@ export async function deleteBookmark(id: string): Promise<ActionResult> {
     }
 
     revalidatePath("/");
+    await removeBookmarkScreenshot(supabase, bookmarkForCleanup?.screenshot_path);
     return { success: true, data: undefined };
   } catch (err: unknown) {
     console.error("[deleteBookmark] Unexpected exception:", err);

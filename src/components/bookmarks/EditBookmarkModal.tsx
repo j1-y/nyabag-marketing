@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 
 export function EditBookmarkModal() {
-  const { editTarget, closeEdit } = useBookmarks();
+  const { editTarget, closeEdit, setBookmarks } = useBookmarks();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string>("");
@@ -22,7 +22,10 @@ export function EditBookmarkModal() {
     const fd = new FormData(formRef.current!);
     startTransition(async () => {
       const result = await updateBookmark(fd);
-      if (result.success) closeEdit();
+      if (result.success) {
+        setBookmarks((prev) => prev.map((bookmark) => bookmark.id === result.data.id ? result.data : bookmark));
+        closeEdit();
+      }
       else setError(result.error);
     });
   }
