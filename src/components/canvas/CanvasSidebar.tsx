@@ -16,15 +16,15 @@ export function CanvasSidebar() {
       <nav className="nav-section">
         <p className="nav-label">Library</p>
         <Link
-          href="/"
-          className={`nav-item ${pathname === "/" ? "active" : ""}`}
+          href="/app"
+          className={`nav-item ${pathname === "/app" ? "active" : ""}`}
         >
           <SquaresFourIcon size={13} />
           All bookmarks
         </Link>
         <Link
-          href="/canvas"
-          className={`nav-item ${pathname === "/canvas" ? "active" : ""}`}
+          href="/app/canvas"
+          className={`nav-item ${pathname === "/app/canvas" ? "active" : ""}`}
         >
           <NoteIcon size={13} />
           Canvas

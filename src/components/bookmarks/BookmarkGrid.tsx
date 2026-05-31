@@ -80,7 +80,7 @@ function GridInner({
   useEffect(() => {
     if (searchParams.get("add") === "1") {
       openAdd();
-      router.replace("/");
+      router.replace("/app");
     }
   }, [openAdd, router, searchParams]);
 

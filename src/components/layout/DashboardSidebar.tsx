@@ -27,28 +27,28 @@ type DashboardSidebarProps = {
 
 const primaryItems = [
   {
-    href: "/?add=1",
+    href: "/app?add=1",
     label: "Add bookmark",
     icon: PlusSquareIcon,
     isActive: () => false,
   },
   {
-    href: "/?search=1",
+    href: "/app?search=1",
     label: "Search",
     icon: MagnifyingGlassIcon,
     isActive: () => false,
   },
   {
-    href: "/",
+    href: "/app",
     label: "Bookmarks",
     icon: BookmarkSimpleIcon,
-    isActive: (pathname: string) => pathname === "/" || pathname.startsWith("/bookmarks"),
+    isActive: (pathname: string) => pathname === "/app" || pathname.startsWith("/app/bookmarks"),
   },
   {
-    href: "/canvas",
+    href: "/app/canvas",
     label: "Canvas",
     icon: NoteIcon,
-    isActive: (pathname: string) => pathname.startsWith("/canvas"),
+    isActive: (pathname: string) => pathname.startsWith("/app/canvas"),
   },
 ];
 
@@ -89,7 +89,7 @@ export function DashboardSidebar({
   return (
     <aside className="dashboard-sidebar" aria-label="Workspace navigation">
       <div className="dashboard-sidebar-header">
-        <Link href="/" className="dashboard-sidebar-brand" aria-label="Nyabag home">
+        <Link href="/app" className="dashboard-sidebar-brand" aria-label="Nyabag home">
           <span className="dashboard-sidebar-logo" aria-hidden="true" />
         </Link>
         <button
@@ -142,7 +142,7 @@ export function DashboardSidebar({
               </div>
             </div>
 
-            <Link href="/profile" className="profile-menu-item" role="menuitem" onClick={() => setProfileOpen(false)}>
+            <Link href="/app/profile" className="profile-menu-item" role="menuitem" onClick={() => setProfileOpen(false)}>
               <UserIcon size={15} />
               Profile
             </Link>

@@ -39,7 +39,7 @@ export default function SignupPage() {
         setError(authError.message);
         setLoading(false);
       } else {
-        router.push("/");
+        router.push("/app");
         router.refresh();
       }
     } catch (err: unknown) {

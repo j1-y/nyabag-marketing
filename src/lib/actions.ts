@@ -34,19 +34,18 @@ async function optimizeBookmarkScreenshot(bytes: ArrayBuffer) {
 
   return sharp(inputBuffer, {
     animated: false,
-    limitInputPixels: 80_000_000,
+    limitInputPixels: 120_000_000,
   })
     .rotate()
     .resize({
-      width: 1200,
-      height: 2200,
-      fit: "inside",
+      width: 1600,
       withoutEnlargement: true,
     })
     .webp({
-      quality: 76,
-      effort: 4,
+      quality: 82,
+      effort: 5,
       smartSubsample: true,
+      nearLossless: false,
     })
     .toBuffer();
 }
@@ -168,7 +167,7 @@ export async function createBookmark(
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/app");
   return { success: true, data };
 }
 
@@ -262,7 +261,7 @@ export async function updateBookmark(
     await removeBookmarkScreenshot(supabase, existing.screenshot_path);
   }
 
-  revalidatePath("/");
+  revalidatePath("/app");
   return { success: true, data };
 }
 
@@ -305,8 +304,8 @@ export async function refreshBookmarkScreenshot(id: string): Promise<ActionResul
 
   await removeBookmarkScreenshot(supabase, existing.screenshot_path);
 
-  revalidatePath("/");
-  revalidatePath(`/bookmarks/${id}`);
+  revalidatePath("/app");
+  revalidatePath(`/app/bookmarks/${id}`);
 
   return { success: true, data };
 }
@@ -367,7 +366,7 @@ export async function deleteBookmark(id: string): Promise<ActionResult> {
       return { success: false, error: "Bookmark not found" };
     }
 
-    revalidatePath("/");
+    revalidatePath("/app");
     await removeBookmarkScreenshot(supabase, bookmarkForCleanup?.screenshot_path);
 
     return { success: true, data: undefined };
@@ -449,9 +448,9 @@ export async function updateProfile(
     ? supabase.storage.from(PROFILE_AVATAR_BUCKET).getPublicUrl(avatarPath).data.publicUrl
     : null;
 
-  revalidatePath("/profile");
-  revalidatePath("/");
-  revalidatePath("/canvas");
+  revalidatePath("/app/profile");
+  revalidatePath("/app");
+  revalidatePath("/app/canvas");
 
   return {
     success: true,
@@ -465,5 +464,5 @@ export async function updateProfile(
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  revalidatePath("/");
+  revalidatePath("/app");
 }

@@ -37,9 +37,11 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/signup");
+  const isProtectedAppRoute =
+    pathname === "/app" || pathname.startsWith("/app/");
 
-  // Redirect unauthenticated users to login
-  if (!user && !isAuthRoute) {
+  // Redirect unauthenticated users away from the product app
+  if (!user && isProtectedAppRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -48,7 +50,7 @@ export async function proxy(request: NextRequest) {
   // Redirect authenticated users away from auth pages
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/app";
     return NextResponse.redirect(url);
   }
 

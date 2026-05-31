@@ -200,7 +200,7 @@ export async function createNote(
     .single();
 
   if (error) return { success: false, error: error.message };
-  revalidatePath("/canvas");
+  revalidatePath("/app/canvas");
   return { success: true, data: data as CanvasNote };
 }
 
@@ -251,7 +251,7 @@ export async function createMediaNoteFromUrl(
     .single();
 
   if (error) return { success: false, error: error.message };
-  revalidatePath("/canvas");
+  revalidatePath("/app/canvas");
   return { success: true, data: data as CanvasNote };
 }
 
@@ -352,7 +352,7 @@ export async function createMediaNoteWithUpload(
     return { success: false, error: updateError?.message ?? "Failed to attach media" };
   }
 
-  revalidatePath("/canvas");
+  revalidatePath("/app/canvas");
   const signed = await withSignedUrl(supabase, updated as CanvasNote);
   return { success: true, data: signed };
 }
@@ -471,7 +471,7 @@ export async function uploadNoteMedia(
   }
 
   await removeStoredMedia(supabase, note);
-  revalidatePath("/canvas");
+  revalidatePath("/app/canvas");
   const signed = await withSignedUrl(supabase, data as CanvasNote);
   return { success: true, data: signed };
 }
@@ -500,7 +500,7 @@ export async function removeNoteMedia(id: string): Promise<ActionResult<CanvasNo
 
   if (error) return { success: false, error: error.message };
   await removeStoredMedia(supabase, note);
-  revalidatePath("/canvas");
+  revalidatePath("/app/canvas");
   return { success: true, data: data as CanvasNote };
 }
 
@@ -604,7 +604,7 @@ export async function deleteNotes(ids: string[]): Promise<ActionResult<CanvasSna
 
   if (error) return { success: false, error: error.message };
   await Promise.all(notes.map((note) => removeStoredMedia(supabase, note)));
-  revalidatePath("/canvas");
+  revalidatePath("/app/canvas");
   return { success: true, data: await getCanvasSnapshot(supabase) };
 }
 
@@ -685,7 +685,7 @@ export async function createSectionFromNotes(
     return { success: false, error: updateError.message };
   }
 
-  revalidatePath("/canvas");
+  revalidatePath("/app/canvas");
   return {
     success: true,
     data: { section, notes: (updatedNotes ?? []) as CanvasNote[], missingNoteIds },
@@ -714,7 +714,7 @@ export async function updateSectionLabel(
     .single();
 
   if (error) return { success: false, error: error.message };
-  revalidatePath("/canvas");
+  revalidatePath("/app/canvas");
   return { success: true, data: data as CanvasSection };
 }
 
@@ -809,7 +809,7 @@ export async function deleteSection(id: string): Promise<ActionResult> {
     .eq("user_id", user.id);
 
   if (error) return { success: false, error: error.message };
-  revalidatePath("/canvas");
+  revalidatePath("/app/canvas");
   return { success: true, data: undefined };
 }
 

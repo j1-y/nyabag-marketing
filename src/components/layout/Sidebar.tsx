@@ -40,7 +40,7 @@ export function Sidebar() {
           <ClockIcon size={13} />
           Recent
         </button>
-        <Link href="/canvas" className="nav-item">
+        <Link href="/app/canvas" className="nav-item">
           <NoteIcon size={13} />
           Notes
         </Link>

@@ -18,7 +18,7 @@ export function Topbar() {
   useEffect(() => {
     if (searchParams.get("search") === "1") {
       inputRef.current?.focus();
-      router.replace("/");
+      router.replace("/app");
     }
   }, [router, searchParams]);
 
