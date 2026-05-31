@@ -1,7 +1,59 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { submitEarlyAccessSignup } from "@/lib/early-access-actions";
 import styles from "./landing.module.css";
+
+const EarlyAccessForm = ({ compact = false }: { compact?: boolean }) => {
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error">("success");
+  const [isPending, startTransition] = useTransition();
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    formData.set("source", "landing");
+
+    startTransition(async () => {
+      const result = await submitEarlyAccessSignup(formData);
+      if (!result.success) {
+        setMessageType("error");
+        setMessage(result.error);
+        return;
+      }
+
+      setMessageType("success");
+      setMessage(result.data.duplicate ? "You're already on the list." : "Thanks. You're on the early access list.");
+      form.reset();
+    });
+  }
+
+  return (
+    <form
+      className={compact ? styles.earlyAccessFormCompact : styles.earlyAccessForm}
+      onSubmit={handleSubmit}
+    >
+      <div className={styles.earlyAccessRow}>
+        <label className={styles.earlyAccessLabel}>
+          <span>Email address</span>
+          <input type="email" name="email" placeholder="you@example.com" required autoComplete="email" disabled={isPending} />
+        </label>
+        <button type="submit" disabled={isPending}>
+          {isPending ? "Joining..." : "Join early access"}
+        </button>
+      </div>
+      {message && (
+        <p className={messageType === "error" ? styles.earlyAccessError : styles.earlyAccessThanks}>
+          {message}
+        </p>
+      )}
+    </form>
+  );
+};
 
 /* ── Inline SVG icons ─────────────────── */
 const IconGrid = () => (
@@ -131,7 +183,7 @@ export function LandingPage() {
           <Link href="#canvas" className={styles.navLink}>Canvas</Link>
           <Link href="#compare" className={styles.navLink}>Why Nyabag</Link>
         </div>
-        <Link href="https://nyabag.com" className={styles.navCta}>Open app</Link>
+        <Link href="#early-access" className={styles.navCta}>Early access</Link>
       </nav>
 
       {/* ── HERO ── */}
@@ -152,13 +204,8 @@ export function LandingPage() {
           Save websites, screenshots, UI references, colors, fonts, and ideas in one visual workspace. Find them again when it matters.
         </p>
 
-        <div className={styles.heroActions}>
-          <Link href="https://nyabag.com" className={styles.btnPrimary}>
-            Start saving inspiration
-          </Link>
-          <Link href="#features" className={styles.btnGhost}>
-            See how it works
-          </Link>
+        <div id="early-access" className={styles.heroActions}>
+          <EarlyAccessForm />
         </div>
 
         <p className={styles.heroTrust}>
@@ -611,12 +658,7 @@ export function LandingPage() {
             Nyabag is being built for designers who collect references obsessively and lose them constantly. Start saving your best inspiration in one place.
           </p>
           <div className={styles.ctaActions}>
-            <Link href="https://nyabag.com" className={styles.btnPrimary} style={{ fontSize: 15, padding: "14px 32px" }}>
-              Open Nyabag
-            </Link>
-            <Link href="#" className={styles.btnSecondaryCta}>
-              Follow the build <span className={styles.arrow}>→</span>
-            </Link>
+            <EarlyAccessForm compact />
           </div>
         </div>
       </section>

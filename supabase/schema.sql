@@ -87,6 +87,44 @@ CREATE POLICY "delete_own_bookmarks" ON bookmarks
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ============================================================
+-- Early access signups
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS early_access_signups (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  email       TEXT        NOT NULL,
+  source      TEXT        NOT NULL DEFAULT 'landing',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE early_access_signups
+  ADD COLUMN IF NOT EXISTS email TEXT NOT NULL,
+  ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'landing',
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE early_access_signups
+  DROP CONSTRAINT IF EXISTS early_access_signups_email_check,
+  DROP CONSTRAINT IF EXISTS early_access_signups_source_check,
+  ADD CONSTRAINT early_access_signups_email_check CHECK (char_length(email) <= 255),
+  ADD CONSTRAINT early_access_signups_source_check CHECK (char_length(source) <= 80);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_early_access_signups_email_lower
+  ON early_access_signups (lower(email));
+
+DROP TRIGGER IF EXISTS early_access_signups_updated_at ON early_access_signups;
+CREATE TRIGGER early_access_signups_updated_at
+  BEFORE UPDATE ON early_access_signups
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+ALTER TABLE early_access_signups ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "insert_early_access_signups" ON early_access_signups;
+CREATE POLICY "insert_early_access_signups" ON early_access_signups
+  FOR INSERT WITH CHECK (true);
+
+-- ============================================================
 -- Profiles
 -- ============================================================
 
