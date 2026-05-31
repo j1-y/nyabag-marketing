@@ -21,10 +21,12 @@ import type {
   NoteType,
 } from "@/lib/types";
 import {
+  getSocialEmbedFallbackSize,
   getSocialNoteUrl,
   isSocialNoteContent,
   parseSocialEmbed,
   SOCIAL_NOTE_PREFIX,
+  toSocialNoteContent,
 } from "@/lib/social-embeds";
 
 const MEDIA_BUCKET = "canvas-media";
@@ -34,6 +36,8 @@ const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const SECTION_PAD_X = 32;
 const SECTION_PAD_TOP = 56;
 const SECTION_PAD_BOTTOM = 32;
+const NOTE_CHROME_WIDTH = 22;
+const NOTE_CHROME_HEIGHT = 74;
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -157,6 +161,41 @@ function isAllowedMediaFile(type: "image" | "video", file: File): boolean {
   return type === "image" ? file.type.startsWith("image/") : file.type.startsWith("video/");
 }
 
+function clampNoteWidth(value: number) {
+  return Math.min(1200, Math.max(100, Math.ceil(value)));
+}
+
+function clampNoteHeight(value: number) {
+  return Math.min(900, Math.max(80, Math.ceil(value)));
+}
+
+async function getXPostEmbedMetadata(url: string): Promise<ActionResult<{ html: string; width: number; height: number }>> {
+  try {
+    const endpoint = new URL("https://publish.twitter.com/oembed");
+    endpoint.searchParams.set("url", url);
+    endpoint.searchParams.set("omit_script", "true");
+    endpoint.searchParams.set("dnt", "true");
+    endpoint.searchParams.set("theme", "light");
+
+    const response = await fetch(endpoint.toString(), { cache: "no-store" });
+    if (!response.ok) return { success: false, error: "X could not render this post" };
+
+    const json = await response.json();
+    const html = typeof json?.html === "string" ? json.html : "";
+    if (!html || !html.includes("twitter-tweet")) {
+      return { success: false, error: "X did not return an embeddable post" };
+    }
+
+    const fallback = getSocialEmbedFallbackSize("x");
+    const width = typeof json?.width === "number" && Number.isFinite(json.width) ? json.width : fallback.width;
+    const height = typeof json?.height === "number" && Number.isFinite(json.height) ? json.height : fallback.height;
+
+    return { success: true, data: { html, width, height } };
+  } catch {
+    return { success: false, error: "X embed failed to load" };
+  }
+}
+
 export async function createNote(
   type: NoteType,
   x: number,
@@ -171,10 +210,10 @@ export async function createNote(
 
   const z_index = await getNextNoteZIndex(supabase, user.id);
   const isSocial = type === "social";
-  const noteWidth = width ?? (isSocial ? 420 : 240);
-  const noteHeight = height ?? (isSocial ? 520 : 180);
+  const noteWidth = width ?? 240;
+  const noteHeight = height ?? 180;
   const parsed = noteCreateSchema.safeParse({
-    type: isSocial ? "link" : type,
+    type,
     content: isSocial ? SOCIAL_NOTE_PREFIX : "",
     media_source: null,
     media_path: null,
@@ -184,6 +223,62 @@ export async function createNote(
     y,
     width: noteWidth,
     height: noteHeight,
+    color,
+    z_index,
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const { section_id, ...noteInput } = parsed.data;
+  const { data, error } = await supabase
+    .from("canvas_notes")
+    .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/app/canvas");
+  return { success: true, data: data as CanvasNote };
+}
+
+export async function createSocialNoteFromUrl(
+  url: string,
+  centerX: number,
+  centerY: number,
+  color: string
+): Promise<ActionResult<CanvasNote>> {
+  const supabase = await createClient();
+  const user = await getUser(supabase);
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const embed = parseSocialEmbed(url);
+  if (!embed) {
+    return { success: false, error: "Paste a public Facebook, LinkedIn, or X post URL" };
+  }
+
+  let embedSize = getSocialEmbedFallbackSize(embed.provider);
+  if (embed.provider === "x") {
+    const metadata = await getXPostEmbedMetadata(embed.url);
+    if (!metadata.success) return { success: false, error: metadata.error };
+    embedSize = { width: metadata.data.width, height: metadata.data.height };
+  }
+
+  const width = clampNoteWidth(embedSize.width + NOTE_CHROME_WIDTH);
+  const height = clampNoteHeight(embedSize.height + NOTE_CHROME_HEIGHT);
+  const z_index = await getNextNoteZIndex(supabase, user.id);
+  const parsed = noteCreateSchema.safeParse({
+    type: "social",
+    content: toSocialNoteContent(embed.url),
+    media_source: null,
+    media_path: null,
+    media_mime: null,
+    media_name: null,
+    x: centerX - width / 2,
+    y: centerY - height / 2,
+    width,
+    height,
     color,
     z_index,
   });
@@ -823,24 +918,8 @@ export async function getXPostEmbedHtml(url: string): Promise<ActionResult<strin
     return { success: false, error: "Must be a valid X or Twitter post URL" };
   }
 
-  try {
-    const endpoint = new URL("https://publish.twitter.com/oembed");
-    endpoint.searchParams.set("url", parsed.url);
-    endpoint.searchParams.set("omit_script", "true");
-    endpoint.searchParams.set("dnt", "true");
-    endpoint.searchParams.set("theme", "light");
-
-    const response = await fetch(endpoint.toString(), { cache: "no-store" });
-    if (!response.ok) return { success: false, error: "X could not render this post" };
-
-    const json = await response.json();
-    const html = typeof json?.html === "string" ? json.html : "";
-    if (!html || !html.includes("twitter-tweet")) {
-      return { success: false, error: "X did not return an embeddable post" };
-    }
-
-    return { success: true, data: html };
-  } catch {
-    return { success: false, error: "X embed failed to load" };
-  }
+  const metadata = await getXPostEmbedMetadata(parsed.url);
+  return metadata.success
+    ? { success: true, data: metadata.data.html }
+    : { success: false, error: metadata.error };
 }

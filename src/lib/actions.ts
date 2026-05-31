@@ -8,11 +8,14 @@ import { getDomain } from "@/lib/data";
 import { mergeTags, scrapeBookmarkMetadata } from "@/lib/metadata";
 import { PROFILE_AVATAR_BUCKET } from "@/lib/profile";
 import { bookmarkCreateSchema, bookmarkUpdateSchema, profileUpdateSchema } from "@/lib/validations";
-import type { ActionResult, Bookmark, UserProfile } from "@/lib/types";
+import { extractUrlsFromText } from "@/lib/url-extraction";
+import type { ActionResult, Bookmark, ImportBookmarksResult, UserProfile } from "@/lib/types";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const BOOKMARK_SCREENSHOT_BUCKET = "bookmark-screenshots";
+const SCREENSHOT_RETRY_DELAYS_MS = [700, 1500, 2500];
+const IMPORT_BOOKMARK_DELAY_MS = 900;
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -21,6 +24,16 @@ type CachedScreenshot = {
   screenshotUrl: string;
   screenshotPath: string;
   refreshedAt: string;
+};
+
+type CreateBookmarkForUserInput = {
+  supabase: Supabase;
+  userId: string;
+  url: string;
+  title?: string;
+  tags?: string[];
+  note?: string;
+  paceScreenshot?: boolean;
 };
 
 function avatarExtension(file: File) {
@@ -50,20 +63,49 @@ async function optimizeBookmarkScreenshot(bytes: ArrayBuffer) {
     .toBuffer();
 }
 
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getMicrolinkPreviewDataWithRetry(url: string) {
+  for (let attempt = 0; attempt <= SCREENSHOT_RETRY_DELAYS_MS.length; attempt += 1) {
+    const previewData = await getMicrolinkPreviewData(url);
+    if (previewData?.screenshotUrl) return previewData;
+
+    const delay = SCREENSHOT_RETRY_DELAYS_MS[attempt];
+    if (delay) await wait(delay);
+  }
+
+  return null;
+}
+
+async function fetchScreenshotWithRetry(screenshotUrl: string) {
+  for (let attempt = 0; attempt <= SCREENSHOT_RETRY_DELAYS_MS.length; attempt += 1) {
+    const response = await fetch(screenshotUrl, { cache: "no-store" });
+    const contentType = response.headers.get("content-type") || "";
+
+    if (response.ok && contentType.toLowerCase().startsWith("image/")) {
+      return response;
+    }
+
+    const delay = SCREENSHOT_RETRY_DELAYS_MS[attempt];
+    if (delay) await wait(delay);
+  }
+
+  return null;
+}
+
 async function cacheBookmarkScreenshot(
   supabase: Supabase,
   userId: string,
   bookmarkId: string,
   url: string
 ): Promise<CachedScreenshot | null> {
-  const previewData = await getMicrolinkPreviewData(url);
+  const previewData = await getMicrolinkPreviewDataWithRetry(url);
   if (!previewData?.screenshotUrl) return null;
 
-  const response = await fetch(previewData.screenshotUrl, { cache: "no-store" });
-  if (!response.ok) return null;
-
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.toLowerCase().startsWith("image/")) return null;
+  const response = await fetchScreenshotWithRetry(previewData.screenshotUrl);
+  if (!response) return null;
 
   const originalBytes = await response.arrayBuffer();
 
@@ -103,6 +145,71 @@ async function removeBookmarkScreenshot(supabase: Supabase, path: string | null 
   if (path) await supabase.storage.from(BOOKMARK_SCREENSHOT_BUCKET).remove([path]);
 }
 
+async function createBookmarkForUser({
+  supabase,
+  userId,
+  url,
+  title,
+  tags = [],
+  note,
+  paceScreenshot,
+}: CreateBookmarkForUserInput): Promise<ActionResult<Bookmark>> {
+  const domain = getDomain(url);
+  const id = crypto.randomUUID();
+
+  const [metadata, previewData] = paceScreenshot
+    ? [
+        await scrapeBookmarkMetadata(url),
+        await cacheBookmarkScreenshot(supabase, userId, id, url),
+      ]
+    : await Promise.all([
+        scrapeBookmarkMetadata(url),
+        cacheBookmarkScreenshot(supabase, userId, id, url),
+      ]);
+
+  if (paceScreenshot) {
+    await wait(IMPORT_BOOKMARK_DELAY_MS);
+  }
+
+  const finalTitle =
+    title?.trim() ||
+    metadata.title ||
+    domain.charAt(0).toUpperCase() + domain.slice(1) ||
+    url;
+
+  const finalTags = mergeTags(tags, metadata.tags);
+  const designData = getDesignData(url);
+  const palette = previewData?.palette ?? designData.palette;
+  const { fonts } = designData;
+
+  const { data, error } = await supabase
+    .from("bookmarks")
+    .insert({
+      id,
+      user_id: userId,
+      url,
+      title: finalTitle,
+      tags: finalTags,
+      note: note ?? "",
+      palette,
+      fonts,
+      screenshot_url: previewData?.screenshotUrl ?? null,
+      screenshot_path: previewData?.screenshotPath ?? null,
+      screenshot_refreshed_at: previewData?.refreshedAt ?? null,
+      summary: metadata.summary,
+      metadata_refreshed_at: metadata.refreshedAt,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    await removeBookmarkScreenshot(supabase, previewData?.screenshotPath);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, data };
+}
+
 // ── Create ────────────────────────────────────────────────────
 export async function createBookmark(
   formData: FormData
@@ -122,53 +229,121 @@ export async function createBookmark(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const { url, tags, note } = parsed.data;
-  const domain = getDomain(url);
-  const id = crypto.randomUUID();
+  const result = await createBookmarkForUser({
+    supabase,
+    userId: user.id,
+    url: parsed.data.url,
+    title: parsed.data.title,
+    tags: parsed.data.tags,
+    note: parsed.data.note,
+  });
 
-  const [metadata, previewData] = await Promise.all([
-    scrapeBookmarkMetadata(url),
-    cacheBookmarkScreenshot(supabase, user.id, id, url),
-  ]);
+  if (!result.success) return result;
+  revalidatePath("/app");
+  return result;
+}
 
-  const title =
-    parsed.data.title?.trim() ||
-    metadata.title ||
-    domain.charAt(0).toUpperCase() + domain.slice(1) ||
-    url;
+export async function importBookmarks(
+  formData: FormData
+): Promise<ActionResult<ImportBookmarksResult>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
 
-  const finalTags = mergeTags(tags, metadata.tags);
-  const designData = getDesignData(url);
-  const palette = previewData?.palette ?? designData.palette;
-  const { fonts } = designData;
+  const rawUrls = formData.get("urls");
+  const rawText = String(formData.get("text") ?? "");
+  let sourceText = rawText;
 
-  const { data, error } = await supabase
-    .from("bookmarks")
-    .insert({
-      id,
-      user_id: user.id,
-      url,
-      title,
-      tags: finalTags,
-      note: note ?? "",
-      palette,
-      fonts,
-      screenshot_url: previewData?.screenshotUrl ?? null,
-      screenshot_path: previewData?.screenshotPath ?? null,
-      screenshot_refreshed_at: previewData?.refreshedAt ?? null,
-      summary: metadata.summary,
-      metadata_refreshed_at: metadata.refreshedAt,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    await removeBookmarkScreenshot(supabase, previewData?.screenshotPath);
-    return { success: false, error: error.message };
+  if (typeof rawUrls === "string" && rawUrls.trim()) {
+    try {
+      const parsedUrls = JSON.parse(rawUrls);
+      if (Array.isArray(parsedUrls)) {
+        sourceText = parsedUrls.filter((value) => typeof value === "string").join("\n");
+      }
+    } catch {
+      return { success: false, error: "Could not read imported URLs" };
+    }
   }
 
-  revalidatePath("/app");
-  return { success: true, data };
+  const urls = extractUrlsFromText(sourceText);
+  if (urls.length === 0) {
+    return { success: false, error: "Paste or drop text containing URLs to begin." };
+  }
+
+  const result: ImportBookmarksResult = {
+    created: [],
+    failed: [],
+    skipped: [],
+    total: urls.length,
+  };
+
+  for (const rawUrl of urls) {
+    const parsed = bookmarkCreateSchema.safeParse({
+      url: rawUrl,
+      title: undefined,
+      tags: "",
+      note: undefined,
+    });
+
+    if (!parsed.success) {
+      result.failed.push({
+        url: rawUrl,
+        success: false,
+        error: parsed.error.issues[0].message,
+      });
+      continue;
+    }
+
+    const normalizedUrl = parsed.data.url;
+    const { data: duplicate, error: duplicateError } = await supabase
+      .from("bookmarks")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("url", normalizedUrl)
+      .maybeSingle();
+
+    if (duplicateError) {
+      result.failed.push({
+        url: normalizedUrl,
+        success: false,
+        error: duplicateError.message,
+      });
+      continue;
+    }
+
+    if (duplicate) {
+      result.skipped.push({
+        url: normalizedUrl,
+        success: false,
+        error: "Already saved",
+      });
+      continue;
+    }
+
+    const created = await createBookmarkForUser({
+      supabase,
+      userId: user.id,
+      url: normalizedUrl,
+      tags: [],
+      paceScreenshot: true,
+    });
+
+    if (created.success) {
+      result.created.push(created.data);
+    } else {
+      result.failed.push({
+        url: normalizedUrl,
+        success: false,
+        error: created.error,
+      });
+    }
+  }
+
+  if (result.created.length > 0) {
+    revalidatePath("/app");
+  }
+
+  return { success: true, data: result };
 }
 
 // ── Update ────────────────────────────────────────────────────

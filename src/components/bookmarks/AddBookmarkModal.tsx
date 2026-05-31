@@ -69,7 +69,7 @@ export function AddBookmarkModal() {
     <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && closeAdd()}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="add-modal-title">
         <div className="modal-header">
-          <h2 id="add-modal-title">Add bookmark</h2>
+          <h2 id="add-modal-title">New bookmark</h2>
           <button className="modal-close" onClick={closeAdd} aria-label="Close"><XIcon size={13} weight="bold" /></button>
         </div>
         <form ref={formRef} onSubmit={handleSubmit}>

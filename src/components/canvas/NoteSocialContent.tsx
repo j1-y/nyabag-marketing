@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowSquareOutIcon, PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
 import { getXPostEmbedHtml } from "@/lib/canvas-actions";
 import {
@@ -12,25 +12,25 @@ import {
 } from "@/lib/social-embeds";
 import { useNotes } from "@/hooks/useNotes";
 import type { CanvasNote } from "@/lib/types";
+import { SocialNoteDialog } from "./SocialNoteDialog";
 
 declare global {
   interface Window {
-    FB?: { XFBML?: { parse: (element?: HTMLElement) => void } };
-    twttr?: { widgets?: { load: (element?: HTMLElement) => void } };
+    twttr?: { widgets?: { load: (element?: HTMLElement) => void | Promise<unknown> } };
   }
 }
 
 const SCRIPT_IDS = {
   x: "nyabag-x-widgets",
-  facebook: "nyabag-facebook-sdk",
 };
 
 function loadScript(id: string, src: string): Promise<void> {
   const existing = document.getElementById(id) as HTMLScriptElement | null;
   if (existing?.dataset.loaded === "true") return Promise.resolve();
   if (existing) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Script failed to load")), { once: true });
     });
   }
 
@@ -42,15 +42,35 @@ function loadScript(id: string, src: string): Promise<void> {
   script.onload = () => {
     script.dataset.loaded = "true";
   };
+  script.onerror = () => {
+    script.dataset.loaded = "false";
+  };
   document.body.appendChild(script);
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     script.addEventListener("load", () => resolve(), { once: true });
+    script.addEventListener("error", () => reject(new Error("Script failed to load")), { once: true });
   });
 }
 
-function normalizeInput(raw: string) {
-  const parsed = parseSocialEmbed(raw);
-  return parsed?.url ?? null;
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function waitForTwitterWidgets() {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (window.twttr?.widgets?.load) return window.twttr.widgets;
+    await wait(100);
+  }
+
+  return null;
+}
+
+function clampNoteWidth(value: number) {
+  return Math.min(1200, Math.max(100, Math.ceil(value)));
+}
+
+function clampNoteHeight(value: number) {
+  return Math.min(900, Math.max(80, Math.ceil(value)));
 }
 
 function SocialFallback({ url, label, message }: { url: string; label: string; message?: string }) {
@@ -69,34 +89,43 @@ function SocialFallback({ url, label, message }: { url: string; label: string; m
 }
 
 export function NoteSocialContent({ note, isSelected }: { note: CanvasNote; isSelected: boolean }) {
-  const { updateContent } = useNotes();
-  const [inputVal, setInputVal] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
+  const { updateContent, setNoteSize, commitSize } = useNotes();
+  const [editOpen, setEditOpen] = useState(false);
   const [status, setStatus] = useState("");
   const [xEmbed, setXEmbed] = useState<{ url: string; html: string } | null>(null);
+  const [xReady, setXReady] = useState(false);
+  const [xFailed, setXFailed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const socialUrl = getSocialNoteUrl(note.content);
   const embed = useMemo(() => parseSocialEmbed(note.content), [note.content]);
-  const hasEmbed = Boolean(embed) && !isEditing;
+  const hasEmbed = Boolean(embed);
   const xHtml = embed?.provider === "x" && xEmbed?.url === embed.url ? xEmbed.html : "";
 
-  async function commitUrl(raw: string) {
-    const normalized = normalizeInput(raw);
-    if (!normalized) {
-      setStatus("Paste a public Facebook, LinkedIn, or X post URL.");
-      return;
-    }
+  const resizeToRenderedXEmbed = useCallback(() => {
+    if (!containerRef.current || embed?.provider !== "x") return;
+    const iframe = containerRef.current.querySelector("iframe") as HTMLElement | null;
+    const content = iframe ?? (containerRef.current.querySelector(".social-note-x-embed") as HTMLElement | null);
+    if (!content) return;
 
-    setStatus("");
-    const result = await updateContent(note.id, toSocialNoteContent(normalized));
-    if (result.success) setIsEditing(false);
-    else setStatus(result.error);
-  }
+    const renderedWidth = content.offsetWidth;
+    const renderedHeight = content.offsetHeight;
+    if (renderedWidth < 200 || renderedHeight < 120) return;
+
+    const nextWidth = clampNoteWidth(renderedWidth + 22);
+    const nextHeight = clampNoteHeight(renderedHeight + 74);
+    if (Math.abs(nextWidth - note.width) < 10 && Math.abs(nextHeight - note.height) < 10) return;
+
+    setNoteSize(note.id, nextWidth, nextHeight);
+    void commitSize(note.id, nextWidth, nextHeight);
+  }, [commitSize, embed?.provider, note.height, note.id, note.width, setNoteSize]);
 
   useEffect(() => {
     if (!hasEmbed || !embed || embed.provider !== "x") return;
     let cancelled = false;
+    setXReady(false);
+    setXFailed(false);
+    setStatus("");
 
     getXPostEmbedHtml(embed.url).then((result) => {
       if (cancelled) return;
@@ -110,46 +139,77 @@ export function NoteSocialContent({ note, isSelected }: { note: CanvasNote; isSe
   }, [hasEmbed, embed]);
 
   useEffect(() => {
-    if (!hasEmbed || !embed) return;
+    if (!hasEmbed || !embed || embed.provider !== "x" || !xHtml) return;
+    let cancelled = false;
 
-    if (embed.provider === "x" && xHtml) {
-      void loadScript(SCRIPT_IDS.x, "https://platform.twitter.com/widgets.js").then(() => {
-        window.twttr?.widgets?.load(containerRef.current ?? undefined);
-      });
+    async function hydrateXEmbed() {
+      try {
+        await loadScript(SCRIPT_IDS.x, "https://platform.twitter.com/widgets.js");
+        const widgets = await waitForTwitterWidgets();
+        if (!widgets || cancelled) throw new Error("X widgets unavailable");
+
+        for (let attempt = 0; attempt < 8; attempt++) {
+          await widgets.load(containerRef.current ?? undefined);
+          await wait(250 + attempt * 100);
+          const iframe = containerRef.current?.querySelector("iframe");
+          if (iframe && !cancelled) {
+            setXReady(true);
+            setXFailed(false);
+            setStatus("");
+            window.setTimeout(resizeToRenderedXEmbed, 100);
+            window.setTimeout(resizeToRenderedXEmbed, 700);
+            return;
+          }
+        }
+
+        throw new Error("X embed did not hydrate");
+      } catch {
+        if (!cancelled) {
+          setXReady(false);
+          setXFailed(true);
+          setStatus("X could not render this post here.");
+        }
+      }
     }
 
-    if (embed.provider === "facebook") {
-      void loadScript(
-        SCRIPT_IDS.facebook,
-        "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v20.0"
-      ).then(() => {
-        window.FB?.XFBML?.parse(containerRef.current ?? undefined);
-      });
-    }
-  }, [hasEmbed, embed, xHtml]);
+    void hydrateXEmbed();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasEmbed, embed, xHtml, resizeToRenderedXEmbed]);
+
+  useEffect(() => {
+    if (!hasEmbed || embed?.provider !== "x" || !xHtml || !xReady || !containerRef.current) return;
+
+    const observer = new ResizeObserver(() => resizeToRenderedXEmbed());
+    observer.observe(containerRef.current);
+    const content = containerRef.current.querySelector("iframe") ?? containerRef.current.querySelector(".social-note-x-embed");
+    if (content) observer.observe(content);
+    return () => observer.disconnect();
+  }, [embed?.provider, hasEmbed, resizeToRenderedXEmbed, xHtml, xReady]);
 
   if (!hasEmbed) {
     return (
-      <div className="social-note-editor" onPointerDown={(e) => e.stopPropagation()}>
-        <input
-          autoFocus={isSelected}
-          type="url"
-          placeholder="Paste Facebook, LinkedIn, or X post URL"
-          value={inputVal}
-          onChange={(e) => setInputVal(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commitUrl(inputVal);
-            if (e.key === "Escape") {
-              setIsEditing(false);
-              setInputVal("");
-            }
-          }}
-        />
-        <button type="button" onClick={() => commitUrl(inputVal)}>
-          Embed post
-        </button>
-        {status && <p>{status}</p>}
-      </div>
+      <>
+        <div className="social-note-empty" onPointerDown={(e) => e.stopPropagation()}>
+          <strong>Social post</strong>
+          <span>Add a public Facebook, LinkedIn, or X post link.</span>
+          <button type="button" onClick={() => setEditOpen(true)}>
+            Set post link
+          </button>
+          {status && <p>{status}</p>}
+        </div>
+        {editOpen && (
+          <SocialNoteDialog
+            title="Set social post"
+            confirmLabel="Save"
+            initialUrl={socialUrl}
+            onClose={() => setEditOpen(false)}
+            onConfirm={(url) => updateContent(note.id, toSocialNoteContent(url))}
+          />
+        )}
+      </>
     );
   }
 
@@ -160,18 +220,31 @@ export function NoteSocialContent({ note, isSelected }: { note: CanvasNote; isSe
       <div className="social-note-frame" ref={containerRef}>
         {embed!.provider === "x" && (
           xHtml ? (
-            <div dangerouslySetInnerHTML={{ __html: xHtml }} />
+            <>
+              <div
+                className={`social-note-x-embed${xReady ? " is-ready" : ""}`}
+                dangerouslySetInnerHTML={{ __html: xHtml }}
+              />
+              {!xReady && (
+                <SocialFallback
+                  url={embed!.url}
+                  label={label}
+                  message={xFailed ? status : "Loading post..."}
+                />
+              )}
+            </>
           ) : (
             <SocialFallback url={embed!.url} label={label} message={status || "Loading post..."} />
           )
         )}
 
         {embed!.provider === "facebook" && (
-          <div
-            className="fb-post"
-            data-href={embed!.url}
-            data-width="400"
-            data-show-text="true"
+          <iframe
+            src={embed!.iframeSrc}
+            title="Facebook embedded post"
+            allow="encrypted-media; picture-in-picture; web-share"
+            allowFullScreen
+            loading="lazy"
           />
         )}
 
@@ -193,10 +266,7 @@ export function NoteSocialContent({ note, isSelected }: { note: CanvasNote; isSe
         <span>{label}</span>
         <button
           type="button"
-          onClick={() => {
-            setInputVal(socialUrl);
-            setIsEditing(true);
-          }}
+          onClick={() => setEditOpen(true)}
         >
           <PencilSimpleIcon size={12} />
           Edit
@@ -209,6 +279,16 @@ export function NoteSocialContent({ note, isSelected }: { note: CanvasNote; isSe
           <ArrowSquareOutIcon size={12} />
         </a>
       </div>
+
+      {editOpen && (
+        <SocialNoteDialog
+          title="Edit social post"
+          confirmLabel="Save"
+          initialUrl={socialUrl}
+          onClose={() => setEditOpen(false)}
+          onConfirm={(url) => updateContent(note.id, toSocialNoteContent(url))}
+        />
+      )}
     </div>
   );
 }

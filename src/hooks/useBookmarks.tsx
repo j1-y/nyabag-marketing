@@ -35,6 +35,9 @@ interface BookmarksCtx {
   addOpen: boolean;
   openAdd: () => void;
   closeAdd: () => void;
+  importOpen: boolean;
+  openImport: () => void;
+  closeImport: () => void;
   editTarget: Bookmark | null;
   openEdit: (b: Bookmark) => void;
   closeEdit: () => void;
@@ -61,6 +64,7 @@ export function BookmarksProvider({
   const [activeFilter, setActiveFilter] = useState<"all" | "recent">("all");
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Bookmark | null>(null);
   const [detailTarget, setDetailTarget] = useState<Bookmark | null>(null);
 
@@ -99,6 +103,8 @@ export function BookmarksProvider({
 
   const openAdd = useCallback(() => setAddOpen(true), []);
   const closeAdd = useCallback(() => setAddOpen(false), []);
+  const openImport = useCallback(() => setImportOpen(true), []);
+  const closeImport = useCallback(() => setImportOpen(false), []);
   const openEdit = useCallback((b: Bookmark) => setEditTarget(b), []);
   const closeEdit = useCallback(() => setEditTarget(null), []);
   const openDetail = useCallback((b: Bookmark) => setDetailTarget(b), []);
@@ -133,6 +139,9 @@ export function BookmarksProvider({
       addOpen,
       openAdd,
       closeAdd,
+      importOpen,
+      openImport,
+      closeImport,
       editTarget,
       openEdit,
       closeEdit,
@@ -151,13 +160,16 @@ export function BookmarksProvider({
       closeAdd,
       closeDetail,
       closeEdit,
+      closeImport,
       deleteItem,
       detailTarget,
       editTarget,
       filtered,
+      importOpen,
       openAdd,
       openDetail,
       openEdit,
+      openImport,
       pendingBookmarks,
       removePendingBookmark,
       search,

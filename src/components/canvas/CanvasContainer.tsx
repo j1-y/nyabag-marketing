@@ -18,7 +18,7 @@ const NOTE_DEFAULT_SIZE: Record<NoteType, { width: number; height: number }> = {
   link: { width: 240, height: 180 },
   image: { width: 240, height: 180 },
   video: { width: 240, height: 180 },
-  social: { width: 420, height: 520 },
+  social: { width: 240, height: 180 },
 };
 
 export function CanvasContainer() {
@@ -96,6 +96,46 @@ export function CanvasContainer() {
     [setViewport]
   );
 
+  const handleCanvasWheel = useCallback(
+    (e: WheelEvent, allowPan: boolean) => {
+      const el = wrapperRef.current;
+      if (!el) return;
+
+      const prev = viewportRef.current;
+      const deltaFactor =
+        e.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? WHEEL_LINE_HEIGHT
+          : e.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? el.clientHeight
+            : 1;
+
+      if (!e.ctrlKey) {
+        if (!allowPan) return;
+        if (e.cancelable) e.preventDefault();
+        scheduleViewport({
+          ...prev,
+          x: prev.x - e.deltaX * deltaFactor,
+          y: prev.y - e.deltaY * deltaFactor,
+        });
+        return;
+      }
+
+      if (e.cancelable) e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const zoomFactor = Math.exp(-e.deltaY * deltaFactor * 0.002);
+      const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev.scale * zoomFactor));
+      const ratio = newScale / prev.scale;
+      scheduleViewport({
+        x: mouseX - (mouseX - prev.x) * ratio,
+        y: mouseY - (mouseY - prev.y) * ratio,
+        scale: newScale,
+      });
+    },
+    [scheduleViewport]
+  );
+
   const startPan = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       setContextMenu(null);
@@ -121,7 +161,9 @@ export function CanvasContainer() {
       const noteEl = target.closest<HTMLElement>("[data-note-id]");
       const isSelectedNote = Boolean(noteEl?.dataset.noteId && selectedIds.includes(noteEl.dataset.noteId));
       const canPlaceActiveTool =
-        activeNoteTool && (activeNoteTool !== "image" && activeNoteTool !== "video" || pendingMediaNote);
+        activeNoteTool &&
+        activeNoteTool !== "social" &&
+        (activeNoteTool !== "image" && activeNoteTool !== "video" || pendingMediaNote);
       if (canPlaceActiveTool && e.button === 0 && !isControl && !isCreatingMediaNote) {
         const rect = wrapperRef.current?.getBoundingClientRect();
         if (!rect) return;
@@ -284,40 +326,36 @@ export function CanvasContainer() {
     if (!el) return;
 
     const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const prev = viewportRef.current;
-      const deltaFactor =
-        e.deltaMode === WheelEvent.DOM_DELTA_LINE
-          ? WHEEL_LINE_HEIGHT
-          : e.deltaMode === WheelEvent.DOM_DELTA_PAGE
-            ? el.clientHeight
-            : 1;
-
-      if (!e.ctrlKey) {
-        scheduleViewport({
-          ...prev,
-          x: prev.x - e.deltaX * deltaFactor,
-          y: prev.y - e.deltaY * deltaFactor,
-        });
-        return;
-      }
-
-      const rect = el.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      const delta = -e.deltaY * deltaFactor * 0.01;
-      const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev.scale * (1 + delta)));
-      const ratio = newScale / prev.scale;
-      scheduleViewport({
-        x: mouseX - (mouseX - prev.x) * ratio,
-        y: mouseY - (mouseY - prev.y) * ratio,
-        scale: newScale,
-      });
+      handleCanvasWheel(e, true);
     };
 
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
-  }, [scheduleViewport]);
+  }, [handleCanvasWheel]);
+
+  useEffect(() => {
+    const handleCtrlWheelCapture = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      const el = wrapperRef.current;
+      if (!el) return;
+
+      const target = e.target instanceof Node ? e.target : null;
+      const rect = el.getBoundingClientRect();
+      const isInsideCanvasBounds =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom;
+      const isInsideCanvas = Boolean(target && el.contains(target)) || isInsideCanvasBounds;
+      if (!isInsideCanvas) return;
+
+      e.stopPropagation();
+      handleCanvasWheel(e, false);
+    };
+
+    document.addEventListener("wheel", handleCtrlWheelCapture, { passive: false, capture: true });
+    return () => document.removeEventListener("wheel", handleCtrlWheelCapture, { capture: true });
+  }, [handleCanvasWheel]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

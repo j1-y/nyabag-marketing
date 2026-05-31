@@ -8,9 +8,7 @@ import {
   CaretLeftIcon,
   CaretRightIcon,
   GearSixIcon,
-  MagnifyingGlassIcon,
   NoteIcon,
-  PlusSquareIcon,
   SignOutIcon,
   UserIcon,
   type Icon,
@@ -26,18 +24,6 @@ type DashboardSidebarProps = {
 };
 
 const primaryItems = [
-  {
-    href: "/app?add=1",
-    label: "Add bookmark",
-    icon: PlusSquareIcon,
-    isActive: () => false,
-  },
-  {
-    href: "/app?search=1",
-    label: "Search",
-    icon: MagnifyingGlassIcon,
-    isActive: () => false,
-  },
   {
     href: "/app",
     label: "Bookmarks",

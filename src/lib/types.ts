@@ -20,6 +20,20 @@ export type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string };
 
+export type ImportBookmarkItemResult = {
+  url: string;
+  success: boolean;
+  bookmark?: Bookmark;
+  error?: string;
+};
+
+export type ImportBookmarksResult = {
+  created: Bookmark[];
+  failed: ImportBookmarkItemResult[];
+  skipped: ImportBookmarkItemResult[];
+  total: number;
+};
+
 export type UserProfile = {
   user_id: string;
   name: string;

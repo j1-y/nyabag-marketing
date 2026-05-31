@@ -68,7 +68,7 @@ export function Sidebar() {
 
       <div className="sidebar-footer">
         <button className="add-btn-sidebar" onClick={openAdd}>
-          <PlusIcon size={14} weight="bold" /> Add bookmark
+          <PlusIcon size={14} weight="bold" /> New bookmark
         </button>
       </div>
     </aside>

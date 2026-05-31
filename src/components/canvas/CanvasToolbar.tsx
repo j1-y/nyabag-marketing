@@ -14,6 +14,7 @@ import {
 import { useNotes } from "@/hooks/useNotes";
 import type { NoteType } from "@/lib/types";
 import { MediaNoteDialog } from "./MediaNoteDialog";
+import { SocialNoteDialog } from "./SocialNoteDialog";
 
 const NOTE_TYPES: { type: NoteType; icon: Icon; label: string }[] = [
   { type: "text", icon: TextTIcon, label: "Text note" },
@@ -31,8 +32,10 @@ export function CanvasToolbar() {
     setActiveNoteTool,
     pendingMediaNote,
     setPendingMediaNote,
+    createSocialNote,
   } = useNotes();
   const [mediaDialogType, setMediaDialogType] = useState<"image" | "video" | null>(null);
+  const [socialDialogOpen, setSocialDialogOpen] = useState(false);
 
   return (
     <>
@@ -72,7 +75,7 @@ export function CanvasToolbar() {
 
         {NOTE_TYPES.map(({ type, icon: Icon, label }) => {
           const isMediaTool = type === "image" || type === "video";
-          const isActive = activeNoteTool === type || pendingMediaNote?.type === type;
+          const isActive = activeNoteTool === type || pendingMediaNote?.type === type || (type === "social" && socialDialogOpen);
 
           return (
             <button
@@ -86,6 +89,14 @@ export function CanvasToolbar() {
                   setMediaDialogType(type);
                   setActiveNoteTool(null);
                   setPendingMediaNote(null);
+                  setToolMode("select");
+                  return;
+                }
+
+                if (type === "social") {
+                  setSocialDialogOpen(true);
+                  setPendingMediaNote(null);
+                  setActiveNoteTool(null);
                   setToolMode("select");
                   return;
                 }
@@ -109,6 +120,13 @@ export function CanvasToolbar() {
             setPendingMediaNote(media);
             setMediaDialogType(null);
           }}
+        />
+      )}
+
+      {socialDialogOpen && (
+        <SocialNoteDialog
+          onClose={() => setSocialDialogOpen(false)}
+          onConfirm={createSocialNote}
         />
       )}
     </>

@@ -12,6 +12,7 @@ import {
   bringNoteToFront,
   createMediaNoteFromUrl,
   createMediaNoteWithUpload,
+  createSocialNoteFromUrl,
   createSectionFromNotes,
   createNote,
   deleteSection as deleteSectionAction,
@@ -84,6 +85,7 @@ interface NotesCtx {
     width?: number,
     height?: number
   ) => Promise<ActionResult<CanvasNote>>;
+  createSocialNote: (url: string) => Promise<ActionResult<CanvasNote>>;
   deleteNote: (id: string) => Promise<void>;
   deleteNotes: (ids: string[]) => Promise<void>;
   updateContent: (
@@ -241,6 +243,27 @@ export function NotesProvider({
       return result;
     },
     [pendingMediaNote, setPendingMediaNote, setSelectedId]
+  );
+
+  const createSocialNote = useCallback(
+    async (url: string): Promise<ActionResult<CanvasNote>> => {
+      const color = NOTE_COLORS[colorIndexRef.current % NOTE_COLORS.length];
+      colorIndexRef.current++;
+      const centerX = (window.innerWidth / 2 - viewport.x) / viewport.scale;
+      const centerY = (window.innerHeight / 2 - viewport.y) / viewport.scale;
+      const result = await createSocialNoteFromUrl(url, centerX, centerY, color);
+
+      if (result.success) {
+        setNotes((prev) => [...prev, result.data]);
+        setSelectedId(result.data.id);
+        setActiveNoteToolState(null);
+      } else {
+        colorIndexRef.current = Math.max(0, colorIndexRef.current - 1);
+      }
+
+      return result;
+    },
+    [setSelectedId, viewport.scale, viewport.x, viewport.y]
   );
 
   const applyServerSnapshot = useCallback((snapshot: { notes: CanvasNote[]; sections: CanvasSection[] }) => {
@@ -519,6 +542,7 @@ export function NotesProvider({
       setSelectedIds,
       addNote,
       addMediaNote,
+      createSocialNote,
       deleteNote,
       deleteNotes,
       updateContent,
@@ -555,6 +579,7 @@ export function NotesProvider({
       setSelectedIds,
       addNote,
       addMediaNote,
+      createSocialNote,
       deleteNote,
       deleteNotes,
       updateContent,

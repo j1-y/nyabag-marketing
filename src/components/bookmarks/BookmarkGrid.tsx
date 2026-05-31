@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookmarksIcon, PlusIcon } from "@phosphor-icons/react";
+import { BookmarksIcon, FileArrowUpIcon, PlusIcon } from "@phosphor-icons/react";
 import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
 import { BookmarkCard } from "./BookmarkCard";
 import { PendingBookmarkCard } from "./PendingBookmarkCard";
 import { AddBookmarkModal } from "./AddBookmarkModal";
 import { EditBookmarkModal } from "./EditBookmarkModal";
+import { ImportReferencesModal } from "./ImportReferencesModal";
 import type { Bookmark } from "@/lib/types";
 import { Topbar } from "../layout/Topbar";
 
@@ -33,10 +34,12 @@ function DashboardGreeting({
   profileName,
   userEmail,
   onNewBookmark,
+  onImportReferences,
 }: {
   profileName: string;
   userEmail: string;
   onNewBookmark: () => void;
+  onImportReferences: () => void;
 }) {
   const [prefix, setPrefix] = useState(getLocalGreetingPrefix(new Date()));
   const firstName = useMemo(() => getFirstName(profileName, userEmail), [profileName, userEmail]);
@@ -61,6 +64,10 @@ function DashboardGreeting({
             New bookmark
           </span>
         </button>
+        <button type="button" className="dashboard-import-btn" onClick={onImportReferences}>
+          <FileArrowUpIcon size={17} weight="regular" />
+          Import references
+        </button>
       </div>
     </section>
   );
@@ -73,7 +80,7 @@ function GridInner({
   profileName: string;
   userEmail: string;
 }) {
-  const { filtered, pendingBookmarks, openAdd, openEdit, deleteItem } = useBookmarks();
+  const { filtered, pendingBookmarks, openAdd, openImport, openEdit, deleteItem } = useBookmarks();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -87,7 +94,12 @@ function GridInner({
   return (
     <>
       <Topbar />
-      <DashboardGreeting profileName={profileName} userEmail={userEmail} onNewBookmark={openAdd} />
+      <DashboardGreeting
+        profileName={profileName}
+        userEmail={userEmail}
+        onNewBookmark={openAdd}
+        onImportReferences={openImport}
+      />
 
       {/* Grid */}
       {filtered.length === 0 && pendingBookmarks.length === 0 ? (
@@ -97,9 +109,6 @@ function GridInner({
           </div>
           <h2>No bookmarks yet</h2>
           <p>Save websites, references, and ideas into a visual board.</p>
-          <button className="btn-primary empty-state-action" onClick={openAdd}>
-            <PlusIcon size={15} weight="bold" /> Add bookmark
-          </button>
         </div>
       ) : (
         <div className="bm-grid view-moodboard dashboard-enter dashboard-enter-delayed">
@@ -114,6 +123,7 @@ function GridInner({
 
       {/* Modals */}
       <AddBookmarkModal />
+      <ImportReferencesModal />
       <EditBookmarkModal />
     </>
   );
