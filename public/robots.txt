@@ -5,4 +5,4 @@ Disallow: /app/
 Disallow: /login
 Disallow: /signup
 
-Sitemap: https://nyabag.com/sitemap.xml
+Sitemap: https://www.nyabag.com/sitemap.xml

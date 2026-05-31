@@ -23,11 +23,14 @@ export const metadata: Metadata = {
     "screenshot organizer",
     "creative library",
   ],
+  alternates: {
+    canonical: "https://www.nyabag.com/",
+  },
   openGraph: {
     title: "Nyabag — Your Second Memory for Design",
     description:
       "Save, organize, and rediscover design inspiration in one searchable visual workspace.",
-    url: "https://nyabag.com",
+    url: "https://www.nyabag.com/",
     siteName: "Nyabag",
     images: [
       {
@@ -47,7 +50,7 @@ export const metadata: Metadata = {
       "Save, organize, and rediscover design inspiration in one searchable visual workspace.",
     images: ["/opengraph-image.png"],
   },
-  metadataBase: new URL("https://nyabag.com"),
+  metadataBase: new URL("https://www.nyabag.com"),
 };
 
 export default function LandingRoute() {
