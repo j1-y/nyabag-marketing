@@ -15,11 +15,12 @@ type DashboardShellProps = {
 const SIDEBAR_KEY = "nyabag-sidebar-collapsed";
 const SIDEBAR_EVENT = "nyabag-sidebar-collapsed-change";
 const MOBILE_BREAKPOINT = 768;
+const LAPTOP_COLLAPSE_BREAKPOINT = 1180;
 
 function getStoredSidebarState() {
   if (typeof window === "undefined") return false;
   const stored = window.localStorage.getItem(SIDEBAR_KEY);
-  return stored ? stored === "true" : window.innerWidth <= 768;
+  return stored ? stored === "true" : window.innerWidth <= MOBILE_BREAKPOINT;
 }
 
 function getServerSidebarState() {
@@ -41,6 +42,11 @@ function subscribeToSidebarState(onStoreChange: () => void) {
 function getMobileState() {
   if (typeof window === "undefined") return false;
   return window.innerWidth <= MOBILE_BREAKPOINT;
+}
+
+function getCompactViewportState() {
+  if (typeof window === "undefined") return false;
+  return window.innerWidth <= LAPTOP_COLLAPSE_BREAKPOINT;
 }
 
 function getServerMobileState() {
@@ -70,6 +76,12 @@ export function DashboardShell({
     getMobileState,
     getServerMobileState
   );
+  const isCompactViewport = useSyncExternalStore(
+    subscribeToMobileState,
+    getCompactViewportState,
+    getServerMobileState
+  );
+  const effectiveCollapsed = collapsed || isCompactViewport;
 
   const toggleSidebar = useCallback(() => {
     const next = !getStoredSidebarState();
@@ -80,9 +92,9 @@ export function DashboardShell({
   return isMobile ? (
     <MobileBookmarkCapture profileName={profileName} userEmail={userEmail} />
   ) : (
-    <div className={`app-layout ${collapsed ? "sidebar-collapsed" : ""}`}>
+    <div className={`app-layout ${effectiveCollapsed ? "sidebar-collapsed" : ""}`}>
       <DashboardSidebar
-        collapsed={collapsed}
+        collapsed={effectiveCollapsed}
         onToggle={toggleSidebar}
         userEmail={userEmail}
         profileName={profileName}

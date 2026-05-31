@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingBagIcon, SpinnerIcon } from "@phosphor-icons/react";
+import { SpinnerIcon } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
@@ -12,7 +12,6 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [logoError, setLogoError] = useState(false);
 
   const supabaseReady =
     !!process.env.NEXT_PUBLIC_SUPABASE_URL &&

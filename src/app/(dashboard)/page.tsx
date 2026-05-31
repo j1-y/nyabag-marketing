@@ -3,6 +3,7 @@ import { BookmarkGrid } from "@/components/bookmarks/BookmarkGrid";
 import type { Bookmark } from "@/lib/types";
 import { getMicrolinkPreviewData, isScreenshotStale } from "@/lib/data";
 import { mergeTags, scrapeBookmarkMetadata } from "@/lib/metadata";
+import { getUserProfile } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default async function DashboardPage() {
   }
 
   const { data: { user } } = await supabase.auth.getUser();
+  const profile = user ? await getUserProfile(supabase, user) : null;
   const initialBookmarks = (bookmarks ?? []) as Bookmark[];
   const refreshedBookmarks = new Map<string, Bookmark>();
 
@@ -87,5 +89,11 @@ export default async function DashboardPage() {
     (bookmark) => refreshedBookmarks.get(bookmark.id) ?? bookmark
   );
 
-  return <BookmarkGrid initialBookmarks={visibleBookmarks} userEmail={user?.email ?? ""} />;
+  return (
+    <BookmarkGrid
+      initialBookmarks={visibleBookmarks}
+      userEmail={user?.email ?? ""}
+      profileName={profile?.name ?? ""}
+    />
+  );
 }

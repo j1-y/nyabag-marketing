@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowSquareOutIcon,
@@ -26,6 +26,8 @@ export function BookmarkCard({
   const [imgError, setImgError] = useState(false);
   const [faviconError, setFaviconError] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const cardRef = useRef<HTMLElement>(null);
 
   const domain = getDomain(bookmark.url);
   const favicon = getFaviconUrl(bookmark.url);
@@ -36,10 +38,34 @@ export function BookmarkCard({
     setDeleteOpen(true);
   }
 
+  useEffect(() => {
+    const node = cardRef.current;
+    if (!node) return;
+
+    if (!("IntersectionObserver" in window)) {
+      const timeout = setTimeout(() => setVisible(true), 0);
+      return () => clearTimeout(timeout);
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "160px 0px", threshold: 0.08 }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <>
       <article
-        className="bm-card moodboard-card"
+        ref={cardRef}
+        className={`bm-card moodboard-card ${visible ? "is-visible" : "is-pending-reveal"}`}
         style={{ animationDelay: `${index * 0.04}s` }}
         onClick={() => router.push(`/bookmarks/${bookmark.id}`)}
         aria-label={bookmark.title}

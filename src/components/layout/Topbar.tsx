@@ -29,18 +29,13 @@ export function Topbar() {
         <input
           ref={inputRef}
           type="text"
-          placeholder="Search bookmarks, tags, URLs..."
-          autoComplete="off"
+          placeholder="Ask Nyabag: “dark bento grid SaaS hero”"
+          autoComplete="on"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <kbd suppressHydrationWarning>{shortcutLabel}</kbd>
       </div>
-
-      <button className="btn-primary btn-sm topbar-add" onClick={openAdd}>
-        <PlusIcon size={13} weight="bold" />
-        Add
-      </button>
     </section>
   );
 }
