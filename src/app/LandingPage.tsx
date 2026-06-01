@@ -182,6 +182,7 @@ export function LandingPage() {
           <Link href="#features" className={styles.navLink}>Features</Link>
           <Link href="#canvas" className={styles.navLink}>Canvas</Link>
           <Link href="#compare" className={styles.navLink}>Why Nyabag</Link>
+          <Link href="/blog" className={styles.navLink}>Blog</Link>
         </div>
         <Link href="#early-access" className={styles.navCta}>Early access</Link>
       </nav>
@@ -647,6 +648,24 @@ export function LandingPage() {
       </section>
 
       {/* ── CTA SECTION ── */}
+      <section className={styles.blogTeaserSection} aria-labelledby="blog-teaser-title">
+        <div className={styles.container}>
+          <div className={styles.blogTeaser}>
+            <div>
+              <p className={styles.sectionEyebrow}>From the blog</p>
+              <h2 id="blog-teaser-title">Top design inspiration apps for designers in 2026</h2>
+              <p>
+                A practical guide to Nyabag, Mobbin, Dribbble, Behance, and Awwwards,
+                and how designers can build a stronger visual memory.
+              </p>
+            </div>
+            <Link href="/blog/best-design-inspiration-apps" className={styles.blogTeaserLink}>
+              Read the guide
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className={`${styles.ctaSection}`} id="start" aria-labelledby="cta-title">
         <div className={styles.ctaGlow} aria-hidden="true" />
         <div className={styles.container} style={{ position: "relative" }}>
@@ -671,7 +690,8 @@ export function LandingPage() {
         </div>
         <nav className={styles.footerLinks} aria-label="Footer navigation">
           {[
-            { href: "https://nyabag.com", label: "Product" },
+            { href: "/", label: "Product" },
+            { href: "/blog", label: "Blog" },
             { href: "/privacy", label: "Privacy" },
             { href: "/terms", label: "Terms" },
             { href: "mailto:hello@nyabag.com", label: "Contact" },
@@ -681,6 +701,12 @@ export function LandingPage() {
             </Link>
           ))}
         </nav>
+        <p className={styles.footerCredit}>
+          Built with ❤️ by{" "}
+          <Link href="https://www.linkedin.com/in/jayanzth" target="_blank" rel="noopener noreferrer">
+            Jayanth
+          </Link>
+        </p>
       </footer>
     </div>
   );

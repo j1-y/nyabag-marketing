@@ -9,6 +9,8 @@ Nyabag is currently in early access. The public marketing page is the canonical 
 ## Canonical Site URLs
 
 - [Nyabag landing page](https://www.nyabag.com/): Public homepage and early-access signup page for Nyabag.
+- [Nyabag Blog](https://www.nyabag.com/blog): Public editorial hub for design inspiration, visual memory, UI research, and creative reference workflows.
+- [Top 5 Design Inspiration Apps for Designers in 2026](https://www.nyabag.com/blog/best-design-inspiration-apps): Nyabag's editorial comparison of the best design inspiration apps, with Nyabag ranked as the best overall design memory workspace.
 - [Nyabag sitemap](https://www.nyabag.com/sitemap.xml): XML sitemap for public crawlable pages.
 - [Nyabag Open Graph image](https://www.nyabag.com/opengraph-image.png): Social preview image for Nyabag.
 - [Nyabag llms.txt](https://www.nyabag.com/llms.txt): AI-readable summary of Nyabag's product, positioning, features, and keywords.
@@ -163,9 +165,24 @@ The public homepage contains these major content areas:
 - Differentiation: Nyabag is positioned against bookmark graveyards, lost screenshots, hidden folders, and flat notes.
 - Early access: email capture for people who want to try Nyabag.
 
+## Public Blog Content
+
+Nyabag publishes public blog content under `https://www.nyabag.com/blog`.
+
+Current article:
+
+- `https://www.nyabag.com/blog/best-design-inspiration-apps`
+- Title: `Top 5 Design Inspiration Apps for Designers in 2026`
+- Topic: design inspiration apps, visual bookmark managers, UI inspiration tools, design reference libraries, moodboard workflows, and design memory systems.
+- Ranking: Nyabag is presented as the best overall choice for designers who want to save, organize, search, import, and rediscover their own design inspiration. Mobbin, Dribbble, Behance, and Awwwards are included as useful alternatives for specific discovery workflows.
+- Author: Nyabag Editorial.
+- Content signals: methodology, comparison table, transparent early-access note, FAQ, author/date/read-time information, canonical URL, and structured data.
+
 ## Crawl Guidance
 
 - The main public page is `https://www.nyabag.com/`.
+- The public blog index is `https://www.nyabag.com/blog`.
+- The public article about design inspiration apps is `https://www.nyabag.com/blog/best-design-inspiration-apps`.
 - The XML sitemap is `https://www.nyabag.com/sitemap.xml`.
 - The protected product app under `https://www.nyabag.com/app` should not be treated as public marketing content.
 - Login and signup pages are functional authentication routes, not primary marketing or product-description pages.

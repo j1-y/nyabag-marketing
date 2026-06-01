@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+Allow: /blog
+Allow: /blog/
 Disallow: /app
 Disallow: /app/
 Disallow: /login
