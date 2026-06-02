@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { blogPosts, getBlogPost, getBlogUrl, SITE_URL } from "@/lib/blog";
+import { blogPosts, getBlogPost, getBlogUrl, SITE_URL, type BlogContentBlock, type BlogInline } from "@/lib/blog";
 import styles from "../blog.module.css";
 
 type BlogPostPageProps = {
@@ -29,15 +29,27 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   const url = getBlogUrl(post.slug);
 
   return {
-    title: `${post.title} - Nyabag`,
+    title: post.metaTitle ?? `${post.title} - Nyabag`,
     description: post.description,
     keywords: post.keywords,
+    robots:
+      post.slug === "how-to-organize-design-inspiration"
+        ? {
+            googleBot: {
+              index: true,
+              follow: true,
+              "max-image-preview": "large",
+              "max-snippet": -1,
+              "max-video-preview": -1,
+            },
+          }
+        : undefined,
     alternates: {
       canonical: url,
     },
     openGraph: {
-      title: post.title,
-      description: post.description,
+      title: post.ogTitle ?? post.title,
+      description: post.ogDescription ?? post.description,
       url,
       siteName: "Nyabag",
       publishedTime: post.publishedAt,
@@ -55,8 +67,8 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     },
     twitter: {
       card: "summary_large_image",
-      title: post.title,
-      description: post.description,
+      title: post.ogTitle ?? post.title,
+      description: post.ogDescription ?? post.description,
       images: ["/opengraph-image.png"],
     },
   };
@@ -78,12 +90,116 @@ function BlogNav() {
   );
 }
 
+function BlogCta() {
+  return (
+    <section className={styles.fullCta} aria-labelledby="blog-cta-title">
+      <div className={styles.fullCtaInner}>
+        <p className={styles.eyebrow}>Early access</p>
+        <h2 id="blog-cta-title">Build your second memory for design.</h2>
+        <p>
+          Join Nyabag early access and start turning scattered design references
+          into a searchable visual library.
+        </p>
+        <Link href="/#early-access" className={styles.ctaLink}>Join early access</Link>
+      </div>
+    </section>
+  );
+}
+
+function BlogFooter() {
+  return (
+    <footer className={styles.footer} role="contentinfo">
+      <div className={styles.footerInner}>
+        <div className={styles.footerBrand}>
+          <Link href="/" className={styles.navLogo} aria-label="Nyabag home">
+            <img src="/assets/Nyabag-Dark-Logo.svg" alt="Nyabag" />
+          </Link>
+          <p className={styles.footerTagline}>Your second memory for design.</p>
+        </div>
+
+        <nav className={styles.footerNav} aria-label="Footer links">
+          <div className={styles.footerCol}>
+            <div className={styles.footerColTitle}>Product</div>
+            {[["/#save","Save"],["/#enrich","Enrich"],["/#organize","Organize"],["/#think","Canvas"],["/#early-access","Early access"],["/blog","Blog"]].map(([href, label]) => (
+              <Link key={label} href={href} className={styles.footerLink}>{label}</Link>
+            ))}
+          </div>
+          <div className={styles.footerCol}>
+            <div className={styles.footerColTitle}>Legal</div>
+            {[["/privacy","Privacy"],["/terms","Terms"],["/contact","Contact"]].map(([href, label]) => (
+              <Link key={label} href={href} className={styles.footerLink}>{label}</Link>
+            ))}
+          </div>
+        </nav>
+      </div>
+      <div className={styles.footerBottom}>
+        <span>
+          © {new Date().getFullYear()} Nyabag. Made with ❤️ by{" "}
+          <a
+            href="https://www.linkedin.com/in/jayanzth"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.footerCreditLink}
+          >
+            Jayanth
+          </a>
+        </span>
+      </div>
+    </footer>
+  );
+}
+
+function AuthorBio({ bio }: { bio: string }) {
+  return (
+    <section className={styles.authorSection} aria-labelledby="author-title">
+      <div className={styles.articleContainer}>
+        <div className={styles.authorBio}>
+          <p className={styles.sectionEyebrow} id="author-title">Author</p>
+          <p>{bio}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("en", {
     month: "long",
     day: "numeric",
     year: "numeric",
   }).format(new Date(date));
+}
+
+function renderInline(content: BlogInline[], keyPrefix: string) {
+  return content.map((part, index) => {
+    if (typeof part === "string") return part;
+
+    return (
+      <Link
+        key={`${keyPrefix}-${index}`}
+        href={part.href}
+        className={styles.articleLink}
+        target={part.external ? "_blank" : undefined}
+        rel={part.external ? "noopener noreferrer" : undefined}
+      >
+        {part.text}
+      </Link>
+    );
+  });
+}
+
+function renderBlock(block: BlogContentBlock, index: number) {
+  if (block.type === "paragraph") {
+    return <p key={`paragraph-${index}`}>{renderInline(block.content, `paragraph-${index}`)}</p>;
+  }
+
+  return (
+    <ul key={`list-${index}`} className={styles.articleList}>
+      {block.items.map((item, itemIndex) => (
+        <li key={`list-${index}-${itemIndex}`}>{renderInline(item, `list-${index}-${itemIndex}`)}</li>
+      ))}
+    </ul>
+  );
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
@@ -96,16 +212,25 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
+      "@id": `${articleUrl}#article`,
       headline: post.title,
       description: post.description,
       image: [`${SITE_URL}/opengraph-image.png`],
       datePublished: post.publishedAt,
       dateModified: post.updatedAt,
-      author: {
-        "@type": "Organization",
-        name: post.author,
-        url: SITE_URL,
-      },
+      inLanguage: "en-IN",
+      articleSection: post.category,
+      author: post.authorSameAs
+        ? {
+            "@type": "Person",
+            name: post.author,
+            sameAs: post.authorSameAs,
+          }
+        : {
+            "@type": "Organization",
+            name: post.author,
+            url: SITE_URL,
+          },
       publisher: {
         "@type": "Organization",
         name: "Nyabag",
@@ -145,18 +270,22 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         },
       ],
     },
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      mainEntity: post.faqs.map((faq) => ({
-        "@type": "Question",
-        name: faq.question,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: faq.answer,
-        },
-      })),
-    },
+    ...(post.includeFaqSchema === false
+      ? []
+      : [
+          {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: post.faqs.map((faq) => ({
+              "@type": "Question",
+              name: faq.question,
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: faq.answer,
+              },
+            })),
+          },
+        ]),
     {
       "@context": "https://schema.org",
       "@type": "Organization",
@@ -214,35 +343,41 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               <section key={section.id} id={section.id}>
                 {section.eyebrow && <p className={styles.sectionEyebrow}>{section.eyebrow}</p>}
                 <h2>{section.title}</h2>
-                {section.paragraphs.map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
-                ))}
+                {section.blocks
+                  ? section.blocks.map((block, index) => renderBlock(block, index))
+                  : section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
               </section>
             ))}
 
             <section id="comparison">
-              <p className={styles.sectionEyebrow}>Comparison</p>
-              <h2>Top design inspiration apps compared</h2>
+              <p className={styles.sectionEyebrow}>{post.comparison?.eyebrow ?? "Comparison"}</p>
+              <h2>{post.comparison?.title ?? "Top design inspiration apps compared"}</h2>
               <table className={styles.comparison}>
                 <thead>
                   <tr>
-                    <th>Tool</th>
-                    <th>Best for</th>
-                    <th>Strength</th>
-                    <th>Limitation</th>
-                    <th>Why designers use it</th>
+                    {(post.comparison?.columns ?? ["Tool", "Best for", "Strength", "Limitation", "Why designers use it"]).map((column) => (
+                      <th key={column}>{column}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {post.tools.map((tool) => (
-                    <tr key={tool.name}>
-                      <td>{tool.rank}. {tool.name}</td>
-                      <td>{tool.bestFor}</td>
-                      <td>{tool.strength}</td>
-                      <td>{tool.limitation}</td>
-                      <td>{tool.whyDesignersUseIt}</td>
-                    </tr>
-                  ))}
+                  {post.comparison
+                    ? post.comparison.rows.map((row) => (
+                        <tr key={row.join("-")}>
+                          {row.map((cell, index) => (
+                            <td key={`${cell}-${index}`}>{cell}</td>
+                          ))}
+                        </tr>
+                      ))
+                    : post.tools.map((tool) => (
+                        <tr key={tool.name}>
+                          <td>{tool.rank}. {tool.name}</td>
+                          <td>{tool.bestFor}</td>
+                          <td>{tool.strength}</td>
+                          <td>{tool.limitation}</td>
+                          <td>{tool.whyDesignersUseIt}</td>
+                        </tr>
+                      ))}
                 </tbody>
               </table>
             </section>
@@ -260,17 +395,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               </div>
             </section>
 
-            <div className={styles.cta}>
-              <h2>Build your second memory for design.</h2>
-              <p>
-                Join Nyabag early access and start turning scattered design references
-                into a searchable visual library.
-              </p>
-              <Link href="/#early-access" className={styles.ctaLink}>Join early access</Link>
-            </div>
           </article>
         </div>
       </main>
+      {post.authorBio && <AuthorBio bio={post.authorBio} />}
+      <BlogCta />
+      <BlogFooter />
     </div>
   );
 }

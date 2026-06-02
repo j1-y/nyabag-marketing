@@ -373,7 +373,7 @@ export function LandingPage() {
 
         <div className="lp-nav-links" role="list">
           {[
-            ["#save","Save"],["#enrich","Enrich"],["#organize","Organize"],["#think","Canvas"],
+            ["#save","Save"],["#enrich","Enrich"],["#organize","Organize"],["#think","Canvas"],["/blog","Blog"],
           ].map(([href, label]) => (
             <a key={href} href={href} className="lp-nav-link" role="listitem">{label}</a>
           ))}
@@ -1088,7 +1088,7 @@ export function LandingPage() {
           <nav className="lp-footer-nav" aria-label="Footer links">
             <div className="lp-footer-col">
               <div className="lp-footer-col-title">Product</div>
-              {[["#save","Save"],["#enrich","Enrich"],["#organize","Organize"],["#think","Canvas"],["#early-access","Early access"]].map(([h,l]) => (
+              {[["#save","Save"],["#enrich","Enrich"],["#organize","Organize"],["#think","Canvas"],["#early-access","Early access"],["/blog","Blog"]].map(([h,l]) => (
                 <a key={l} href={h} className="lp-footer-link">{l}</a>
               ))}
             </div>

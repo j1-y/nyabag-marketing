@@ -42,6 +42,7 @@ function BlogNav() {
         <img src="/assets/Nyabag-Dark-Logo.svg" alt="Nyabag" />
       </Link>
       <div className={styles.navLinks}>
+        <Link href="/blog" className={styles.navLink}>Blog</Link>
         <Link href="/" className={styles.navLink}>Home</Link>
         <Link href="/#features" className={styles.navLink}>Features</Link>
         <Link href="/#early-access" className={styles.navLink}>Early access</Link>
@@ -51,8 +52,67 @@ function BlogNav() {
   );
 }
 
+function BlogCta() {
+  return (
+    <section className={styles.fullCta} aria-labelledby="blog-cta-title">
+      <div className={styles.fullCtaInner}>
+        <p className={styles.eyebrow}>Early access</p>
+        <h2 id="blog-cta-title">Build your second memory for design.</h2>
+        <p>
+          Join Nyabag early access and start turning scattered design references
+          into a searchable visual library.
+        </p>
+        <Link href="/#early-access" className={styles.ctaLink}>Join early access</Link>
+      </div>
+    </section>
+  );
+}
+
+function BlogFooter() {
+  return (
+    <footer className={styles.footer} role="contentinfo">
+      <div className={styles.footerInner}>
+        <div className={styles.footerBrand}>
+          <Link href="/" className={styles.navLogo} aria-label="Nyabag home">
+            <img src="/assets/Nyabag-Dark-Logo.svg" alt="Nyabag" />
+          </Link>
+          <p className={styles.footerTagline}>Your second memory for design.</p>
+        </div>
+
+        <nav className={styles.footerNav} aria-label="Footer links">
+          <div className={styles.footerCol}>
+            <div className={styles.footerColTitle}>Product</div>
+            {[["/#save","Save"],["/#enrich","Enrich"],["/#organize","Organize"],["/#think","Canvas"],["/#early-access","Early access"],["/blog","Blog"]].map(([href, label]) => (
+              <Link key={label} href={href} className={styles.footerLink}>{label}</Link>
+            ))}
+          </div>
+          <div className={styles.footerCol}>
+            <div className={styles.footerColTitle}>Legal</div>
+            {[["/privacy","Privacy"],["/terms","Terms"],["/contact","Contact"]].map(([href, label]) => (
+              <Link key={label} href={href} className={styles.footerLink}>{label}</Link>
+            ))}
+          </div>
+        </nav>
+      </div>
+      <div className={styles.footerBottom}>
+        <span>
+          © {new Date().getFullYear()} Nyabag. Made with ❤️ by{" "}
+          <a
+            href="https://www.linkedin.com/in/jayanzth"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.footerCreditLink}
+          >
+            Jayanth
+          </a>
+        </span>
+      </div>
+    </footer>
+  );
+}
+
 export default function BlogIndexPage() {
-  const [featuredPost] = blogPosts;
+  const [featuredPost, ...otherPosts] = blogPosts;
 
   const collectionJsonLd = {
     "@context": "https://schema.org",
@@ -126,8 +186,28 @@ export default function BlogIndexPage() {
               </div>
             </aside>
           </div>
+
+          {otherPosts.length > 0 && (
+            <div className={styles.morePosts}>
+              {otherPosts.map((post) => (
+                <Link key={post.slug} href={`/blog/${post.slug}`} className={styles.postCard}>
+                  <div>
+                    <p className={styles.cardCategory}>{post.category}</p>
+                    <h2 className={styles.cardTitle}>{post.title}</h2>
+                    <p className={styles.cardExcerpt}>{post.excerpt}</p>
+                  </div>
+                  <div className={styles.cardFooter}>
+                    <span>{post.author}</span>
+                    <span>{post.readTime}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </main>
+      <BlogCta />
+      <BlogFooter />
     </div>
   );
 }
