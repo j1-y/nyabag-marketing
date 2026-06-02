@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SiteFooter } from "@/components/site/SiteFooter";
+import { SiteHeader } from "@/components/site/SiteHeader";
 import { blogPosts, getBlogPost, getBlogUrl, SITE_URL, type BlogContentBlock, type BlogInline } from "@/lib/blog";
 import styles from "../blog.module.css";
 
@@ -74,22 +76,6 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   };
 }
 
-function BlogNav() {
-  return (
-    <nav className={styles.nav} aria-label="Blog navigation">
-      <Link href="/" className={styles.navLogo} aria-label="Nyabag home">
-        <img src="/assets/Nyabag-Dark-Logo.svg" alt="Nyabag" />
-      </Link>
-      <div className={styles.navLinks}>
-        <Link href="/blog" className={styles.navLink}>Blog</Link>
-        <Link href="/" className={styles.navLink}>Home</Link>
-        <Link href="/#early-access" className={styles.navLink}>Early access</Link>
-      </div>
-      <Link href="/#early-access" className={styles.navCta}>Join early access</Link>
-    </nav>
-  );
-}
-
 function BlogCta() {
   return (
     <section className={styles.fullCta} aria-labelledby="blog-cta-title">
@@ -103,49 +89,6 @@ function BlogCta() {
         <Link href="/#early-access" className={styles.ctaLink}>Join early access</Link>
       </div>
     </section>
-  );
-}
-
-function BlogFooter() {
-  return (
-    <footer className={styles.footer} role="contentinfo">
-      <div className={styles.footerInner}>
-        <div className={styles.footerBrand}>
-          <Link href="/" className={styles.navLogo} aria-label="Nyabag home">
-            <img src="/assets/Nyabag-Dark-Logo.svg" alt="Nyabag" />
-          </Link>
-          <p className={styles.footerTagline}>Your second memory for design.</p>
-        </div>
-
-        <nav className={styles.footerNav} aria-label="Footer links">
-          <div className={styles.footerCol}>
-            <div className={styles.footerColTitle}>Product</div>
-            {[["/#save","Save"],["/#enrich","Enrich"],["/#organize","Organize"],["/#think","Canvas"],["/#early-access","Early access"],["/blog","Blog"]].map(([href, label]) => (
-              <Link key={label} href={href} className={styles.footerLink}>{label}</Link>
-            ))}
-          </div>
-          <div className={styles.footerCol}>
-            <div className={styles.footerColTitle}>Legal</div>
-            {[["/privacy","Privacy"],["/terms","Terms"],["/contact","Contact"]].map(([href, label]) => (
-              <Link key={label} href={href} className={styles.footerLink}>{label}</Link>
-            ))}
-          </div>
-        </nav>
-      </div>
-      <div className={styles.footerBottom}>
-        <span>
-          © {new Date().getFullYear()} Nyabag. Made with ❤️ by{" "}
-          <a
-            href="https://www.linkedin.com/in/jayanzth"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.footerCreditLink}
-          >
-            Jayanth
-          </a>
-        </span>
-      </div>
-    </footer>
   );
 }
 
@@ -299,7 +242,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <div className={styles.root}>
-      <BlogNav />
+      <SiteHeader />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -400,7 +343,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       </main>
       {post.authorBio && <AuthorBio bio={post.authorBio} />}
       <BlogCta />
-      <BlogFooter />
+      <SiteFooter />
     </div>
   );
 }
