@@ -1,713 +1,1470 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useActionState, useCallback, useEffect, useId, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { submitEarlyAccessSignup } from "@/lib/early-access-actions";
-import styles from "./landing.module.css";
+import { earlyAccessInitialState, submitEarlyAccessSignupForm } from "@/lib/early-access-actions";
 
-const EarlyAccessForm = ({ compact = false }: { compact?: boolean }) => {
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error">("success");
-  const [isPending, startTransition] = useTransition();
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage("");
-
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    formData.set("source", "landing");
-
-    startTransition(async () => {
-      const result = await submitEarlyAccessSignup(formData);
-      if (!result.success) {
-        setMessageType("error");
-        setMessage(result.error);
-        return;
-      }
-
-      setMessageType("success");
-      setMessage(result.data.duplicate ? "You're already on the list." : "Thanks. You're on the early access list.");
-      form.reset();
-    });
-  }
-
-  return (
-    <form
-      className={compact ? styles.earlyAccessFormCompact : styles.earlyAccessForm}
-      onSubmit={handleSubmit}
-    >
-      <div className={styles.earlyAccessRow}>
-        <label className={styles.earlyAccessLabel}>
-          <span>Email address</span>
-          <input type="email" name="email" placeholder="you@example.com" required autoComplete="email" disabled={isPending} />
-        </label>
-        <button type="submit" disabled={isPending}>
-          {isPending ? "Joining..." : "Join early access"}
-        </button>
-      </div>
-      {message && (
-        <p className={messageType === "error" ? styles.earlyAccessError : styles.earlyAccessThanks}>
-          {message}
-        </p>
-      )}
-    </form>
-  );
-};
-
-/* ── Inline SVG icons ─────────────────── */
-const IconGrid = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-    <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-    <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-    <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-  </svg>
-);
-
-const IconUser = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <circle cx="8" cy="6" r="3" stroke="currentColor" strokeWidth="1.2" />
-    <path d="M3 13c0-2.2 2.24-4 5-4s5 1.8 5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-  </svg>
-);
-
-const IconPlus = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.2" />
-    <path d="M5 8h6M8 5v6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-  </svg>
-);
-
-const IconPhone = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <rect x="4" y="2" width="8" height="12" rx="2" stroke="currentColor" strokeWidth="1.2" />
-    <path d="M6 6h4M6 9h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-  </svg>
-);
-
-const IconSearch = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <circle cx="6.5" cy="6.5" r="4" stroke="currentColor" strokeWidth="1.2" />
-    <path d="M9.5 9.5l3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-  </svg>
-);
-
-const IconShield = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path d="M13 3L8 1 3 3v5c0 3 2.5 5.5 5 7 2.5-1.5 5-4 5-7V3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-  </svg>
-);
-
-/* ── SimLine helper ─────────────────── */
-const SimLine = ({ w = "100%", h = 6, mt = 0 }: { w?: string; h?: number; mt?: number }) => (
-  <div
-    style={{
-      height: h,
-      width: w,
-      borderRadius: 3,
-      background: "rgba(255,255,255,0.07)",
-      marginTop: mt,
+/* ─────────────────────────────────────────
+   JSON-LD Schema for SEO (SoftwareApplication)
+───────────────────────────────────────── */
+const SchemaOrg = () => (
+  <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Nyabag",
+        url: "https://nyabag.com",
+        description:
+          "Nyabag is an early access visual memory system for designers to save, organize, and rediscover design inspiration. Capture websites, screenshots, UI references, color palettes, and fonts in one searchable visual workspace.",
+        applicationCategory: "DesignApplication",
+        operatingSystem: "Web, iOS, Android",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+          availability: "https://schema.org/PreOrder",
+          url: "https://www.nyabag.com/#early-access",
+        },
+        featureList: [
+          "Visual bookmark moodboard",
+          "Automatic website screenshots via Microlink",
+          "Color palette extraction",
+          "Font detection",
+          "Metadata scraping",
+          "Infinite canvas",
+          "Draggable and resizable notes",
+          "Mobile URL capture",
+          "Full-text search",
+          "Social embeds",
+        ],
+        creator: {
+          "@type": "Person",
+          name: "Jayanth Kumar",
+        },
+      }),
     }}
   />
 );
 
-/* ── Bookmark card ──────────────────── */
-type CardProps = {
-  thumbBg: string;
-  title: string;
-  url: string;
-  tags: string[];
-  palette: string[];
-  thumbContent: React.ReactNode;
-};
-
-const BookmarkCard = ({ thumbBg, title, url, tags, palette, thumbContent }: CardProps) => (
-  <article className={styles.bookmarkCard}>
-    <div className={styles.cardThumb} style={{ background: thumbBg }}>
-      {thumbContent}
-    </div>
-    <div className={styles.cardMeta}>
-      <div className={styles.cardTitle}>{title}</div>
-      <div className={styles.cardUrl}>{url}</div>
-      <div className={styles.tagRow}>
-        {tags.map((t) => (
-          <span key={t} className={styles.tag}>{t}</span>
-        ))}
-      </div>
-      <div className={styles.paletteStrip} aria-label="Extracted color palette">
-        {palette.map((c) => (
-          <div key={c} className={styles.paletteSwatch} style={{ background: c }} />
-        ))}
-      </div>
-    </div>
-  </article>
-);
-
-/* ── Feature card ───────────────────── */
-type FeatureCardProps = {
-  icon: React.ReactNode;
-  name: string;
-  desc: string;
-};
-
-const FeatureCard = ({ icon, name, desc }: FeatureCardProps) => (
-  <article className={styles.featureCard} role="listitem">
-    <div className={styles.featureIconWrap}>{icon}</div>
-    <div className={styles.featureName}>{name}</div>
-    <p className={styles.featureDesc}>{desc}</p>
-  </article>
-);
-
-/* ── CapabilityRow helper ─────────────── */
-const CapabilityRow = ({ icon, label }: { icon: React.ReactNode; label: string }) => (
-  <div className={styles.canvasCapabilityRow}>
-    <div className={styles.canvasCapabilityIcon}>{icon}</div>
-    {label}
-  </div>
-);
+/* ─────────────────────────────────────────
+   useInView hook for scroll-triggered animations
+───────────────────────────────────────── */
+function useInView(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect(); } },
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, inView };
+}
 
 /* ─────────────────────────────────────────
-   Main component
+   Palette swatch colours for demo cards
 ───────────────────────────────────────── */
-export function LandingPage() {
+const palettes: Record<string, string[]> = {
+  linear:   ["#1a1a2e","#16213e","#5865f2","#e2e8f0","#888"],
+  rauno:    ["#0d0d0d","#f5f5f5","#888","#333","#ccc"],
+  vercel:   ["#0f1117","#5865f2","#ededed","#444","#1c1f26"],
+  stripe:   ["#0a2540","#635bff","#00d4ff","#f6f9fc","#425466"],
+  figma:    ["#1e1e1e","#ff7262","#a259ff","#1abcfe","#0acf83"],
+  mobbin:   ["#000","#fff","#aaa","#222","#555"],
+};
+
+/* ─────────────────────────────────────────
+   BookmarkCard component
+───────────────────────────────────────── */
+function BookmarkCard({
+  title, domain, tags, palette, delay = 0, thumb,
+}: {
+  title: string; domain: string; tags: string[];
+  palette: string[]; delay?: number; thumb: string;
+}) {
   return (
-    <div className={styles.root}>
-      {/* ── NAV ── */}
-      <nav className={styles.nav} aria-label="Main navigation">
-        <Link href="/" className={styles.navLogo}>
-          <img src="/assets/Nyabag-Dark-Logo.svg" alt="Nyabag" />
-        </Link>
-        <div className={styles.navLinks}>
-          <Link href="#features" className={styles.navLink}>Features</Link>
-          <Link href="#canvas" className={styles.navLink}>Canvas</Link>
-          <Link href="#compare" className={styles.navLink}>Why Nyabag</Link>
-          <Link href="/blog" className={styles.navLink}>Blog</Link>
+    <article
+      className="lp-card"
+      style={{ animationDelay: `${delay}ms` }}
+      aria-label={`Saved bookmark: ${title}`}
+    >
+      <div className="lp-card-thumb" aria-hidden="true">
+        <div className="lp-card-thumb-inner" style={{ background: thumb }} />
+        <div className="lp-card-thumb-overlay">
+          <div className="lp-sim-nav" />
+          <div className="lp-sim-line" style={{ width: "75%" }} />
+          <div className="lp-sim-line" style={{ width: "55%" }} />
+          <div className="lp-sim-line" style={{ width: "80%", marginTop: 6 }} />
+          <div className="lp-sim-line" style={{ width: "40%" }} />
         </div>
-        <Link href="#early-access" className={styles.navCta}>Early access</Link>
-      </nav>
-
-      {/* ── HERO ── */}
-      <header className={styles.hero} role="banner">
-        <div className={styles.heroBgGrid} aria-hidden="true" />
-
-        <div className={styles.heroBadge} aria-label="Status: Now in early access">
-          <span className={styles.heroBadgeDot} aria-hidden="true" />
-          Now in early access
+      </div>
+      <div className="lp-card-body">
+        <div className="lp-card-title">{title}</div>
+        <div className="lp-card-domain">{domain}</div>
+        <div className="lp-tag-row">
+          {tags.map((t) => <span key={t} className="lp-tag">{t}</span>)}
         </div>
-
-        <h1 className={styles.heroHeadline}>
-          Your second memory<br />
-          <em>for design.</em>
-        </h1>
-
-        <p className={styles.heroSub}>
-          Save websites, screenshots, UI references, colors, fonts, and ideas in one visual workspace. Find them again when it matters.
-        </p>
-
-        <div id="early-access" className={styles.heroActions}>
-          <EarlyAccessForm />
-        </div>
-
-        <p className={styles.heroTrust}>
-          Built for designers who keep forgetting where they saved that one perfect reference.
-        </p>
-
-        {/* Product mockup */}
-        <div
-          className={styles.heroPreview}
-          role="img"
-          aria-label="Nyabag product interface showing a visual bookmark library with screenshot cards, color palettes, and tags"
-        >
-          <div className={styles.previewBar}>
-            <span className={`${styles.previewDot} ${styles.previewDotRed}`} aria-hidden="true" />
-            <span className={`${styles.previewDot} ${styles.previewDotYellow}`} aria-hidden="true" />
-            <span className={`${styles.previewDot} ${styles.previewDotGreen}`} aria-hidden="true" />
-            <div className={styles.previewUrl} aria-hidden="true">nyabag.com / library</div>
-          </div>
-
-          <div className={styles.previewBody}>
-            <aside className={styles.previewSidebar} aria-label="Sidebar navigation" aria-hidden="true">
-              <div className={styles.sidebarLabel}>Library</div>
-              {["All saves", "UI References", "Typography", "Color Inspo"].map((item, i) => (
-                <div key={item} className={`${styles.sidebarItem} ${i === 0 ? styles.sidebarItemActive : ""}`}>
-                  <div className={styles.sidebarIcon} />
-                  {item}
-                </div>
-              ))}
-              <div className={styles.sidebarLabel}>Canvas</div>
-              {["Moodboard 01", "Project Ref"].map((item) => (
-                <div key={item} className={styles.sidebarItem}>
-                  <div className={styles.sidebarIcon} />
-                  {item}
-                </div>
-              ))}
-            </aside>
-
-            <main className={styles.cardGrid} aria-label="Saved bookmark cards">
-              <BookmarkCard
-                thumbBg="linear-gradient(160deg,#1a1a1a,#222)"
-                title="Linear — Where ideas become software"
-                url="linear.app"
-                tags={["product", "saas", "dark"]}
-                palette={["#1a1a2e", "#16213e", "#5865f2", "#e2e8f0", "#0f3460"]}
-                thumbContent={
-                  <div style={{ width: "100%", padding: 10, display: "flex", flexDirection: "column", gap: 5 }}>
-                    <div style={{ height: 24, background: "rgba(255,255,255,0.04)", borderRadius: 3, marginBottom: 6 }} />
-                    <SimLine w="80%" />
-                    <SimLine w="60%" />
-                    <SimLine w="80%" mt={4} />
-                    <SimLine w="40%" />
-                  </div>
-                }
-              />
-              <BookmarkCard
-                thumbBg="linear-gradient(160deg,#111,#1c1c1c)"
-                title="Rauno Fischbacher — Design Engineer"
-                url="rauno.me"
-                tags={["portfolio", "minimal"]}
-                palette={["#0d0d0d", "#1f1f1f", "#f5f5f5", "#888", "#333"]}
-                thumbContent={
-                  <div style={{ width: "100%", padding: 10, display: "flex", flexDirection: "column", gap: 5 }}>
-                    <div style={{ height: 24, background: "rgba(255,255,255,0.06)", borderRadius: 3, marginBottom: 6 }} />
-                    <div style={{ height: 10, width: "50%", background: "rgba(255,255,255,0.07)", borderRadius: 3 }} />
-                    <div style={{ height: 8, width: "60%", background: "rgba(255,255,255,0.05)", borderRadius: 3, marginTop: 6 }} />
-                    <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
-                      <div style={{ width: 36, height: 22, borderRadius: 4, background: "rgba(255,255,255,0.1)" }} />
-                      <div style={{ width: 36, height: 22, borderRadius: 4, background: "rgba(255,255,255,0.05)" }} />
-                    </div>
-                  </div>
-                }
-              />
-              <BookmarkCard
-                thumbBg="linear-gradient(160deg,#0f1117,#1a1d27)"
-                title="Vercel Dashboard — Deploy and ship faster"
-                url="vercel.com/dashboard"
-                tags={["dashboard", "ui", "nav"]}
-                palette={["#0f1117", "#1c1f26", "#5865f2", "#ededed", "#444"]}
-                thumbContent={
-                  <div style={{ width: "100%", padding: 10, display: "flex", flexDirection: "column", gap: 5 }}>
-                    <div style={{ height: 24, background: "rgba(255,255,255,0.03)", borderRadius: 3, marginBottom: 6 }} />
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <div style={{ width: "50%", height: 16, borderRadius: 3, background: "rgba(88,101,242,0.3)" }} />
-                      <div style={{ width: "30%", height: 16, borderRadius: 3, background: "rgba(255,255,255,0.05)" }} />
-                    </div>
-                    <SimLine w="70%" h={6} mt={8} />
-                    <SimLine w="60%" mt={4} />
-                  </div>
-                }
-              />
-            </main>
-          </div>
-        </div>
-      </header>
-
-      {/* ── PAIN SECTION ── */}
-      <section className={`${styles.section} ${styles.painSection}`} id="problem" aria-labelledby="pain-title">
-        <div className={styles.container}>
-          <p className={styles.sectionEyebrow}>The problem</p>
-          <div className={styles.painGrid}>
-            <div>
-              <h2 id="pain-title" className={styles.sectionTitle}>
-                Design inspiration is easy to save. Hard to find again.
-              </h2>
-              <p className={styles.sectionBody}>
-                You spend years collecting references. And when you finally need them, they&apos;re buried somewhere impossible to search.
-              </p>
-              <div className={styles.painItems} style={{ marginTop: 48 }}>
-                {[
-                  { num: "01", content: <><strong>Screenshots pile up</strong> in folders with no context, no source link, no reason they were saved.</> },
-                  { num: "02", content: <><strong>Links get sent to yourself</strong> on WhatsApp, Telegram, and Notes — where they quietly disappear.</> },
-                  { num: "03", content: <><strong>Browser bookmarks</strong> become unsorted graveyards with no visual preview or searchable metadata.</> },
-                  { num: "04", content: <><strong>Context is lost immediately.</strong> You save a reference but not why it mattered, what caught your eye.</> },
-                  { num: "05", content: <><strong>Rediscovery is painful.</strong> You know it exists. You just can&apos;t find it when you need direction.</> },
-                ].map(({ num, content }) => (
-                  <div key={num} className={styles.painItem}>
-                    <span className={styles.painNum}>{num}</span>
-                    <p className={styles.painText}>{content}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className={styles.painVisual} aria-hidden="true">
-              <div className={styles.painPile}>
-                <div className={styles.pileTitle}>Screenshots folder</div>
-                {["Screen Shot 2024-09-12...", "Screen Shot 2024-10-01...", "IMG_4829.PNG", "Screen Shot 2024-11-22...", "Screen Shot 2025-01-05..."].map((f) => (
-                  <div key={f} className={styles.pileItem}>🖼 {f}</div>
-                ))}
-              </div>
-              <div className={styles.painPile}>
-                <div className={styles.pileTitle}>Browser bookmarks</div>
-                {["Design stuff", "inspo (untitled)", "Read later", "Folder 1", "Untitled"].map((f) => (
-                  <div key={f} className={styles.pileItem}>🔖 {f}</div>
-                ))}
-              </div>
-              <div className={styles.painPile} style={{ gridColumn: "1/-1" }}>
-                <div className={styles.pileTitle}>WhatsApp — Saved messages</div>
-                {[
-                  "https://dribbble.com/shots/22849...",
-                  "https://www.figma.com/community/fi...",
-                  "check this out later",
-                  "https://ui.aceternity.com/componen...",
-                ].map((f) => (
-                  <div key={f} className={styles.pileItem}>💬 {f}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURE SECTION ── */}
-      <section className={`${styles.section} ${styles.featureSection}`} id="features" aria-labelledby="features-title">
-        <div className={styles.container}>
-          <div className={styles.featureIntro}>
-            <p className={styles.sectionEyebrow}>What Nyabag does</p>
-            <h2 id="features-title" className={styles.sectionTitle}>
-              Everything a designer&apos;s memory should be.
-            </h2>
-            <p className={styles.sectionBody}>
-              Not just a place to store links — a workspace that holds context, visuals, and structure around every piece of inspiration you find.
-            </p>
-          </div>
-
-          <div className={styles.featureGrid} role="list">
-            <FeatureCard
-              icon={<IconGrid />}
-              name="Visual Bookmark Moodboard"
-              desc="Turn saved links into a visual library of references — screenshots, tags, palettes, and notes, all at a glance."
-            />
-            <FeatureCard
-              icon={<IconUser />}
-              name="Design-Aware Metadata"
-              desc="Nyabag extracts titles, summaries, palettes, font hints, and tags — so every save carries context without extra effort."
-            />
-            <FeatureCard
-              icon={<IconPlus />}
-              name="Infinite Notes Canvas"
-              desc="Think beyond folders. Arrange notes, links, images, videos, and social embeds on a freeform canvas."
-            />
-            <FeatureCard
-              icon={<IconPhone />}
-              name="Mobile Capture"
-              desc="Found something on your phone? Save the URL quickly and organize it later on desktop, when you have focus."
-            />
-            <FeatureCard
-              icon={<IconSearch />}
-              name="Search That Feels Natural"
-              desc="Find inspiration by title, URL, tags, notes, summaries, or the design context attached to each save."
-            />
-            <FeatureCard
-              icon={<IconShield />}
-              name="Built for Designers"
-              desc="Nyabag is shaped around how designers actually collect, forget, compare, and reuse inspiration — not how PMs organize tasks."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ── WORKFLOW SECTION ── */}
-      <section className={`${styles.section} ${styles.workflowSection}`} id="workflow" aria-labelledby="workflow-title">
-        <div className={styles.container}>
-          <p className={styles.sectionEyebrow}>The loop</p>
-          <h2 id="workflow-title" className={styles.sectionTitle}>
-            Save once. Rediscover when it counts.
-          </h2>
-
-          <div className={styles.stepsRow} role="list">
-            {/* Step 1 */}
-            <div className={styles.step} role="listitem">
-              <div className={styles.stepNum} aria-hidden="true">01</div>
-              <div className={styles.stepTitle}>Save a reference</div>
-              <p className={styles.stepDesc}>
-                Paste a URL, share from mobile, or drop a link from anywhere. Nyabag handles the rest.
-              </p>
-              <div className={styles.stepVisual} aria-hidden="true">
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--lp-bg-3)", borderRadius: 6, fontSize: 12, color: "var(--lp-text-dim)" }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#555", flexShrink: 0 }} />
-                  https://mobbin.com/patterns/nav
-                </div>
-                <div style={{ marginTop: 8, fontSize: 11, color: "var(--lp-text-dim)", textAlign: "center" }}>
-                  Saving · Processing metadata…
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2 */}
-            <div className={styles.step} role="listitem">
-              <div className={styles.stepNum} aria-hidden="true">02</div>
-              <div className={styles.stepTitle}>A visual memory is created</div>
-              <p className={styles.stepDesc}>
-                Nyabag screenshots the page, extracts color palettes, detects font hints, and infers tags automatically.
-              </p>
-              <div className={styles.stepVisual} aria-hidden="true">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 10, color: "var(--lp-text-dim)", marginBottom: 4 }}>Screenshot</div>
-                    <div style={{ height: 48, background: "var(--lp-bg-3)", borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <div style={{ width: "70%", height: 6, background: "var(--lp-bg-4)", borderRadius: 3 }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, color: "var(--lp-text-dim)", marginBottom: 4 }}>Palette</div>
-                    <div style={{ display: "flex", gap: 3, height: 48, alignItems: "center" }}>
-                      {["#1a1a2e", "#5865f2", "#e2e8f0", "#888"].map((c) => (
-                        <div key={c} style={{ flex: 1, height: 28, borderRadius: 4, background: c }} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ marginTop: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>
-                  {["navigation", "mobile", "dark ui"].map((t) => (
-                    <span key={t} style={{ background: "var(--lp-bg-4)", borderRadius: 4, padding: "2px 7px", fontSize: 10, color: "var(--lp-text-dim)" }}>
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div className={styles.step} role="listitem">
-              <div className={styles.stepNum} aria-hidden="true">03</div>
-              <div className={styles.stepTitle}>Rediscover it later</div>
-              <p className={styles.stepDesc}>
-                Search by tag, color, concept, or keyword. The context is already there — you just need to ask.
-              </p>
-              <div className={styles.stepVisual} aria-hidden="true">
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--lp-bg-3)", borderRadius: 6, fontSize: 12, color: "var(--lp-text-dim)" }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                    <circle cx="5" cy="5" r="3.5" stroke="#555" strokeWidth="1.2" />
-                    <path d="M8 8l2 2" stroke="#555" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                  dark navigation with tab bar…
-                </div>
-                <div style={{ marginTop: 8, fontSize: 11, color: "var(--lp-text-dim)" }}>
-                  3 results found · navigation · dark ui
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── CANVAS SECTION ── */}
-      <section className={`${styles.section} ${styles.canvasSection}`} id="canvas" aria-labelledby="canvas-title">
-        <div className={styles.container}>
-          <div className={styles.canvasInner}>
-            <div>
-              <p className={styles.sectionEyebrow}>Infinite canvas</p>
-              <h2 id="canvas-title" className={styles.sectionTitle}>
-                From saved references to structured ideas.
-              </h2>
-              <p className={styles.sectionBody}>
-                Use the canvas to group references, collect notes, compare directions, and shape messy inspiration into something usable. Think of it as your design thinking layer.
-              </p>
-
-              <div className={styles.canvasCapabilities}>
-                <CapabilityRow
-                  icon={
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <rect x="0.6" y="0.6" width="10.8" height="10.8" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-                      <path d="M3 4h6M3 7h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                    </svg>
-                  }
-                  label="Text notes, link notes, image notes, video notes"
-                />
-                <CapabilityRow
-                  icon={
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M1 3h10M1 6h7M1 9h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                    </svg>
-                  }
-                  label="Grouped sections to cluster related ideas"
-                />
-                <CapabilityRow
-                  icon={
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 10L10 2M6 2h4v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  }
-                  label="Drag, resize, and arrange with FigJam-style freedom"
-                />
-                <CapabilityRow
-                  icon={
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.2" />
-                      <path d="M6 4v2.5l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                    </svg>
-                  }
-                  label="Social embeds — Twitter, YouTube, Loom, and more"
-                />
-              </div>
-            </div>
-
-            {/* Canvas mockup */}
-            <div
-              className={styles.canvasMock}
-              role="img"
-              aria-label="Canvas interface showing notes, grouped sections, and color references"
-            >
-              <div className={styles.canvasBgDots} aria-hidden="true" />
-
-              {/* Section group */}
-              <div
-                className={styles.canvasSectionBlock}
-                style={{ left: 20, top: 20, width: 260, height: 175 }}
-                aria-hidden="true"
-              >
-                <div style={{ fontSize: 10, color: "var(--lp-text-dim)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 4 }}>
-                  Nav Patterns
-                </div>
-                {["linear.app — Tab navigation", "vercel.com — Sidebar layout", "notion.so — Nested nav"].map((item) => (
-                  <div key={item} className={styles.canvasMiniCard}>{item}</div>
-                ))}
-              </div>
-
-              {/* Text note */}
-              <div className={styles.canvasNote} style={{ right: 20, top: 30, width: 190 }} aria-hidden="true">
-                <div className={styles.canvasNoteLabel}>Note</div>
-                <div className={styles.canvasNoteContent}>
-                  All dark nav patterns use iconography — reconsider label-only approach for v2
-                </div>
-              </div>
-
-              {/* Link note */}
-              <div className={styles.canvasNote} style={{ left: 40, bottom: 30, width: 200 }} aria-hidden="true">
-                <div className={styles.canvasNoteLabel}>Link</div>
-                <div style={{ color: "#4a9eff", fontSize: 11 }}>https://mobbin.com/patterns/...</div>
-                <div style={{ fontSize: 11, color: "var(--lp-text-dim)", marginTop: 4 }}>
-                  Mobile navigation patterns · Mobbin
-                </div>
-              </div>
-
-              {/* Color note */}
-              <div className={styles.canvasNote} style={{ right: 24, bottom: 60, width: 170 }} aria-hidden="true">
-                <div className={styles.canvasNoteLabel}>Color reference</div>
-                <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                  {[
-                    { bg: "#0a0a0a", border: "1px solid #333" },
-                    { bg: "#5865f2" },
-                    { bg: "#ededed" },
-                    { bg: "#888" },
-                  ].map(({ bg, border }, i) => (
-                    <div key={i} style={{ flex: 1, height: 20, borderRadius: 4, background: bg, border: border || "none" }} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── DIFFERENTIATION SECTION ── */}
-      <section className={`${styles.section} ${styles.diffSection}`} id="compare" aria-labelledby="diff-title">
-        <div className={styles.container}>
-          <div className={styles.diffTitleArea}>
-            <p className={styles.sectionEyebrow}>The difference</p>
-            <h2 id="diff-title" className={styles.sectionTitle}>
-              Not another bookmark graveyard.
-            </h2>
-            <p className={styles.sectionBody}>
-              Every tool has a graveyard — bookmarks you never open, screenshots you never find, tabs you never close. Nyabag is structured to prevent that.
-            </p>
-          </div>
-
-          <div className={styles.diffGrid} role="list">
-            {[
-              {
-                vs: "Bookmarks store links.",
-                old: "A URL with a favicon and a forgotten folder",
-                next: "Nyabag stores context.",
-              },
-              {
-                vs: "Folders hide inspiration.",
-                old: "Nested directories with no visual memory",
-                next: "Nyabag keeps it visual.",
-              },
-              {
-                vs: "Screenshots lose source links.",
-                old: "A flat image file, orphaned from its origin",
-                next: "Nyabag connects visuals to their source.",
-              },
-              {
-                vs: "Notes alone are flat.",
-                old: "Fragmented ideas in a linear notebook",
-                next: "Nyabag gives you a workspace.",
-              },
-            ].map(({ vs, old, next }) => (
-              <div key={vs} className={styles.diffItem} role="listitem">
-                <p className={styles.diffVs}>{vs}</p>
-                <p className={styles.diffOld}>{old}</p>
-                <p className={styles.diffNew}>{next}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA SECTION ── */}
-      <section className={styles.blogTeaserSection} aria-labelledby="blog-teaser-title">
-        <div className={styles.container}>
-          <div className={styles.blogTeaser}>
-            <div>
-              <p className={styles.sectionEyebrow}>From the blog</p>
-              <h2 id="blog-teaser-title">Top design inspiration apps for designers in 2026</h2>
-              <p>
-                A practical guide to Nyabag, Mobbin, Dribbble, Behance, and Awwwards,
-                and how designers can build a stronger visual memory.
-              </p>
-            </div>
-            <Link href="/blog/best-design-inspiration-apps" className={styles.blogTeaserLink}>
-              Read the guide
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className={`${styles.ctaSection}`} id="start" aria-labelledby="cta-title">
-        <div className={styles.ctaGlow} aria-hidden="true" />
-        <div className={styles.container} style={{ position: "relative" }}>
-          <p className={styles.sectionEyebrow} style={{ textAlign: "center" }}>Start now</p>
-          <h2 id="cta-title" className={styles.sectionTitle}>
-            Build your design memory<br />before you need it.
-          </h2>
-          <p className={styles.sectionBody}>
-            Nyabag is being built for designers who collect references obsessively and lose them constantly. Start saving your best inspiration in one place.
-          </p>
-          <div className={styles.ctaActions}>
-            <EarlyAccessForm compact />
-          </div>
-        </div>
-      </section>
-
-      {/* ── FOOTER ── */}
-      <footer className={styles.footer} role="contentinfo">
-        <div>
-          <div className={styles.footerLogo}>nyabag</div>
-          <div className={styles.footerTagline}>Your second memory for design.</div>
-        </div>
-        <nav className={styles.footerLinks} aria-label="Footer navigation">
-          {[
-            { href: "/", label: "Product" },
-            { href: "/blog", label: "Blog" },
-            { href: "/privacy", label: "Privacy" },
-            { href: "/terms", label: "Terms" },
-            { href: "mailto:hello@nyabag.com", label: "Contact" },
-          ].map(({ href, label }) => (
-            <Link key={label} href={href} className={styles.footerLink}>
-              {label}
-            </Link>
+        <div className="lp-palette" aria-label="Extracted color palette">
+          {palette.map((c) => (
+            <div key={c} className="lp-swatch" style={{ background: c }} />
           ))}
-        </nav>
-        <p className={styles.footerCredit}>
-          Built with ❤️ by{" "}
-          <Link href="https://www.linkedin.com/in/jayanzth" target="_blank" rel="noopener noreferrer">
-            Jayanth
-          </Link>
-        </p>
-      </footer>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/* ─────────────────────────────────────────
+   FeatureTab panel
+───────────────────────────────────────── */
+function FeatureTabs({
+  tabs,
+}: {
+  tabs: { label: string; content: React.ReactNode }[];
+}) {
+  const [active, setActive] = useState(0);
+  return (
+    <div className="lp-ftabs">
+      <div className="lp-ftab-list" role="tablist">
+        {tabs.map((t, i) => (
+          <button
+            key={t.label}
+            role="tab"
+            aria-selected={i === active}
+            className={`lp-ftab-btn${i === active ? " active" : ""}`}
+            onClick={() => setActive(i)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="lp-ftab-panel" role="tabpanel">
+        {tabs[active].content}
+      </div>
     </div>
   );
 }
+
+/* ─────────────────────────────────────────
+   AnimatedSearchBar
+───────────────────────────────────────── */
+const QUERIES = [
+  '"dark SaaS hero section"',
+  '"minimal onboarding flow"',
+  '"tab bar navigation mobile"',
+  '"pricing page with toggle"',
+  '"bento grid layout"',
+  '"settings page clean"',
+];
+
+function AnimatedSearch() {
+  const [idx, setIdx] = useState(0);
+  const [text, setText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  useEffect(() => {
+    const target = QUERIES[idx];
+    let timeout: ReturnType<typeof setTimeout>;
+    if (!deleting && text.length < target.length) {
+      timeout = setTimeout(() => setText(target.slice(0, text.length + 1)), 55);
+    } else if (!deleting && text.length === target.length) {
+      timeout = setTimeout(() => setDeleting(true), 1800);
+    } else if (deleting && text.length > 0) {
+      timeout = setTimeout(() => setText(text.slice(0, -1)), 28);
+    } else {
+      timeout = setTimeout(() => {
+        setDeleting(false);
+        setIdx((i) => (i + 1) % QUERIES.length);
+      }, 28);
+    }
+    return () => clearTimeout(timeout);
+  }, [text, deleting, idx]);
+
+  return (
+    <div className="lp-search-bar" aria-label="Search demonstration">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <circle cx="6" cy="6" r="4.5" stroke="#666" strokeWidth="1.3" />
+        <path d="M9.5 9.5L12 12" stroke="#666" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+      <span className="lp-search-text">
+        {text}<span className="lp-cursor" aria-hidden="true">|</span>
+      </span>
+      <span className="lp-search-kbd">⌘K</span>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   Canvas mock with hover interaction
+───────────────────────────────────────── */
+function CanvasMock() {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const notes = [
+    { x: 32, y: 28, w: 210, label: "Note", content: "Dark nav patterns all use icons — reconsider label-only approach in v2 refresh.", color: "#1a1a1a" },
+    { x: 264, y: 20, w: 190, label: "Link", content: "mobbin.com/patterns/navigation — iOS tab bars", color: "#111827", isLink: true },
+    { x: 32, y: 170, w: 260, label: "Section — Nav References", content: null, isSection: true, color: "transparent" },
+    { x: 300, y: 140, w: 160, label: "Color", content: null, isPalette: true, color: "#111" },
+  ];
+  return (
+    <div
+      className="lp-canvas-mock"
+      role="img"
+      aria-label="Infinite canvas showing design notes, links, and grouped references"
+    >
+      <div className="lp-canvas-dots" aria-hidden="true" />
+      {notes.map((n, i) => (
+        <div
+          key={i}
+          className={`lp-cnote${n.isSection ? " lp-csection" : ""}${hovered === i ? " lp-cnote-hover" : ""}`}
+          style={{ left: n.x, top: n.y, width: n.w, background: n.isSection ? "transparent" : n.color }}
+          onMouseEnter={() => setHovered(i)}
+          onMouseLeave={() => setHovered(null)}
+          aria-hidden="true"
+        >
+          <div className="lp-cnote-label">{n.label}</div>
+          {n.content && (
+            <div className={`lp-cnote-content${n.isLink ? " lp-cnote-link" : ""}`}>
+              {n.content}
+            </div>
+          )}
+          {n.isSection && (
+            <div className="lp-csection-cards">
+              {["linear.app — Sidebar", "vercel.com — Top nav", "notion.so — Nested"].map((s) => (
+                <div key={s} className="lp-csection-card">{s}</div>
+              ))}
+            </div>
+          )}
+          {n.isPalette && (
+            <div className="lp-cpalette-row">
+              {["#0a0a0a","#5865f2","#ededed","#888","#16213e"].map((c) => (
+                <div key={c} className="lp-cpalette-chip" style={{ background: c }} />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   SECTION WRAPPER with scroll fade
+───────────────────────────────────────── */
+function FadeSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const { ref, inView } = useInView(0.1);
+  return (
+    <div ref={ref} className={`lp-fade${inView ? " lp-fade-in" : ""} ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   MAIN COMPONENT
+───────────────────────────────────────── */
+function NyabagLogo({ compact = false }: { compact?: boolean }) {
+  return (
+    <Image
+      src="/assets/Nyabag-Dark-Logo.svg"
+      alt="Nyabag"
+      width={594}
+      height={118}
+      priority
+      className={compact ? "lp-logo-img lp-logo-img-compact" : "lp-logo-img"}
+    />
+  );
+}
+
+function EarlyAccessForm({
+  source,
+  variant = "hero",
+}: {
+  source: "landing-hero" | "landing-cta";
+  variant?: "hero" | "cta";
+}) {
+  const inputId = useId();
+  const [state, formAction, pending] = useActionState(
+    submitEarlyAccessSignupForm,
+    earlyAccessInitialState
+  );
+  const success = state.status === "success";
+  const error = state.status === "error";
+
+  return (
+    <form className={`lp-ea-form lp-ea-form-${variant}`} action={formAction}>
+      <input type="hidden" name="source" value={source} />
+      <label className="lp-ea-label" htmlFor={inputId}>
+        Email address
+      </label>
+      <div className="lp-ea-row">
+        <input
+          id={inputId}
+          name="email"
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          required
+          maxLength={255}
+          placeholder="you@example.com"
+          className="lp-ea-input"
+          aria-describedby={`${inputId}-status`}
+          disabled={pending || success}
+        />
+        <button className="lp-ea-submit" type="submit" disabled={pending || success}>
+          {pending ? "Joining..." : success ? "Joined" : "Join early access"}
+        </button>
+      </div>
+      <p
+        id={`${inputId}-status`}
+        className={`lp-ea-status${success ? " success" : ""}${error ? " error" : ""}`}
+        aria-live="polite"
+      >
+        {state.message || "Get an invite when early access spots open."}
+      </p>
+    </form>
+  );
+}
+
+export function LandingPage() {
+  /* Active section tracking for nav dot */
+  const [activeSection, setActiveSection] = useState(0);
+  const sectionsRef = useRef<HTMLElement[]>([]);
+  const progressSections = [
+    { href: "#main-content", label: "Hero" },
+    { href: "#save", label: "Save" },
+    { href: "#enrich", label: "Enrich" },
+    { href: "#organize", label: "Organize" },
+    { href: "#think", label: "Canvas" },
+  ];
+
+  const registerSection = useCallback((el: HTMLElement | null, i: number) => {
+    if (el) sectionsRef.current[i] = el;
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY + window.innerHeight / 3;
+      let current = 0;
+      sectionsRef.current.forEach((s, i) => {
+        if (s && s.offsetTop <= scrollY) current = i;
+      });
+      setActiveSection(current);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  return (
+    <>
+      <SchemaOrg />
+      <style>{CSS}</style>
+
+      {/* ── NAV ── */}
+      <nav className="lp-nav" aria-label="Main navigation">
+        <Link href="/" className="lp-nav-logo" aria-label="Nyabag home">
+          <NyabagLogo compact />
+        </Link>
+
+        <div className="lp-nav-links" role="list">
+          {[
+            ["#save","Save"],["#enrich","Enrich"],["#organize","Organize"],["#think","Canvas"],
+          ].map(([href, label]) => (
+            <a key={href} href={href} className="lp-nav-link" role="listitem">{label}</a>
+          ))}
+        </div>
+
+        <div className="lp-nav-right">
+          <a href="#early-access" className="lp-nav-cta">Join early access</a>
+        </div>
+      </nav>
+
+      {/* ── SECTION PROGRESS DOTS ── */}
+      <nav className="lp-progress-dots" aria-label="Section navigation">
+        {progressSections.map((section, i) => (
+          <a
+            key={section.href}
+            href={section.href}
+            className={`lp-progress-link${activeSection === i ? " active" : ""}`}
+            aria-current={activeSection === i ? "true" : undefined}
+          >
+            <span className="lp-pdot" aria-hidden="true" />
+            <span className="lp-pdot-label">{section.label}</span>
+          </a>
+        ))}
+      </nav>
+
+      <main id="main-content">
+
+        {/* ════════════════════════════════════
+            HERO
+        ════════════════════════════════════ */}
+        <header
+          className="lp-hero"
+          ref={(el) => registerSection(el as HTMLElement, 0)}
+          aria-labelledby="hero-headline"
+        >
+          <div className="lp-hero-bg" aria-hidden="true">
+            <div className="lp-hero-grid" />
+            <div className="lp-hero-radial" />
+          </div>
+
+          <div className="lp-hero-content">
+            <div className="lp-badge" aria-label="Status">
+              <span className="lp-badge-dot" aria-hidden="true" />
+              Early access for designers
+            </div>
+
+            <h1 id="hero-headline" className="lp-hero-h1">
+              Your second memory<br />
+              <em>for design.</em>
+            </h1>
+
+            <p className="lp-hero-sub">
+              Stop losing references across screenshots, WhatsApp, and forgotten tabs.
+              Join early access to build a searchable design memory before your next project needs it.
+            </p>
+
+            <EarlyAccessForm source="landing-hero" />
+
+            <p className="lp-hero-trust">
+              Built for designers who keep forgetting where they saved that one perfect reference.
+            </p>
+          </div>
+
+          {/* Hero product mockup */}
+          <div className="lp-hero-mockup" aria-label="Nyabag visual bookmark moodboard showing saved design references with screenshots, color palettes, and tags" role="img">
+            <div className="lp-mockup-chrome" aria-hidden="true">
+              <span className="lp-chrome-dot" style={{ background: "#3a3a3a" }} />
+              <span className="lp-chrome-dot" style={{ background: "#333" }} />
+              <span className="lp-chrome-dot" style={{ background: "#2e2e2e" }} />
+              <div className="lp-chrome-url">nyabag.com/library</div>
+            </div>
+            <div className="lp-mockup-body">
+              <aside className="lp-mockup-sidebar" aria-hidden="true">
+                <div className="lp-ms-section">Library</div>
+                {[["All saves", true],["UI References",false],["Typography",false],["Color Inspo",false]].map(([l, a]) => (
+                  <div key={l as string} className={`lp-ms-item${a ? " active" : ""}`}>
+                    <div className="lp-ms-dot" />{l}
+                  </div>
+                ))}
+                <div className="lp-ms-section" style={{ marginTop: 16 }}>Canvas</div>
+                {["Moodboard 01","Project Refs"].map((l) => (
+                  <div key={l} className="lp-ms-item">
+                    <div className="lp-ms-dot" />{l}
+                  </div>
+                ))}
+              </aside>
+
+              <div className="lp-mockup-main">
+                <AnimatedSearch />
+                <div className="lp-mockup-grid" role="list">
+                  <BookmarkCard title="Linear — The product development system" domain="linear.app" tags={["product","saas","dark"]} palette={palettes.linear} delay={0} thumb="linear-gradient(145deg,#11141a,#171922)" />
+                  <BookmarkCard title="Rauno — Design Engineer portfolio" domain="rauno.me" tags={["portfolio","minimal"]} palette={palettes.rauno} delay={80} thumb="linear-gradient(145deg,#151515,#202020)" />
+                  <BookmarkCard title="Vercel — Deploy and ship faster" domain="vercel.com" tags={["dashboard","ui"]} palette={palettes.vercel} delay={160} thumb="linear-gradient(145deg,#111319,#181a22)" />
+                  <BookmarkCard title="Stripe — The new standard in payments" domain="stripe.com" tags={["landing","blue","clean"]} palette={palettes.stripe} delay={240} thumb="linear-gradient(145deg,#10283e,#16334b)" />
+                  <BookmarkCard title="Figma — Collaborative design tool" domain="figma.com" tags={["tool","colorful"]} palette={palettes.figma} delay={320} thumb="linear-gradient(145deg,#1b1b1b,#252525)" />
+                  <BookmarkCard title="Mobbin — Mobile design patterns" domain="mobbin.com" tags={["patterns","mobile"]} palette={palettes.mobbin} delay={400} thumb="linear-gradient(145deg,#080808,#141414)" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* ════════════════════════════════════
+            1.0 SAVE
+        ════════════════════════════════════ */}
+        <section
+          id="save"
+          className="lp-section"
+          ref={(el) => registerSection(el as HTMLElement, 1)}
+          aria-labelledby="save-title"
+        >
+          <FadeSection>
+            <div className="lp-section-label">
+              <span className="lp-section-num">1.0</span>
+              <span className="lp-section-slug">Save</span>
+            </div>
+
+            <div className="lp-section-intro">
+              <h2 id="save-title" className="lp-section-h2">
+                Capture design inspiration<br />the moment you see it.
+              </h2>
+              <p className="lp-section-body">
+                Paste a URL from anywhere — desktop or mobile.
+                Nyabag does the rest in seconds.
+              </p>
+              <a href="#early-access" className="lp-section-link">
+                Join early access <span aria-hidden="true">→</span>
+              </a>
+            </div>
+
+            <FeatureTabs tabs={[
+              {
+                label: "Website capture",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Paste a URL. Done.</h3>
+                      <p className="lp-tab-p">
+                        Add any website to your library in one step. Nyabag automatically captures a full screenshot, extracts the page title, and builds a searchable memory card — no manual tagging needed to get started.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-url-input-demo">
+                        <div className="lp-uid-label">New bookmark</div>
+                        <div className="lp-uid-field">
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6 1l5 5-5 5" stroke="#555" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          <span style={{ color: "#888", fontSize: 12 }}>https://</span>
+                          <span style={{ color: "#e0e0e0", fontSize: 12, marginLeft: 2 }}>dribbble.com/shots/2284910</span>
+                          <span className="lp-cursor" style={{ marginLeft: 1 }}>|</span>
+                        </div>
+                        <div className="lp-uid-status">
+                          <div className="lp-uid-dot" />
+                          Fetching screenshot &amp; metadata…
+                        </div>
+                        <div className="lp-uid-preview">
+                          <div className="lp-uid-thumb" style={{ background: "linear-gradient(135deg,#1a1a2e,#16213e)" }} />
+                          <div className="lp-uid-meta">
+                            <div className="lp-uid-metatitle">Navigation Patterns — Dribbble</div>
+                            <div className="lp-uid-metaurl">dribbble.com</div>
+                            <div className="lp-tag-row" style={{ marginTop: 6 }}>
+                              <span className="lp-tag">navigation</span>
+                              <span className="lp-tag">mobile</span>
+                              <span className="lp-tag">dark</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: "Mobile share",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Save from your phone instantly.</h3>
+                      <p className="lp-tab-p">
+                        Found something while scrolling? Share the URL directly to Nyabag from Safari, Chrome, or any app. It lands in your library. Organize it later on desktop when you have focus.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-mobile-share">
+                        <div className="lp-share-sheet">
+                          <div className="lp-share-handle" />
+                          <div className="lp-share-title">Share to…</div>
+                          <div className="lp-share-row">
+                            <div className="lp-share-app lp-share-nyabag">
+                              <div className="lp-share-app-icon">
+                                <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><rect x="1" y="1" width="7" height="7" rx="1.5" fill="#fff"/><rect x="10" y="1" width="7" height="7" rx="1.5" fill="#fff" fillOpacity=".5"/><rect x="1" y="10" width="7" height="7" rx="1.5" fill="#fff" fillOpacity=".5"/><rect x="10" y="10" width="7" height="7" rx="1.5" fill="#fff" fillOpacity=".2"/></svg>
+                              </div>
+                              <div className="lp-share-app-label">Nyabag</div>
+                            </div>
+                            {["Notes","Safari","Messages"].map((a) => (
+                              <div key={a} className="lp-share-app">
+                                <div className="lp-share-app-icon lp-share-app-icon-dim" />
+                                <div className="lp-share-app-label">{a}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="lp-share-confirm">Saved to Nyabag</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: "Import references",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Bring your existing collection.</h3>
+                      <p className="lp-tab-p">
+                        Already have bookmarks scattered across browsers or other tools? Import them in bulk. Nyabag processes each URL and builds a visual card for every reference you have already collected.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-import-demo">
+                        <div className="lp-import-header">Import references</div>
+                        <div className="lp-import-drop">
+                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v10M6 9l4 4 4-4" stroke="#555" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><rect x="2" y="14" width="16" height="4" rx="1.5" stroke="#555" strokeWidth="1.3"/></svg>
+                          <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>Drop bookmarks.html or paste URLs</div>
+                        </div>
+                        <div className="lp-import-progress">
+                          <div className="lp-import-prog-label">Processing 24 URLs…</div>
+                          <div className="lp-import-bar"><div className="lp-import-fill" /></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+            ]} />
+          </FadeSection>
+        </section>
+
+        {/* ════════════════════════════════════
+            2.0 ENRICH
+        ════════════════════════════════════ */}
+        <section
+          id="enrich"
+          className="lp-section lp-section-alt"
+          ref={(el) => registerSection(el as HTMLElement, 2)}
+          aria-labelledby="enrich-title"
+        >
+          <FadeSection>
+            <div className="lp-section-label">
+              <span className="lp-section-num">2.0</span>
+              <span className="lp-section-slug">Enrich</span>
+            </div>
+
+            <div className="lp-section-intro">
+              <h2 id="enrich-title" className="lp-section-h2">
+                Every save becomes a<br />rich design memory.
+              </h2>
+              <p className="lp-section-body">
+                Nyabag automatically enriches each bookmark with the visual and design context you would otherwise lose.
+              </p>
+            </div>
+
+            <FeatureTabs tabs={[
+              {
+                label: "Screenshots",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">See it, not just the URL.</h3>
+                      <p className="lp-tab-p">
+                        Nyabag uses Microlink to capture a full-page screenshot of every saved website. So instead of a dead link or a forgotten domain, you see exactly what you saved — even if the site changes later.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-screenshot-demo">
+                        <div className="lp-sd-before">
+                          <div className="lp-sd-label">Without Nyabag</div>
+                          <div className="lp-sd-bookmark-row">
+                            {["dribbble.com/shots/22...", "mobbin.com/screens/...", "ui8.net/products/..."].map((u) => (
+                              <div key={u} className="lp-sd-plain-bookmark">
+                                <div className="lp-sd-favicon" />
+                                <span>{u}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="lp-sd-arrow">→</div>
+                        <div className="lp-sd-after">
+                          <div className="lp-sd-label">With Nyabag</div>
+                          <div className="lp-mockup-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            {[
+                              { t: "Shot — Dribbble", d: "dribbble.com", bg: "linear-gradient(135deg,#1a1a2e,#2a1a3a)", p: palettes.linear },
+                              { t: "Screen — Mobbin", d: "mobbin.com", bg: "linear-gradient(135deg,#000,#111)", p: palettes.mobbin },
+                            ].map(({ t, d, bg, p }) => (
+                              <BookmarkCard key={d} title={t} domain={d} tags={[]} palette={p} thumb={bg} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: "Color palettes",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Extract colors automatically.</h3>
+                      <p className="lp-tab-p">
+                        Nyabag analyses every screenshot and extracts the dominant color palette. So when you are looking for references with a specific visual feel — deep navy, warm neutrals, high contrast — you can see it at a glance without opening the link.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-palette-demo">
+                        {[
+                          { name: "Linear", p: palettes.linear },
+                          { name: "Stripe", p: palettes.stripe },
+                          { name: "Figma", p: palettes.figma },
+                          { name: "Vercel", p: palettes.vercel },
+                          { name: "Rauno", p: palettes.rauno },
+                        ].map(({ name, p }) => (
+                          <div key={name} className="lp-pd-row">
+                            <div className="lp-pd-name">{name}</div>
+                            <div className="lp-pd-swatches">
+                              {p.map((c) => (
+                                <div key={c} className="lp-pd-swatch" style={{ background: c }} title={c} />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: "Metadata & tags",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Context without the manual work.</h3>
+                      <p className="lp-tab-p">
+                        Nyabag scrapes the page title, meta description, and Open Graph summary. It then infers relevant tags — dark mode, onboarding, pricing, or mobile — so your library is searchable from the moment you save.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-metadata-demo">
+                        <div className="lp-meta-field">
+                          <div className="lp-meta-label">Title</div>
+                          <div className="lp-meta-value">Linear — The product development system</div>
+                        </div>
+                        <div className="lp-meta-field">
+                          <div className="lp-meta-label">Summary</div>
+                          <div className="lp-meta-value" style={{ fontSize: 11, lineHeight: 1.5 }}>Purpose-built for planning and building products. Designed for speed and focus.</div>
+                        </div>
+                        <div className="lp-meta-field">
+                          <div className="lp-meta-label">Auto tags</div>
+                          <div className="lp-tag-row">
+                            {["saas","product","dark","dashboard","sidebar"].map((t) => (
+                              <span key={t} className="lp-tag">{t}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="lp-meta-field">
+                          <div className="lp-meta-label">Font hints</div>
+                          <div className="lp-meta-value">Inter Display — sans-serif system</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: "Font hints",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Know what fonts they use.</h3>
+                      <p className="lp-tab-p">
+                        Nyabag detects and surfaces font hints for every saved page. So when you are deep in a project and need to check what typeface that one site used — you do not need to open DevTools. It is already in your memory card.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-font-demo">
+                        {[
+                          { site: "linear.app", font: "Inter Display", cat: "Sans-serif" },
+                          { site: "stripe.com", font: "Camphor", cat: "Sans-serif" },
+                          { site: "rauno.me", font: "Geist Mono", cat: "Monospace" },
+                          { site: "vercel.com", font: "Geist", cat: "Sans-serif" },
+                        ].map(({ site, font, cat }) => (
+                          <div key={site} className="lp-font-row">
+                            <div className="lp-font-site">{site}</div>
+                            <div className="lp-font-name">{font}</div>
+                            <div className="lp-font-cat">{cat}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+            ]} />
+          </FadeSection>
+        </section>
+
+        {/* ════════════════════════════════════
+            3.0 ORGANIZE
+        ════════════════════════════════════ */}
+        <section
+          id="organize"
+          className="lp-section"
+          ref={(el) => registerSection(el as HTMLElement, 3)}
+          aria-labelledby="organize-title"
+        >
+          <FadeSection>
+            <div className="lp-section-label">
+              <span className="lp-section-num">3.0</span>
+              <span className="lp-section-slug">Organize</span>
+            </div>
+
+            <div className="lp-section-intro">
+              <h2 id="organize-title" className="lp-section-h2">
+                A visual library that stays<br />searchable forever.
+              </h2>
+              <p className="lp-section-body">
+                Browse your inspiration visually. Search it precisely. Find what you need in seconds — not minutes.
+              </p>
+            </div>
+
+            <FeatureTabs tabs={[
+              {
+                label: "Visual moodboard",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Your inspiration, beautifully surfaced.</h3>
+                      <p className="lp-tab-p">
+                        Nyabag renders every saved reference as a visual card — screenshot preview, color palette, tags, and source URL all in one place. Browse your entire library the way designers think: visually, not through text lists.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-mockup-grid lp-moodboard-grid">
+                        {[
+                          { t:"Linear", d:"linear.app", tags:["saas","dark"], bg:"linear-gradient(135deg,#0f1117,#1a1d27)", p:palettes.linear },
+                          { t:"Stripe", d:"stripe.com", tags:["payments","clean"], bg:"linear-gradient(135deg,#0a2540,#0d3159)", p:palettes.stripe },
+                          { t:"Figma", d:"figma.com", tags:["tool","colorful"], bg:"linear-gradient(135deg,#1e1e1e,#2d2d2d)", p:palettes.figma },
+                          { t:"Vercel", d:"vercel.com", tags:["dashboard","ui"], bg:"linear-gradient(135deg,#0f1117,#16192a)", p:palettes.vercel },
+                        ].map(({ t, d, tags, bg, p }, i) => (
+                          <BookmarkCard key={d} title={t} domain={d} tags={tags} palette={p} delay={i * 60} thumb={bg} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: "Smart search",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Search across everything.</h3>
+                      <p className="lp-tab-p">
+                        Search your entire library by title, URL, tags, your own notes, the auto-generated summary, or the design context attached to each save. Nyabag searches all of it at once. Type what you remember — Nyabag finds it.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-search-demo">
+                        <AnimatedSearch />
+                        <div className="lp-search-results">
+                          <div className="lp-search-label">4 results for dark navigation</div>
+                          {[
+                            { t: "Linear — Sidebar nav", d: "linear.app", tags: ["dark","navigation","sidebar"] },
+                            { t: "Vercel — Top nav pattern", d: "vercel.com", tags: ["dark","topnav"] },
+                            { t: "Mobbin — Tab bar patterns", d: "mobbin.com", tags: ["mobile","dark","tabbar"] },
+                            { t: "Raycast — Command menu", d: "raycast.com", tags: ["dark","command"] },
+                          ].map(({ t, d, tags }) => (
+                            <div key={d} className="lp-sr-item">
+                              <div className="lp-sr-thumb" style={{ background: "linear-gradient(135deg,#1a1a2e,#222)" }} />
+                              <div className="lp-sr-meta">
+                                <div className="lp-sr-title">{t}</div>
+                                <div className="lp-sr-domain">{d}</div>
+                                <div className="lp-tag-row" style={{ marginTop: 4 }}>
+                                  {tags.map((tg) => <span key={tg} className="lp-tag">{tg}</span>)}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: "Bookmark detail",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Every save has depth.</h3>
+                      <p className="lp-tab-p">
+                        Open any bookmark to see its full detail page — the screenshot, all metadata, your personal note, extracted palette, font hints, and source link. Add notes at save time or later.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-detail-demo">
+                        <div className="lp-detail-thumb" style={{ background: "linear-gradient(135deg,#0a2540,#0d3159)" }} />
+                        <div className="lp-detail-body">
+                          <div className="lp-detail-title">Stripe — The new standard in online payments</div>
+                          <div className="lp-detail-domain">stripe.com · Saved 2 days ago</div>
+                          <div className="lp-detail-section-label">Your note</div>
+                          <div className="lp-detail-note">Love the subtle gradient on the pricing cards. Clean type hierarchy. Check the CTA button style.</div>
+                          <div className="lp-detail-section-label">Palette</div>
+                          <div className="lp-palette">
+                            {palettes.stripe.map((c) => (
+                              <div key={c} className="lp-swatch" style={{ background: c, height: 16, borderRadius: 3 }} />
+                            ))}
+                          </div>
+                          <div className="lp-detail-section-label" style={{ marginTop: 10 }}>Tags</div>
+                          <div className="lp-tag-row">
+                            {["payments","landing","blue","clean","gradient"].map((t) => <span key={t} className="lp-tag">{t}</span>)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+            ]} />
+          </FadeSection>
+        </section>
+
+        {/* ════════════════════════════════════
+            4.0 THINK / CANVAS
+        ════════════════════════════════════ */}
+        <section
+          id="think"
+          className="lp-section lp-section-alt"
+          ref={(el) => registerSection(el as HTMLElement, 4)}
+          aria-labelledby="canvas-title"
+        >
+          <FadeSection>
+            <div className="lp-section-label">
+              <span className="lp-section-num">4.0</span>
+              <span className="lp-section-slug">Think</span>
+            </div>
+
+            <div className="lp-section-intro">
+              <h2 id="canvas-title" className="lp-section-h2">
+                From saved references to<br />structured ideas.
+              </h2>
+              <p className="lp-section-body">
+                The canvas is your thinking layer. Group references, compare directions, and shape raw inspiration into something usable.
+              </p>
+            </div>
+
+            <FeatureTabs tabs={[
+              {
+                label: "Infinite canvas",
+                content: (
+                  <div className="lp-tab-content lp-tab-content-canvas">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Think spatially.</h3>
+                      <p className="lp-tab-p">
+                        Nyabag canvas is a freeform workspace inspired by FigJam. Drag notes, links, images, and videos anywhere. Resize them. Group related references in sections. The canvas has no boundaries — just space to think.
+                      </p>
+                      <ul className="lp-feature-list">
+                        <li>Text notes, link notes, image notes</li>
+                        <li>Video notes and social embeds</li>
+                        <li>Draggable and resizable blocks</li>
+                        <li>Grouped sections for clustering ideas</li>
+                      </ul>
+                    </div>
+                    <div className="lp-tab-visual">
+                      <CanvasMock />
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: "Note types",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Six types of canvas blocks.</h3>
+                      <p className="lp-tab-p">
+                        Every format a designer thinks in — text observations, reference links, inspiration images, video walkthroughs, social embeds, and section labels — has a native block type on the canvas.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-note-types">
+                        {[
+                          { label: "Text note", icon: "T", desc: "Observations, decisions, questions" },
+                          { label: "Link note", icon: "↗", desc: "URLs with title preview" },
+                          { label: "Image note", icon: "⬜", desc: "Drag in any image" },
+                          { label: "Video note", icon: "▶", desc: "YouTube, Loom, Vimeo" },
+                          { label: "Social embed", icon: "◇", desc: "Twitter, Figma, CodePen" },
+                          { label: "Section group", icon: "⬡", desc: "Cluster related items" },
+                        ].map(({ label, icon, desc }) => (
+                          <div key={label} className="lp-note-type-card">
+                            <div className="lp-nt-icon">{icon}</div>
+                            <div>
+                              <div className="lp-nt-label">{label}</div>
+                              <div className="lp-nt-desc">{desc}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: "Grouped sections",
+                content: (
+                  <div className="lp-tab-content">
+                    <div className="lp-tab-text">
+                      <h3 className="lp-tab-h3">Group references by theme or direction.</h3>
+                      <p className="lp-tab-p">
+                        Draw a section around any cluster of notes. Label it by theme, audit, or product direction. Sections give structure to freeform thinking without forcing you into folders.
+                      </p>
+                    </div>
+                    <div className="lp-tab-visual" aria-hidden="true">
+                      <div className="lp-canvas-mock" style={{ height: 280 }}>
+                        <div className="lp-canvas-dots" />
+                        <div className="lp-csection" style={{ left: 20, top: 20, width: 260, bottom: 20 }}>
+                          <div className="lp-cnote-label">Nav Patterns</div>
+                          <div className="lp-csection-cards">
+                            {["linear.app — Tab nav","vercel.com — Sidebar","notion.so — Nested","raycast.com — Command"].map((s) => (
+                              <div key={s} className="lp-csection-card">{s}</div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="lp-cnote" style={{ right: 20, top: 20, width: 170 }}>
+                          <div className="lp-cnote-label">Note</div>
+                          <div className="lp-cnote-content">All use icons. Reconsider label-only approach.</div>
+                        </div>
+                        <div className="lp-cnote" style={{ right: 20, bottom: 20, width: 170 }}>
+                          <div className="lp-cnote-label">Decision</div>
+                          <div className="lp-cnote-content">Go with icon + label for primary tabs only.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+            ]} />
+          </FadeSection>
+        </section>
+
+        {/* ════════════════════════════════════
+            DIFFERENTIATION
+        ════════════════════════════════════ */}
+        <section className="lp-diff-section" aria-labelledby="diff-title">
+          <FadeSection>
+            <div className="lp-container">
+              <p className="lp-section-eyebrow">Why Nyabag</p>
+              <h2 id="diff-title" className="lp-diff-h2">Not another bookmark graveyard.</h2>
+              <p className="lp-diff-sub">
+                Designers have tried bookmarks, screenshots, Notion, and WhatsApp. None of them were built for how design inspiration actually works.
+              </p>
+
+              <div className="lp-diff-grid" role="list">
+                {[
+                  { old: "Bookmarks store links.", next: "Nyabag stores context.", body: "A URL with a favicon tells you nothing. Nyabag gives you the screenshot, summary, palette, tags, and your own note — all in one card." },
+                  { old: "Folders hide inspiration.", next: "Nyabag keeps it visual.", body: "Nested directories force you to remember where you put things. Nyabag surfaces everything visually so you browse instead of excavate." },
+                  { old: "Screenshots lose their source.", next: "Nyabag connects both.", body: "An image file tells you nothing about where it came from. Every Nyabag card links back to the original URL — always." },
+                  { old: "Notes alone are flat.", next: "Nyabag gives you a workspace.", body: "Text notes don't hold references. Nyabag's canvas lets you think spatially — combining notes, links, images, and saved cards in one place." },
+                ].map(({ old, next, body }) => (
+                  <div key={old} className="lp-diff-item" role="listitem">
+                    <div className="lp-diff-old">{old}</div>
+                    <div className="lp-diff-new">{next}</div>
+                    <p className="lp-diff-body">{body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </FadeSection>
+        </section>
+
+        {/* ════════════════════════════════════
+            CTA
+        ════════════════════════════════════ */}
+        <section id="early-access" className="lp-cta-section" aria-labelledby="cta-title">
+          <FadeSection>
+            <div className="lp-container lp-cta-inner">
+              <div className="lp-cta-glow" aria-hidden="true" />
+              <p className="lp-section-eyebrow" style={{ textAlign: "center" }}>Early access</p>
+              <h2 id="cta-title" className="lp-cta-h2">
+                Build your design memory<br />before you need it.
+              </h2>
+              <p className="lp-cta-body">
+                Nyabag is being built for designers who collect references obsessively and lose them constantly.
+                Join the early access list and get an invite when spots open.
+              </p>
+              <EarlyAccessForm source="landing-cta" variant="cta" />
+            </div>
+          </FadeSection>
+        </section>
+
+      </main>
+
+      {/* ── FOOTER ── */}
+      <footer className="lp-footer" role="contentinfo">
+        <div className="lp-footer-inner">
+          <div className="lp-footer-brand">
+            <Link href="/" className="lp-nav-logo" aria-label="Nyabag">
+              <NyabagLogo compact />
+            </Link>
+            <p className="lp-footer-tagline">Your second memory for design.</p>
+          </div>
+
+          <nav className="lp-footer-nav" aria-label="Footer links">
+            <div className="lp-footer-col">
+              <div className="lp-footer-col-title">Product</div>
+              {[["#save","Save"],["#enrich","Enrich"],["#organize","Organize"],["#think","Canvas"],["#early-access","Early access"]].map(([h,l]) => (
+                <a key={l} href={h} className="lp-footer-link">{l}</a>
+              ))}
+            </div>
+            <div className="lp-footer-col">
+              <div className="lp-footer-col-title">Legal</div>
+              {[["/privacy","Privacy"],["/terms","Terms"],["/contact","Contact"]].map(([h,l]) => (
+                <a key={l} href={h} className="lp-footer-link">{l}</a>
+              ))}
+            </div>
+          </nav>
+        </div>
+        <div className="lp-footer-bottom">
+          <span>
+            © {new Date().getFullYear()} Nyabag. Made with ❤️ by{" "}
+            <a
+              href="https://www.linkedin.com/in/jayanzth"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="lp-footer-credit-link"
+            >
+              Jayanth
+            </a>
+          </span>
+        </div>
+      </footer>
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────
+   ALL CSS — inlined for portability
+   (move to landing.module.css if preferred)
+───────────────────────────────────────── */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Inter+Display:ital,wght@0,300;0,400;0,500;0,600;0,700;1,700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#08090a;
+  --bg1:#0f1010;
+  --bg2:#161717;
+  --bg3:#1e1f1f;
+  --bg4:#272828;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.11);
+  --text:#e8e8e8;
+  --muted:#888;
+  --dim:#4a4a4a;
+  --white:#fff;
+  --r4:4px;--r6:6px;--r8:8px;--r12:12px;--r16:16px;--r20:20px;
+}
+
+html{font-size:16px;scroll-behavior:smooth;background:var(--bg)}
+body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',system-ui,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6;overflow-x:hidden}
+
+/* SCROLL FADE */
+.lp-fade{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+.lp-fade-in{opacity:1;transform:none}
+
+/* NAV */
+.lp-nav{position:fixed;top:0;left:0;right:0;z-index:200;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;background:rgba(8,9,10,0.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.lp-nav-logo{display:flex;align-items:center;text-decoration:none}
+.lp-logo-img{display:block;width:146px;height:auto}
+.lp-logo-img-compact{width:112px}
+.lp-nav-links{display:flex;gap:28px}
+.lp-nav-link{font-size:13.5px;color:var(--muted);text-decoration:none;transition:color .2s}
+.lp-nav-link:hover{color:var(--text)}
+.lp-nav-right{display:flex;align-items:center;gap:12px}
+.lp-nav-login{font-size:13.5px;color:var(--muted);text-decoration:none;transition:color .2s}
+.lp-nav-login:hover{color:var(--text)}
+.lp-nav-cta{background:var(--white);color:#08090a;padding:7px 18px;border-radius:var(--r6);font-size:13.5px;font-weight:500;text-decoration:none;transition:opacity .2s}
+.lp-nav-cta:hover{opacity:.85}
+
+/* PROGRESS DOTS */
+.lp-progress-dots{position:fixed;right:24px;top:50%;transform:translateY(-50%);z-index:100;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.lp-progress-link{position:relative;display:flex;align-items:center;justify-content:flex-end;gap:9px;min-width:74px;height:12px;text-decoration:none;outline:none}
+.lp-pdot{width:5px;height:5px;border-radius:50%;background:var(--dim);transition:background .25s,transform .25s,box-shadow .25s;cursor:pointer;flex-shrink:0}
+.lp-progress-link.active .lp-pdot{background:var(--white);transform:scale(1.4);box-shadow:0 0 8px rgba(255,255,255,.18)}
+.lp-pdot-label{position:absolute;right:14px;color:var(--muted);font-size:11.5px;letter-spacing:.01em;white-space:nowrap;opacity:0;transform:translateX(6px);pointer-events:none;transition:opacity .2s ease,transform .2s ease,color .2s}
+.lp-progress-link:hover .lp-pdot,.lp-progress-link:focus-visible .lp-pdot{background:var(--white);transform:scale(1.25)}
+.lp-progress-link:hover .lp-pdot-label,.lp-progress-link:focus-visible .lp-pdot-label{opacity:1;transform:translateX(0);color:var(--text)}
+
+/* BTNS */
+.lp-btn-white{display:inline-flex;align-items:center;gap:8px;background:var(--white);color:#08090a;padding:11px 24px;border-radius:var(--r8);font-size:14.5px;font-weight:500;text-decoration:none;transition:opacity .2s,transform .2s}
+.lp-btn-white:hover{opacity:.88;transform:translateY(-1px)}
+.lp-btn-lg{padding:14px 32px;font-size:15px}
+.lp-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:transparent;color:var(--muted);padding:11px 20px;border-radius:var(--r8);font-size:14.5px;text-decoration:none;border:1px solid rgba(255,255,255,0.1);transition:color .2s,border-color .2s}
+.lp-btn-ghost:hover{color:var(--text);border-color:rgba(255,255,255,0.18)}
+.lp-section-link{font-size:14px;color:var(--muted);text-decoration-line:underline;text-decoration-thickness:1px;text-decoration-color:rgba(74,158,255,.46);text-underline-offset:5px;display:inline-flex;align-items:center;gap:5px;transition:color .2s,text-decoration-color .2s;margin-top:20px}
+.lp-section-link:hover{color:var(--text);text-decoration-color:#4a9eff}
+
+/* HERO */
+.lp-hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:140px 40px 0;position:relative;overflow:hidden}
+.lp-hero-bg{position:absolute;inset:0;pointer-events:none}
+.lp-hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(ellipse 90% 60% at 50% 0%,black 30%,transparent 100%);-webkit-mask-image:radial-gradient(ellipse 90% 60% at 50% 0%,black 30%,transparent 100%)}
+.lp-hero-radial{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:500px;background:radial-gradient(ellipse,rgba(255,255,255,0.04) 0%,transparent 65%)}
+.lp-hero-content{position:relative;z-index:1;text-align:center;max-width:800px;margin:0 auto;animation:lp-fade-up .9s ease both}
+.lp-badge{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:100px;border:1px solid rgba(255,255,255,0.1);font-size:12px;color:var(--muted);margin-bottom:36px;letter-spacing:.02em}
+.lp-badge-dot{width:5px;height:5px;border-radius:50%;background:#4ade80;flex-shrink:0;box-shadow:0 0 6px #4ade80}
+.lp-hero-h1{font-family:'Inter Display',sans-serif;font-size:clamp(44px,6.5vw,84px);font-weight:700;line-height:1.0;letter-spacing:-0.045em;color:var(--white);margin-bottom:24px}
+.lp-hero-h1 em{font-style:italic;color:var(--muted)}
+.lp-hero-sub{font-size:clamp(15px,1.4vw,18px);color:var(--muted);max-width:540px;margin:0 auto 30px;line-height:1.7}
+.lp-hero-actions{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.lp-hero-trust{font-size:12.5px;color:var(--dim);font-style:italic}
+
+/* EARLY ACCESS FORM */
+.lp-ea-form{width:100%;max-width:560px;margin:0 auto 18px}
+.lp-ea-form-cta{margin-bottom:0}
+.lp-ea-label{display:block;text-align:left;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px 2px}
+.lp-ea-row{display:flex;align-items:center;gap:8px;padding:6px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.13);border-radius:var(--r12);box-shadow:0 18px 60px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05)}
+.lp-ea-input{min-width:0;flex:1;height:46px;background:transparent;border:0;outline:0;color:var(--white);font:inherit;font-size:14.5px;padding:0 12px}
+.lp-ea-input::placeholder{color:#565656}
+.lp-ea-input:disabled{opacity:.72}
+.lp-ea-submit{height:46px;white-space:nowrap;border:0;border-radius:var(--r8);background:var(--white);color:#08090a;padding:0 18px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s,transform .2s}
+.lp-ea-submit:hover:not(:disabled){opacity:.9;transform:translateY(-1px)}
+.lp-ea-submit:disabled{cursor:default;opacity:.72}
+.lp-ea-status{min-height:18px;margin:9px 2px 0;text-align:left;font-size:12.5px;color:var(--dim)}
+.lp-ea-status.success{color:#7ddf9b}
+.lp-ea-status.error{color:#ff8c8c}
+.lp-ea-form-cta .lp-ea-status,.lp-ea-form-cta .lp-ea-label{text-align:center}
+
+/* HERO MOCKUP */
+.lp-hero-mockup{position:relative;z-index:1;width:100%;max-width:1040px;margin:58px auto 0;animation:lp-fade-up .9s .18s ease both;filter:drop-shadow(0 32px 80px rgba(0,0,0,.42))}
+.lp-mockup-chrome{background:linear-gradient(180deg,#17191d,#111317);border:1px solid var(--border);border-radius:var(--r12) var(--r12) 0 0;padding:13px 18px;display:flex;align-items:center;gap:7px;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.lp-chrome-dot{width:9px;height:9px;border-radius:50%}
+.lp-chrome-url{flex:1;background:#0d0f12;border:1px solid rgba(255,255,255,.045);border-radius:5px;padding:5px 12px;font-size:11.5px;color:#6f737b;margin:0 14px;text-align:center}
+.lp-mockup-body{background:linear-gradient(150deg,#0d0f10 0%,#111315 54%,#0e1011 100%);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r16) var(--r16);display:grid;grid-template-columns:204px 1fr;min-height:460px;overflow:hidden}
+.lp-mockup-sidebar{background:rgba(12,13,15,.78);border-right:1px solid var(--border);padding:20px 14px;display:flex;flex-direction:column;gap:3px}
+.lp-ms-section{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;padding:7px 8px;margin-top:10px}
+.lp-ms-section:first-child{margin-top:0}
+.lp-ms-item{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:var(--r6);font-size:12.5px;color:var(--muted);cursor:default}
+.lp-ms-item.active{background:rgba(255,255,255,.075);color:var(--text);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.lp-ms-dot{width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#333942,#15171a);border:1px solid rgba(255,255,255,.07);flex-shrink:0}
+.lp-mockup-main{padding:22px;display:flex;flex-direction:column;gap:18px;background:transparent}
+
+/* SEARCH BAR */
+.lp-search-bar{display:flex;align-items:center;gap:10px;background:rgba(20,22,26,.92);border:1px solid rgba(255,255,255,.11);border-radius:var(--r8);padding:10px 14px;font-size:13px;color:var(--muted);box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
+.lp-search-text{flex:1;font-size:12.5px;color:var(--muted)}
+.lp-search-kbd{font-size:10.5px;color:var(--dim);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 6px}
+.lp-cursor{animation:lp-blink .9s step-end infinite;color:var(--muted)}
+
+/* CARD GRID */
+.lp-mockup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.lp-moodboard-grid{grid-template-columns:repeat(2,1fr)}
+
+/* BOOKMARK CARD */
+.lp-card{background:linear-gradient(180deg,rgba(26,28,33,.96),rgba(17,18,21,.96));border:1px solid rgba(255,255,255,.075);border-radius:var(--r12);overflow:hidden;animation:lp-card-in .5s ease both;transition:border-color .2s,transform .2s;box-shadow:0 10px 28px rgba(0,0,0,.22)}
+.lp-card:hover{border-color:rgba(255,255,255,.16);transform:translateY(-2px)}
+.lp-card-thumb{height:108px;position:relative;overflow:hidden}
+.lp-card-thumb-inner{position:absolute;inset:0}
+.lp-card-thumb-inner::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.22))}
+.lp-card-thumb-overlay{position:absolute;inset:0;padding:11px;display:flex;flex-direction:column;gap:5px}
+.lp-sim-nav{height:22px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,.035);border-radius:4px;margin-bottom:6px}
+.lp-sim-line{height:5px;background:rgba(255,255,255,0.11);border-radius:3px}
+.lp-card-body{padding:12px}
+.lp-card-title{font-size:12px;font-weight:500;color:var(--text);margin-bottom:3px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-card-domain{font-size:10.5px;color:var(--dim);margin-bottom:7px}
+.lp-tag-row{display:flex;gap:4px;flex-wrap:wrap}
+.lp-tag{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.06);border-radius:4px;padding:2px 6px;font-size:10px;color:#888}
+.lp-palette{display:flex;gap:4px;margin-top:8px}
+.lp-swatch{height:8px;flex:1;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+
+/* SECTIONS */
+.lp-section{padding:100px 0;border-top:1px solid var(--border)}
+.lp-section-alt{background:var(--bg1)}
+.lp-container{max-width:1080px;margin:0 auto;padding:0 40px}
+.lp-section-label{max-width:1080px;margin:0 auto 56px;padding:0 40px;display:flex;align-items:center;gap:12px}
+.lp-section-num{font-family:'Inter Display',sans-serif;font-size:12px;color:var(--dim);letter-spacing:.08em}
+.lp-section-slug{font-family:'Inter Display',sans-serif;font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.lp-section-eyebrow{font-size:11.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:18px}
+.lp-section-intro{max-width:1080px;margin:0 auto 56px;padding:0 40px}
+.lp-section-h2{font-family:'Inter Display',sans-serif;font-size:clamp(28px,3.8vw,48px);font-weight:600;letter-spacing:-0.035em;line-height:1.1;color:var(--white);margin-bottom:16px}
+.lp-section-body{font-size:16px;color:var(--muted);max-width:440px;line-height:1.7}
+
+/* FEATURE TABS */
+.lp-ftabs{max-width:1080px;margin:0 auto;padding:0 40px}
+.lp-ftab-list{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:40px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.lp-ftab-list::-webkit-scrollbar{display:none}
+.lp-ftab-btn{background:none;border:none;border-bottom:1px solid transparent;margin-bottom:-1px;padding:10px 18px;font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:color .2s,border-color .2s;font-family:inherit}
+.lp-ftab-btn:hover{color:var(--text)}
+.lp-ftab-btn.active{color:var(--white);border-bottom-color:var(--white)}
+
+/* TAB CONTENT */
+.lp-ftab-panel{animation:lp-fade-tab .3s ease}
+.lp-tab-content{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.lp-tab-content-canvas{align-items:stretch}
+.lp-tab-text{}
+.lp-tab-h3{font-family:'Inter Display',sans-serif;font-size:22px;font-weight:600;letter-spacing:-0.03em;color:var(--white);margin-bottom:12px}
+.lp-tab-p{font-size:14.5px;color:var(--muted);line-height:1.7}
+.lp-feature-list{margin-top:20px;display:flex;flex-direction:column;gap:8px;list-style:none}
+.lp-feature-list li{font-size:13.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.lp-feature-list li::before{content:'';display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--dim);flex-shrink:0}
+.lp-tab-visual{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r16);padding:24px;min-height:220px}
+
+/* URL INPUT DEMO */
+.lp-url-input-demo{display:flex;flex-direction:column;gap:12px}
+.lp-uid-label{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.lp-uid-field{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);padding:9px 12px}
+.lp-uid-status{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--dim)}
+.lp-uid-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 5px #4ade80;flex-shrink:0;animation:lp-pulse 1.4s ease infinite}
+.lp-uid-preview{display:flex;gap:10px;background:var(--bg3);border-radius:var(--r8);padding:10px;border:1px solid var(--border)}
+.lp-uid-thumb{width:52px;height:40px;border-radius:5px;flex-shrink:0}
+.lp-uid-metatitle{font-size:12px;color:var(--text);font-weight:500}
+.lp-uid-metaurl{font-size:11px;color:var(--dim);margin-top:2px}
+
+/* MOBILE SHARE */
+.lp-mobile-share{display:flex;justify-content:center;align-items:center;min-height:180px}
+.lp-share-sheet{background:var(--bg3);border-radius:var(--r16);padding:20px;width:100%;max-width:280px}
+.lp-share-handle{width:32px;height:3px;background:var(--bg4);border-radius:2px;margin:0 auto 16px}
+.lp-share-title{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px}
+.lp-share-row{display:flex;gap:16px;justify-content:center}
+.lp-share-app{display:flex;flex-direction:column;align-items:center;gap:5px}
+.lp-share-app-icon{width:44px;height:44px;background:var(--bg4);border-radius:11px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)}
+.lp-share-app-icon-dim{background:var(--bg2)}
+.lp-share-nyabag .lp-share-app-icon{background:#1a1a2e;border-color:rgba(88,101,242,0.3)}
+.lp-share-app-label{font-size:10px;color:var(--dim)}
+.lp-share-confirm{margin-top:14px;text-align:center;font-size:12px;color:#4ade80;background:rgba(74,222,128,.08);border-radius:var(--r6);padding:7px}
+
+/* IMPORT DEMO */
+.lp-import-demo{display:flex;flex-direction:column;gap:12px}
+.lp-import-header{font-size:12px;color:var(--muted);font-weight:500}
+.lp-import-drop{border:1px dashed var(--border2);border-radius:var(--r8);padding:24px;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--dim)}
+.lp-import-progress{display:flex;flex-direction:column;gap:6px}
+.lp-import-prog-label{font-size:11.5px;color:var(--dim)}
+.lp-import-bar{height:3px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.lp-import-fill{height:100%;width:62%;background:var(--white);border-radius:2px;animation:lp-fill-grow 2s ease infinite alternate}
+
+/* SCREENSHOT DEMO */
+.lp-screenshot-demo{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.lp-sd-before,.lp-sd-after{flex:1;min-width:140px}
+.lp-sd-label{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.lp-sd-arrow{font-size:18px;color:var(--dim);flex-shrink:0}
+.lp-sd-bookmark-row{display:flex;flex-direction:column;gap:5px}
+.lp-sd-plain-bookmark{display:flex;align-items:center;gap:7px;background:var(--bg3);border-radius:5px;padding:7px 9px;font-size:10.5px;color:var(--dim)}
+.lp-sd-favicon{width:12px;height:12px;border-radius:2px;background:var(--bg4);flex-shrink:0}
+
+/* PALETTE DEMO */
+.lp-palette-demo{display:flex;flex-direction:column;gap:10px}
+.lp-pd-row{display:flex;align-items:center;gap:12px}
+.lp-pd-name{font-size:11.5px;color:var(--muted);min-width:52px}
+.lp-pd-swatches{display:flex;gap:4px;flex:1}
+.lp-pd-swatch{flex:1;height:22px;border-radius:4px;transition:transform .15s}
+.lp-pd-swatch:hover{transform:scaleY(1.15)}
+
+/* METADATA DEMO */
+.lp-metadata-demo{display:flex;flex-direction:column;gap:12px}
+.lp-meta-field{display:flex;flex-direction:column;gap:5px}
+.lp-meta-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.lp-meta-value{font-size:12.5px;color:var(--muted)}
+
+/* FONT DEMO */
+.lp-font-demo{display:flex;flex-direction:column;gap:8px}
+.lp-font-row{display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--bg3);border-radius:var(--r6)}
+.lp-font-site{font-size:11px;color:var(--dim);min-width:80px}
+.lp-font-name{font-size:12.5px;color:var(--text);flex:1}
+.lp-font-cat{font-size:10.5px;color:var(--dim)}
+
+/* SEARCH DEMO */
+.lp-search-demo{display:flex;flex-direction:column;gap:12px}
+.lp-search-results{display:flex;flex-direction:column;gap:6px}
+.lp-search-label{font-size:10.5px;color:var(--dim);padding:2px 0 6px}
+.lp-sr-item{display:flex;gap:10px;align-items:flex-start;padding:9px;background:var(--bg3);border-radius:var(--r8)}
+.lp-sr-thumb{width:40px;height:30px;border-radius:5px;flex-shrink:0}
+.lp-sr-title{font-size:12px;color:var(--text);font-weight:500}
+.lp-sr-domain{font-size:10.5px;color:var(--dim);margin-top:2px}
+
+/* DETAIL DEMO */
+.lp-detail-demo{display:flex;flex-direction:column;gap:14px}
+.lp-detail-thumb{height:100px;border-radius:var(--r8)}
+.lp-detail-body{display:flex;flex-direction:column;gap:8px}
+.lp-detail-title{font-size:13px;color:var(--text);font-weight:500;line-height:1.4}
+.lp-detail-domain{font-size:11px;color:var(--dim)}
+.lp-detail-section-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.lp-detail-note{font-size:12px;color:var(--muted);font-style:italic;line-height:1.5;padding:8px 10px;background:var(--bg3);border-radius:var(--r6);border-left:2px solid var(--bg4)}
+
+/* CANVAS MOCK */
+.lp-canvas-mock{position:relative;height:340px;background:var(--bg2);border-radius:var(--r16);border:1px solid var(--border);overflow:hidden}
+.lp-canvas-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);background-size:22px 22px;pointer-events:none}
+.lp-cnote{position:absolute;background:#111;border:1px solid var(--border);border-radius:var(--r8);padding:12px 14px;font-size:12px;transition:border-color .2s,transform .2s;cursor:default}
+.lp-cnote-hover{border-color:var(--border2);transform:translateY(-2px)}
+.lp-cnote-label{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.lp-cnote-content{color:var(--muted);line-height:1.5;font-size:11.5px}
+.lp-cnote-link{color:#4a9eff}
+.lp-csection{position:absolute;border:1px dashed rgba(255,255,255,0.1);border-radius:var(--r8);padding:10px;display:flex;flex-direction:column;gap:5px}
+.lp-csection-cards{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.lp-csection-card{background:var(--bg3);border-radius:4px;padding:5px 8px;font-size:10.5px;color:var(--dim)}
+.lp-cpalette-row{display:flex;gap:4px;margin-top:6px}
+.lp-cpalette-chip{flex:1;height:18px;border-radius:3px}
+
+/* NOTE TYPES */
+.lp-note-types{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lp-note-type-card{display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--bg3);border-radius:var(--r8);border:1px solid var(--border)}
+.lp-nt-icon{width:28px;height:28px;background:var(--bg4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);flex-shrink:0}
+.lp-nt-label{font-size:12px;color:var(--text);font-weight:500}
+.lp-nt-desc{font-size:10.5px;color:var(--dim);margin-top:2px}
+
+/* DIFFERENTIATION */
+.lp-diff-section{padding:100px 0;border-top:1px solid var(--border)}
+.lp-diff-h2{font-family:'Inter Display',sans-serif;font-size:clamp(28px,3.5vw,44px);font-weight:600;letter-spacing:-0.035em;color:var(--white);margin-bottom:14px}
+.lp-diff-sub{font-size:16px;color:var(--muted);max-width:480px;margin-bottom:60px;line-height:1.7}
+.lp-diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r12);overflow:hidden}
+.lp-diff-item{background:var(--bg1);padding:36px 32px}
+.lp-diff-old{font-size:12px;color:var(--dim);text-decoration:line-through;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.lp-diff-new{font-family:'Inter Display',sans-serif;font-size:20px;font-weight:600;color:var(--white);letter-spacing:-0.03em;margin-bottom:12px}
+.lp-diff-body{font-size:13.5px;color:var(--muted);line-height:1.65}
+
+/* CTA */
+.lp-cta-section{padding:140px 0;border-top:1px solid var(--border);text-align:center;position:relative;overflow:hidden}
+.lp-cta-inner{position:relative}
+.lp-cta-glow{position:absolute;top:-300px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(255,255,255,.04) 0%,transparent 65%);pointer-events:none}
+.lp-cta-h2{font-family:'Inter Display',sans-serif;font-size:clamp(32px,5vw,60px);font-weight:700;letter-spacing:-0.04em;color:var(--white);margin-bottom:18px;line-height:1.05}
+.lp-cta-body{font-size:16px;color:var(--muted);max-width:460px;margin:0 auto 44px;line-height:1.7}
+.lp-cta-actions{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
+
+/* FOOTER */
+.lp-footer{border-top:1px solid var(--border);padding:56px 40px 32px}
+.lp-footer-inner{max-width:1080px;margin:0 auto;display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;margin-bottom:48px}
+.lp-footer-tagline{font-size:12px;color:var(--dim);margin-top:6px}
+.lp-footer-nav{display:flex;gap:48px;flex-wrap:wrap}
+.lp-footer-col{display:flex;flex-direction:column;gap:10px}
+.lp-footer-col-title{font-size:11.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.lp-footer-link{font-size:13px;color:var(--muted);text-decoration:none;transition:color .2s}
+.lp-footer-link:hover{color:var(--text)}
+.lp-footer-bottom{max-width:1080px;margin:0 auto;padding-top:24px;border-top:1px solid var(--border);font-size:12px;color:var(--dim)}
+.lp-footer-credit-link{color:#6aa9ff;text-decoration-line:underline;text-decoration-color:rgba(106,169,255,.72);text-decoration-thickness:1px;text-underline-offset:4px;transition:color .2s,text-decoration-color .2s}
+.lp-footer-credit-link:hover{color:#9bc4ff;text-decoration-color:#9bc4ff}
+
+/* ANIMATIONS */
+@keyframes lp-fade-up{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+@keyframes lp-card-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes lp-fade-tab{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes lp-blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes lp-pulse{0%,100%{opacity:1;box-shadow:0 0 5px #4ade80}50%{opacity:.6;box-shadow:0 0 2px #4ade80}}
+@keyframes lp-fill-grow{from{width:40%}to{width:80%}}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1024px){
+  .lp-nav{padding:0 24px}
+  .lp-nav-links{display:none}
+  .lp-hero{padding:120px 24px 0}
+  .lp-mockup-body{grid-template-columns:1fr}
+  .lp-mockup-sidebar{display:none}
+  .lp-mockup-grid{grid-template-columns:1fr 1fr}
+  .lp-section-intro,.lp-section-label,.lp-ftabs{padding:0 24px}
+  .lp-container{padding:0 24px}
+  .lp-footer{padding:48px 24px 28px}
+}
+
+@media(max-width:768px){
+  .lp-logo-img-compact{width:104px}
+  .lp-hero-h1{letter-spacing:-0.03em}
+  .lp-mockup-grid{grid-template-columns:1fr 1fr}
+  .lp-tab-content{grid-template-columns:1fr;gap:24px}
+  .lp-tab-content-canvas{grid-template-columns:1fr}
+  .lp-diff-grid{grid-template-columns:1fr}
+  .lp-note-types{grid-template-columns:1fr}
+  .lp-progress-dots{display:none}
+  .lp-footer-inner{flex-direction:column;gap:32px}
+  .lp-screenshot-demo{flex-direction:column}
+}
+
+@media(max-width:540px){
+  .lp-nav{height:58px;padding:0 16px}
+  .lp-nav-cta{padding:7px 12px;font-size:12.5px}
+  .lp-logo-img-compact{width:96px}
+  .lp-ea-row{flex-direction:column;align-items:stretch;padding:7px}
+  .lp-ea-input{width:100%;height:44px;text-align:center}
+  .lp-ea-submit{width:100%;height:44px}
+  .lp-ea-label,.lp-ea-status{text-align:center}
+  .lp-hero-mockup{margin-top:44px}
+  .lp-mockup-main{padding:14px;gap:12px}
+  .lp-mockup-grid{grid-template-columns:1fr}
+  .lp-hero-actions{flex-direction:column;align-items:center}
+  .lp-cta-actions{flex-direction:column}
+  .lp-pd-swatches{flex-wrap:wrap}
+  .lp-section-h2{font-size:26px}
+}
+`;

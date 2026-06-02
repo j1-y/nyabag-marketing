@@ -9,6 +9,17 @@ type EarlyAccessResult = {
   duplicate: boolean;
 };
 
+export type EarlyAccessFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  duplicate?: boolean;
+};
+
+export const earlyAccessInitialState: EarlyAccessFormState = {
+  status: "idle",
+  message: "",
+};
+
 const earlyAccessSchema = z.object({
   email: z.email("Enter a valid email address").trim().toLowerCase().max(255),
   source: z.string().trim().max(80).default("landing"),
@@ -74,4 +85,32 @@ export async function submitEarlyAccessSignup(
   await sendEarlyAccessNotification(email, source);
 
   return { success: true, data: { duplicate: false } };
+}
+
+export async function submitEarlyAccessSignupForm(
+  _previousState: EarlyAccessFormState,
+  formData: FormData
+): Promise<EarlyAccessFormState> {
+  const result = await submitEarlyAccessSignup(formData);
+
+  if (!result.success) {
+    return {
+      status: "error",
+      message: result.error,
+    };
+  }
+
+  if (result.data.duplicate) {
+    return {
+      status: "success",
+      message: "You are already on the early access list. We will send an invite when spots open.",
+      duplicate: true,
+    };
+  }
+
+  return {
+    status: "success",
+    message: "You are on the early access list. We will send an invite when spots open.",
+    duplicate: false,
+  };
 }
