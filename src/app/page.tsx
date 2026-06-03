@@ -3,7 +3,7 @@ import Script from "next/script";
 import { LandingPage } from "@/app/LandingPage";
 
 export const metadata: Metadata = {
-  title: "Nyabag Early Access — Your Second Memory for Design",
+  title: "Nyabag - Visual Memory System for Designers",
   description:
     "Join Nyabag early access, a visual memory system for designers to save, organize, and rediscover websites, screenshots, UI references, color palettes, fonts, and creative inspiration.",
   keywords: [
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     canonical: "https://www.nyabag.com/",
   },
   openGraph: {
-    title: "Nyabag Early Access — Your Second Memory for Design",
+    title: "Nyabag - Visual Memory System for Designers",
     description:
       "Join early access to save, organize, and rediscover design inspiration in one searchable visual workspace.",
     url: "https://www.nyabag.com/",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
         url: "/opengraph-image.png",
         width: 1200,
         height: 630,
-        alt: "Nyabag Early Access — Your Second Memory for Design",
+        alt: "Nyabag - Visual Memory System for Designers",
       },
     ],
     locale: "en_US",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Nyabag Early Access — Your Second Memory for Design",
+    title: "Nyabag - Visual Memory System for Designers",
     description:
       "Join early access to save, organize, and rediscover design inspiration in one searchable visual workspace.",
     images: ["/opengraph-image.png"],

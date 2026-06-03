@@ -10,6 +10,7 @@ const productLinks = [
   { href: "/#organize", label: "Organize" },
   { href: "/#think", label: "Canvas" },
   { href: "/#early-access", label: "Early access" },
+  { href: "/about", label: "About" },
   { href: "/blog", label: "Blog" },
 ];
 

@@ -72,6 +72,761 @@ export type BlogPost = {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "best-free-online-graphic-design-tools",
+    title: "14 Best Free Online Graphic Design Tools",
+    metaTitle: "14 Best Free Online Graphic Design Tools for Designers | Nyabag",
+    description:
+      "A practical guide to the best free online graphic design tools for designers and indie makers, including Adobe Express, Figma, Photopea, Penpot, Piktochart, and Nyabag.",
+    ogTitle: "14 Best Free Online Graphic Design Tools",
+    ogDescription:
+      "Compare free browser-based graphic design tools by workflow, free-tier limits, export options, and where each tool fits in a designer's stack.",
+    excerpt:
+      "A practical comparison of 14 browser-based design tools, from all-rounders and UI tools to editors, infographic makers, marketing platforms, and Nyabag's reference-capture layer.",
+    publishedAt: "2026-06-03",
+    updatedAt: "2026-06-03",
+    author: "Jayanth Kumar R V",
+    authorBio:
+      "Jayanth Kumar R V is a designer-builder working on Nyabag, a visual bookmark and notes workspace for designers. He writes about practical design workflows, indie maker tools, and the messy gap between inspiration, execution, and shipping.",
+    authorSameAs: "https://www.linkedin.com/in/jayanzth",
+    readTime: "18 min read",
+    category: "Design Tools",
+    keywords: [
+      "best free online graphic design tools",
+      "free graphic design tools",
+      "online graphic design tools",
+      "browser based design tools",
+      "free design software for designers",
+      "Adobe Express alternative",
+      "Figma free design tool",
+      "Photopea",
+      "Piktochart",
+      "design tools for indie makers",
+      "Nyabag",
+      "visual memory system for designers",
+    ],
+    tools: [],
+    comparison: {
+      eyebrow: "Quick comparison",
+      title: "14 free online graphic design tools compared",
+      columns: ["Tool", "Best for", "Free-tier limits", "Export formats", "Link"],
+      rows: [
+        [
+          "Adobe Express",
+          "Social posts, flyers, quick promo visuals, and simple videos",
+          "5GB storage, free templates/assets/fonts, limited PDF quick actions and social scheduling",
+          "JPG, PNG, PDF, GIF, PPT, plus quick actions for JPG, PNG, SVG, and MP4",
+          "adobe.com/express/pricing",
+        ],
+        [
+          "Figma",
+          "UI, app, web, and product design",
+          "Exact current free limits should be checked on Figma's live pricing page before publication-sensitive claims",
+          "PNG, JPG, SVG, PDF, and .fig file copies",
+          "figma.com",
+        ],
+        [
+          "Photopea",
+          "Photoshop-style browser editing",
+          "Free online editor; storage depends on device or connected cloud provider",
+          "PSD, JPG, PNG, SVG, PDF, AI, AVIF, TIFF, and many more",
+          "photopea.com",
+        ],
+        [
+          "Kittl",
+          "Typography, merch-style graphics, and logo experiments",
+          "Free plan is for personal use only; commercial rights and high-res/vector exports are paid",
+          "Free export formats unspecified; paid unlocks high-res and vector exports",
+          "kittl.com/pricing",
+        ],
+        [
+          "Penpot",
+          "Open-source collaborative product design",
+          "Free plan lists up to 8 team members, unlimited viewers, and up to 10GB storage",
+          "Export formats not clearly exposed on the verified pricing page",
+          "penpot.app/pricing",
+        ],
+        [
+          "Drawtify",
+          "Vector-heavy posters, infographics, and light motion design",
+          "Limited templates/elements, 40MB image uploads, SD exports, animation exports, and PDF exports",
+          "SD image, animation, PDF",
+          "drawtify.com/pricing",
+        ],
+        [
+          "Desygner",
+          "Solopreneur multi-format design and editable PDFs",
+          "One-person free plan with 300+ formats, limited assets, and limited editable PDF imports",
+          "Transparent-background downloads; other free export formats should be checked before precise claims",
+          "desygner.com/pricing",
+        ],
+        [
+          "Snappa",
+          "Occasional blog graphics, thumbnails, and ads",
+          "1 user, 6,000+ templates, 5,000,000+ photos/graphics, and 3 downloads per month",
+          "Export formats unspecified on the verified pricing page",
+          "snappa.com/pricing",
+        ],
+        [
+          "Piktochart",
+          "Infographics, reports, charts, and maps",
+          "Free plan details have changed over time; verify live pricing before exact download/storage claims",
+          "PNG/PDF/PPT availability depends on plan",
+          "piktochart.com/pricing",
+        ],
+        [
+          "Venngage",
+          "Business infographics and presentation-style visuals",
+          "Free plan lists 5 designs, public sharing, AI trial, and 6 image uploads",
+          "Free download/export availability is limited; paid plans unlock more formats",
+          "venngage.com/pricing",
+        ],
+        [
+          "PosterMyWall",
+          "Event marketing, community posters, scheduling, and email graphics",
+          "Basic quality images and short videos can be downloaded free; high-resolution and no-watermark workflows are paid",
+          "Basic image and short video downloads; high-res downloads via paid options",
+          "postermywall.com",
+        ],
+        [
+          "BeFunky",
+          "Quick edits, collages, and simple design tasks",
+          "Many free tools are available or previewable, but premium features need a subscription",
+          "Export formats unspecified on the verified pricing page",
+          "befunky.com/pricing",
+        ],
+        [
+          "Simplified",
+          "AI-assisted content creation with lightweight design",
+          "Free plan includes 5,000 AI words and 500MB storage on the verified pricing page",
+          "Export formats unspecified on the verified pricing page",
+          "simplified.com/pricing",
+        ],
+        [
+          "Nyabag",
+          "Capturing and organizing inspiration before and after design work",
+          "Early access; pricing, storage, and export limits are not public yet",
+          "Not a design-export tool",
+          "nyabag.com",
+        ],
+      ],
+    },
+    sections: [
+      {
+        id: "executive-summary",
+        eyebrow: "Executive summary",
+        title: "The best free design tool depends on the job you are actually doing",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              "This guide covers 14 browser-based tools that are genuinely useful for designers and indie makers, not just free trials wearing a fake moustache. The biggest pattern from official pricing and help pages is that free tiers split into three buckets: genuinely usable free plans, free plans that are good for learning but restrictive for production, and freemium plans where the main lock is export quality, watermarking, commercial rights, storage, or download quotas.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "If you want the shortest shortlist, ",
+              {
+                text: "Adobe Express",
+                href: "https://www.adobe.com/express/pricing",
+                external: true,
+              },
+              " is the best all-rounder for indie makers who need social posts, flyers, quick edits, simple motion, and decent free storage. ",
+              {
+                text: "Photopea",
+                href: "https://www.photopea.com/",
+                external: true,
+              },
+              " is the strongest browser-based Photoshop-style option when you need layered image editing and format compatibility. ",
+              {
+                text: "Figma",
+                href: "https://help.figma.com/hc/en-us/articles/13402894554519-Export-formats-and-settings",
+                external: true,
+              },
+              " is still the safest pick for UI and product design workflows, while ",
+              {
+                text: "Penpot",
+                href: "https://penpot.app/pricing",
+                external: true,
+              },
+              " is the most interesting open-source alternative for teams that care about ownership and generous free collaboration.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "For Nyabag's audience specifically, think in workflows rather than isolated apps. A solo maker usually needs four stages: capture references, design or edit, organize decisions, and publish or share. That is where ",
+              {
+                text: "Nyabag",
+                href: `${SITE_URL}/`,
+              },
+              " fits honestly: not as a canvas editor, but as the place where visual references, links, screenshots, and notes stop getting lost.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "methodology",
+        eyebrow: "Methodology",
+        title: "How these tools were chosen and verified",
+        paragraphs: [
+          "I filtered for tools that are usable online in a browser, relevant to graphic design work, and verifiable from official pricing pages, help docs, or first-party product pages. When a vendor's official pages did not clearly expose a field such as storage, watermarking, commercial use, or export formats, I marked it as unspecified instead of guessing.",
+          "I also prioritized tools that solve different parts of a modern designer's workflow: social design, UI and product design, photo editing, typography-heavy design, infographics, quick marketing assets, and visual-organizing tools.",
+        ],
+      },
+      {
+        id: "adobe-express",
+        eyebrow: "1. Adobe Express",
+        title: "Best free all-rounder for indie makers",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Adobe Express",
+                href: "https://www.adobe.com/express/pricing",
+                external: true,
+              },
+              " is the most balanced free option here for people who need a bit of everything: templates, stock assets, basic photo and video editing, social scheduling, PDF quick actions, and format conversion. Adobe's pricing page lists 5GB storage on the free plan and export/quick-action paths across common formats.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "For designers and indie makers, the real value is speed. You can get from idea to Instagram post, flyer draft, or launch visual much faster than in a more open-ended editor. The compromise is obvious too: premium features and broader asset access appear exactly where power users usually want more control.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: strong template ecosystem, practical free storage, and a good one-tool-for-many-jobs fit. Cons: paid upsells arrive around high-frequency and advanced workflows. Verdict: the best free general-purpose design tool in this list for most indie makers.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "figma",
+        eyebrow: "2. Figma",
+        title: "Best for UI, product, and interface design",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              "Figma remains the clearest choice for UI, product, landing-page, and interface work. Its ",
+              {
+                text: "official export help docs",
+                href: "https://help.figma.com/hc/en-us/articles/13402894554519-Export-formats-and-settings",
+                external: true,
+              },
+              " document support for PNG, JPG, SVG, and PDF exports, and Figma files can also be saved as .fig copies.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "The caveat is that exact current free-seat, storage, and collaborative-file limits should be rechecked directly on Figma's live pricing page before publishing precise numbers. Even so, for actual design craft, collaboration, prototyping, and handoff, Figma is still one of the strongest free tools on the web.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: superb UI workflow, modern export controls, and excellent prototype-to-dev habits. Cons: overkill if all you need is a social post. Verdict: best for product and interface designers, less ideal as a casual poster maker.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "photopea",
+        eyebrow: "3. Photopea",
+        title: "Best browser-based Photoshop-style editor",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Photopea",
+                href: "https://www.photopea.com/",
+                external: true,
+              },
+              " is the strongest browser-based answer to I need something Photoshop-like, but free. Its official site highlights PSD support and broad format compatibility across raster, vector, PDF, AI, Figma files, and many more formats.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "This is the tool to pick when template-first editors become restrictive. If you work with layered mockups, marketplace assets, existing PSDs, selections, masks, and more precise image edits, Photopea earns its place very quickly.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: broad format compatibility, serious layer-based editing, and no desktop install. Cons: denser interface and a steeper learning curve than Adobe Express or Snappa. Verdict: the best browser-based PSD and raster editing tool you can use for free.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "kittl",
+        eyebrow: "4. Kittl",
+        title: "Best for typography and merch-style exploration",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Kittl",
+                href: "https://www.kittl.com/pricing",
+                external: true,
+              },
+              " is one of the most visually polished tools in this roundup. Its pricing page is clear that the free plan is for personal use only and does not include commercial rights, while paid plans unlock more serious production use cases such as high-resolution and vector exports.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "That makes Kittl a fantastic exploration tool for logo directions, merch graphics, type-heavy posters, and stylized social layouts, but not something I would treat casually for client work on the free tier.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: beautiful typography workflows, curated templates, and strong mockup feel. Cons: the personal-use-only free license is a significant restriction. Verdict: gorgeous free editor, but licensing matters more here than in most competitors.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "penpot",
+        eyebrow: "5. Penpot",
+        title: "Best open-source collaborative design platform",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Penpot",
+                href: "https://penpot.app/pricing",
+                external: true,
+              },
+              " stands out because it combines browser-based product design with an open-source, no-vendor-lock-in position. Its official pricing page currently lists a free plan with up to 8 team members, unlimited viewers, and up to 10GB storage.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "For design teams that like Figma-style workflows but care about openness, hosting flexibility, or code-centric collaboration, Penpot is unusually compelling.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: generous free collaboration, open-source foundation, and team-friendly design workflows. Cons: ecosystem depth and polish still depend on your expectations and existing habits. Verdict: the most interesting free collaborative design platform here if ownership and openness matter.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "drawtify",
+        eyebrow: "6. Drawtify",
+        title: "Best underrated option for vector-heavy structured graphics",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Drawtify",
+                href: "https://drawtify.com/pricing/",
+                external: true,
+              },
+              " is quietly one of the more feature-dense free plans in this list. Its pricing page highlights a vector editor, chart tools, 40MB image uploads, SD image exports, animation exports, and PDF exports, with limited templates and elements on free.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "That combination makes Drawtify especially attractive for posters, certificates, infographics, simple animated visuals, and other design-plus-structure work.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: vector plus charts plus motion is rare at this price point. Cons: limited templates and elements mean you may need to bring your own assets sooner. Verdict: one of the most underrated free online design tools for print-style and structured graphics.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "desygner",
+        eyebrow: "7. Desygner",
+        title: "Best practical utility tool for solo multi-format design",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Desygner",
+                href: "https://desygner.com/pricing/",
+                external: true,
+              },
+              " is useful for solopreneurs and designers who frequently hop between many output sizes and file types. Its official pricing page references 300+ design format types, transparent-background downloads, and PDF import/editing capabilities across plans.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Desygner is practical in a very unglamorous but useful way. If your work often starts from an existing PDF or needs many size variants, it may save more time than a prettier editor.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: wide format coverage, strong everyday utility, and friendly one-person use. Cons: free asset access is limited and team functions move upward. Verdict: one of the best do-lots-of-everyday-design-tasks tools for solo users.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "snappa",
+        eyebrow: "8. Snappa",
+        title: "Best for occasional blog graphics and ads",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Snappa",
+                href: "https://snappa.com/pricing",
+                external: true,
+              },
+              " has a free offer that is simple enough to understand quickly: 1 user, 6,000+ templates, 5,000,000+ HD photos and graphics, and 3 downloads per month.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "That hard monthly download cap is the whole story. The editor is easy, the learning curve is tiny, and the asset library is useful, but you only get three final files each month unless you upgrade.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: fast, straightforward, and supported by a strong asset library. Cons: the 3-download cap is severe. Verdict: excellent for occasional blog headers, ads, or thumbnails; too restrictive for steady weekly output.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "piktochart",
+        eyebrow: "9. Piktochart",
+        title: "Best for infographic-first work",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Piktochart",
+                href: "https://piktochart.com/pricing/",
+                external: true,
+              },
+              " is strongest when your job is reports, slides, explainers, dashboards, timelines, or social carousels that depend on chart structure more than painterly freedom. Because pricing pages can change, verify exact free storage, download, and watermark details directly before making publication-sensitive claims.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "The product's main value is structured communication. It is less about making one beautiful poster from scratch and more about turning information into something readable and presentable.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: strong data-visual and publishing direction. Cons: export and watermark trade-offs can depend heavily on plan details. Verdict: the best infographic-first tool here if your project is built around charts, maps, reports, or explainers.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "venngage",
+        eyebrow: "10. Venngage",
+        title: "Best business infographic sandbox",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Venngage",
+                href: "https://venngage.com/pricing",
+                external: true,
+              },
+              " is another infographic-focused tool, but its free tier behaves more like a sandbox than a serious always-free workstation. The official pricing page currently surfaces 5 designs, public sharing, a free AI trial, and 6 image uploads.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "The upside is business-visual polish. The downside is that the free plan runs out of road quickly once a real project starts, especially if you need private sharing or richer export options.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: polished infographic and business-template direction. Cons: limited design count, upload cap, and public-sharing constraints. Verdict: strong design quality, but the free tier is best treated as a preview lane.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "postermywall",
+        eyebrow: "11. PosterMyWall",
+        title: "Best for event marketing and lightweight promotion",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "PosterMyWall",
+                href: "https://support.postermywall.com/hc/en-us/articles/360018276771-How-do-I-get-a-free-download",
+                external: true,
+              },
+              " is more than a poster maker now; it is edging into lightweight marketing operations. Its help docs say basic quality images and short videos can be downloaded for free, while high-resolution and unlimited no-watermark workflows sit behind paid options.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "That mix makes PosterMyWall practical for local businesses, event organizers, schools, restaurants, creators, and community pages who need design plus publishing in one place.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: strong real-world marketing workflow, not just a single editor. Cons: high-res output and no-watermark workflows are part of the paid story. Verdict: best free option here when the job includes publishing and promotion, not just design.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "befunky",
+        eyebrow: "12. BeFunky",
+        title: "Best casual editor for quick fixes and collages",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "BeFunky",
+                href: "https://www.befunky.com/pricing/",
+                external: true,
+              },
+              " is still a respectable quick-edit and collage tool, but its free tier is plainly limited. Its pricing and help pages show that many tools are free to use or preview, while premium features require a subscription.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "This makes BeFunky useful as a lightweight editor for quick jobs, not as a deeply dependable free production environment.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: easy to learn, pleasant for small edits and collages, friendly for non-designers. Cons: limited appears in too many important places for heavy use. Verdict: good casual web editor, but weaker than the best free tools above.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "simplified",
+        eyebrow: "13. Simplified",
+        title: "Best all-in-one content tool with lightweight design",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Simplified",
+                href: "https://simplified.com/gb/pricing",
+                external: true,
+              },
+              " is best understood as a content operations suite with design inside it, not a design-native canvas first and foremost. Its verified pricing page lists a free plan with 5,000 AI words and 500MB storage.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "For indie makers doing their own copy, design, captions, scheduling, and repurposing, that all-in-one approach is attractive. For a designer who cares mainly about craft and control, it may feel diffuse.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: broad all-in-one package, useful for one-person content operations. Cons: not a pure graphic design environment and freebies are quota-based. Verdict: good for one-person content machines, less compelling as a dedicated design studio.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "nyabag",
+        eyebrow: "14. Nyabag",
+        title: "Best reference-capture layer for a designer's workflow",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                text: "Nyabag",
+                href: `${SITE_URL}/`,
+              },
+              " is a visual bookmark and notes workspace for designers: a place to save, tag, organize, and rediscover references such as websites, screenshots, notes, links, media, and inspiration. That means it is not competing directly with Figma, Photopea, Adobe Express, or Piktochart. Instead, it sits before and after the act of designing.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Most design bottlenecks are not always I need another editor. They are often I cannot find the reference I saw last week, my launch assets are spread across tabs and screenshots, or I cannot remember why I liked this UI pattern.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Pros: helps with creative recall, research, reference management, and keeping ideas connected. Cons: not a replacement for a proper editor or export tool; pricing, storage, and public free-tier limits are not yet published. Verdict: best used as the glue layer in a designer's workflow, not as the canvas itself.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "recommended-workflows",
+        eyebrow: "Workflows",
+        title: "Recommended designer workflows",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              "Reference-first brand and landing-page workflow: use Nyabag to capture references, screenshots, competitor pages, brand notes, and layout ideas. Move chosen directions into Figma for wireframes, interface exploration, and exports. Then use Adobe Express to turn final assets into launch graphics, resized social posts, or simple motion teasers.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Image-heavy campaign workflow: use Nyabag as the collection layer for ad references, screenshots, copy ideas, and campaign notes. Use Photopea when you need layered mockups, PSD compatibility, or transparent image work. Then use PosterMyWall to publish or schedule marketing output.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "Data-story workflow: use Nyabag to collect benchmarks, screenshots, references, and rough notes. Build the story in Piktochart when charts, maps, report layouts, and structured infographics matter more than freeform illustration. If you like Venngage's template style better, prototype the narrative there too, but expect to hit free-plan limits sooner.",
+            ],
+          },
+        ],
+      },
+      {
+        id: "learning-plan",
+        eyebrow: "30-day plan",
+        title: "A thirty-day plan to test free design tools like a working designer",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              "If you want to test these tools seriously, compare workflows instead of feature lists. Spend one month building real assets and documenting where the free limits actually block you.",
+            ],
+          },
+          {
+            type: "list",
+            items: [
+              ["Week 1: Set up Nyabag, save 30 references with tags and short notes, then learn Photopea basics using one PSD or mockup file."],
+              ["Week 2: Choose Figma or Penpot, recreate one landing-page section and one app screen, and export assets in at least two formats."],
+              ["Week 3: Choose Adobe Express or Drawtify, turn one design into three resized social posts, and test one simple animated or video output."],
+              ["Week 4: Choose Piktochart or Venngage, create one infographic or report page, review which free limits blocked production, and decide whether any paid upgrade is worth it."],
+            ],
+          },
+        ],
+      },
+      {
+        id: "limitations",
+        eyebrow: "Limitations",
+        title: "Open questions and limits in this comparison",
+        paragraphs: [
+          "A few official sites were stronger than others. Where official pages did not clearly expose current free-plan numbers, export formats, or storage details, this guide marks the field as unspecified rather than recycling stale comparison-chart folklore.",
+          "That matters most for exact free-tier limits on some template-first tools, export-format fields on several platforms, and Nyabag's public pricing because Nyabag is still in early access. For an EEAT-friendly article, omission is better than false precision.",
+        ],
+      },
+      {
+        id: "final-recommendation",
+        eyebrow: "Recommendation",
+        title: "Pick a workflow, not just an app",
+        paragraphs: [],
+        blocks: [
+          {
+            type: "paragraph",
+            content: [
+              "If you only want one generalist tool, start with Adobe Express. If you design interfaces, start with Figma or Penpot. If you edit layered images, start with Photopea. If you make reports and infographics, try Piktochart or Venngage. If you need event marketing and publishing, try PosterMyWall.",
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              "And if your real problem is that inspiration keeps disappearing after you save it, add ",
+              {
+                text: "Nyabag",
+                href: `${SITE_URL}/#early-access`,
+              },
+              " as your reference memory. The best creative workflow is not one giant tool. It is a small stack where every tool has a clear job.",
+            ],
+          },
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: "What is the best free online graphic design tool?",
+        answer:
+          "Adobe Express is the best free all-rounder for most indie makers because it covers templates, quick edits, social graphics, simple video, and common exports. For UI design, Figma or Penpot is better. For advanced image editing, Photopea is stronger.",
+      },
+      {
+        question: "What is the best free Photoshop alternative in the browser?",
+        answer:
+          "Photopea is the strongest browser-based Photoshop-style editor because it supports layered editing, PSD files, masks, selections, and many common image and design formats.",
+      },
+      {
+        question: "Which free tool is best for UI design?",
+        answer:
+          "Figma is the safest default for UI and product design because of its interface workflow, prototyping, collaboration, and export controls. Penpot is a strong open-source alternative for teams that care about ownership and openness.",
+      },
+      {
+        question: "Which free tool is best for infographics?",
+        answer:
+          "Piktochart is the strongest infographic-first option for many users, especially when charts, maps, reports, and explainers matter. Venngage is also useful, but its free tier is better treated as a preview lane.",
+      },
+      {
+        question: "Is Nyabag a graphic design editor?",
+        answer:
+          "No. Nyabag is not a design canvas or export tool. It is a visual memory system for designers that helps collect, organize, and rediscover inspiration before and after design work.",
+      },
+      {
+        question: "How should designers combine these tools?",
+        answer:
+          "Use Nyabag to capture references and notes, Figma or Penpot to design interfaces, Photopea for layered image editing, Adobe Express or Drawtify for fast production graphics, and Piktochart or Venngage for structured infographic work.",
+      },
+    ],
+  },
+  {
     slug: "best-design-inspiration-apps",
     title: "Top 5 Design Inspiration Apps for Designers in 2026",
     description:
