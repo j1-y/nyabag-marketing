@@ -356,9 +356,9 @@ function DashboardMockup() {
 function CanvasMock() {
   const [hovered, setHovered] = useState<number | null>(null);
   const notes = [
-    { x: 32, y: 28, w: 210, label: "Note", content: "Dark nav patterns all use icons — reconsider label-only approach in v2 refresh.", color: "#1a1a1a" },
+    { x: 32, y: 28, w: 210, label: "Note", content: "Dark nav patterns all use icons — reconsider label-only approach in v2 refresh.", color: "#282300" },
     { x: 264, y: 20, w: 190, label: "Link", content: "mobbin.com/patterns/navigation — iOS tab bars", color: "#111827", isLink: true },
-    { x: 32, y: 170, w: 260, label: "Section — Nav References", content: null, isSection: true, color: "transparent" },
+    { x: 32, y: 170, w: 260, label: "Section — Nav References", content: "Check these out:", isSection: true, color: "#1b1b1b" },
     { x: 300, y: 140, w: 160, label: "Color", content: null, isPalette: true, color: "#111" },
   ];
   return (
@@ -372,7 +372,7 @@ function CanvasMock() {
         <div
           key={i}
           className={`lp-cnote${n.isSection ? " lp-csection" : ""}${hovered === i ? " lp-cnote-hover" : ""}`}
-          style={{ left: n.x, top: n.y, width: n.w, background: n.isSection ? "transparent" : n.color }}
+          style={{ left: n.x, top: n.y, width: n.w, background: n.color }}
           onMouseEnter={() => setHovered(i)}
           onMouseLeave={() => setHovered(null)}
           aria-hidden="true"
@@ -605,9 +605,8 @@ export function LandingPage() {
                         <div className="lp-uid-label">New bookmark</div>
                         <div className="lp-uid-field">
                           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6 1l5 5-5 5" stroke="#555" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          <span style={{ color: "#888", fontSize: 12 }}>https://</span>
-                          <span style={{ color: "#e0e0e0", fontSize: 12, marginLeft: 2 }}>dribbble.com/shots/2284910</span>
-                          <span className="lp-cursor" style={{ marginLeft: 1 }}>|</span>
+                          <span style={{ color: "#888", fontSize: 12 }}>https://dribbble.com/shots/2284910</span>
+                          <span className="lp-cursor" style={{ marginLeft: -4 }}>|</span>
                         </div>
                         <div className="lp-uid-status">
                           <div className="lp-uid-dot" />
@@ -1232,7 +1231,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 .lp-ea-form{width:min(100%,560px);margin:0 auto 18px}
 .lp-ea-form-cta{margin-bottom:0}
 .lp-ea-row{display:flex;align-items:center;gap:8px;padding:6px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.13);border-radius:var(--r12);box-shadow:0 18px 60px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05)}
-.lp-ea-input{min-width:0;flex:1;height:46px;background:transparent;border:0;outline:0;color:var(--white);font:inherit;font-size:14.5px;padding:0 14px}
+.lp-ea-input{min-width:0;flex:1;height:auto;background:transparent;border:0;outline:0;color:var(--white);font:inherit;font-size:14.5px;padding:0px 14px}
 .lp-ea-input::placeholder{color:#565656}
 .lp-ea-input:disabled{opacity:.72}
 .lp-ea-submit{height:46px;white-space:nowrap;border:0;border-radius:var(--r8);background:var(--white);color:#08090a;padding:0 18px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s,transform .2s}
@@ -1276,7 +1275,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 .lp-dash-main{position:relative;display:flex;flex-direction:column;align-items:center;min-height:594px;padding:88px 28px 42px;overflow:hidden}
 .lp-dash-title{margin:28px 0 50px;font-family:'Inter Display',sans-serif;font-size:clamp(32px,4.3vw,60px);font-weight:600;letter-spacing:-.055em;line-height:1;color:#f7f7f7;text-align:center;text-shadow:0 14px 52px rgba(0,0,0,.32)}
 .lp-dash-actions{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:54px}
-.lp-rainbow-button,.lp-import-button{position:relative;display:inline-flex;align-items:center;justify-content:center;height:42px;border:0;border-radius:9px;padding:0 19px;font:inherit;font-size:13px;font-weight:720;letter-spacing:-.01em;color:#f7f7f7;background:#111214;cursor:default}
+.lp-rainbow-button,.lp-import-button{position:relative;display:inline-flex;align-items:center;justify-content:center;height:42px;border:0;border-radius:9px;padding:0 19px;font:inherit;font-size:13px;font-weight:600;letter-spacing:-.01em;color:#f7f7f7;background:#111214;cursor:default}
 .lp-rainbow-button{isolation:isolate;box-shadow:0 18px 44px rgba(0,0,0,.38)}
 .lp-rainbow-button::before{content:'';position:absolute;inset:-1px;border-radius:inherit;background:conic-gradient(from var(--rainbow-angle),#ffcc00,#ff5f6d,#a855f7,#38bdf8,#22c55e,#ffcc00);z-index:-2;animation:lp-rainbow-spin 3s linear infinite}
 .lp-rainbow-button::after{content:'';position:absolute;inset:1px;border-radius:7px;background:linear-gradient(180deg,#17181b,#101113);z-index:-1}
@@ -1335,8 +1334,8 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 .lp-card-title{font-size:12px;font-weight:500;color:var(--text);margin-bottom:3px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lp-card-domain{font-size:10.5px;color:var(--dim);margin-bottom:7px}
 .lp-tag-row{display:flex;gap:4px;flex-wrap:wrap}
-.lp-tag{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.06);border-radius:4px;padding:2px 6px;font-size:10px;color:#888}
-.lp-palette{display:flex;gap:4px;margin-top:8px}
+.lp-tag{margin-top:6px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.06);border-radius:4px;padding:2px 6px;font-size:10px;color:#888}
+.lp-palette{display:flex;gap:6px;margin-top:16px}
 .lp-swatch{height:8px;flex:1;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
 
 /* SECTIONS */
@@ -1371,15 +1370,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 .lp-feature-list{margin-top:20px;display:flex;flex-direction:column;gap:8px;list-style:none}
 .lp-feature-list li{font-size:13.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
 .lp-feature-list li::before{content:'';display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--dim);flex-shrink:0}
-.lp-tab-visual{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r16);padding:24px;min-height:220px}
+.lp-tab-visual{background:var(--bg1);border:1px solid var(--border);border-radius:10px;padding:16px;min-height:220px}
 
 /* URL INPUT DEMO */
 .lp-url-input-demo{display:flex;flex-direction:column;gap:12px}
 .lp-uid-label{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
-.lp-uid-field{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);padding:9px 12px}
+.lp-uid-field{display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r6);padding:9px 12px}
 .lp-uid-status{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--dim)}
 .lp-uid-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 5px #4ade80;flex-shrink:0;animation:lp-pulse 1.4s ease infinite}
-.lp-uid-preview{display:flex;gap:10px;background:var(--bg3);border-radius:var(--r8);padding:10px;border:1px solid var(--border)}
+.lp-uid-preview{display:flex;gap:16px;background:var(--bg3);border-radius:var(--r8);padding:16px;border:1px solid var(--border)}
 .lp-uid-thumb{width:52px;height:40px;border-radius:5px;flex-shrink:0}
 .lp-uid-metatitle{font-size:12px;color:var(--text);font-weight:500}
 .lp-uid-metaurl{font-size:11px;color:var(--dim);margin-top:2px}
@@ -1437,10 +1436,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 .lp-font-cat{font-size:10.5px;color:var(--dim)}
 
 /* SEARCH DEMO */
-.lp-search-demo{display:flex;flex-direction:column;gap:12px}
-.lp-search-results{display:flex;flex-direction:column;gap:6px}
+.lp-search-demo{display:flex;flex-direction:column;gap:16px}
+.lp-search-results{display:flex;flex-direction:column;gap:8px}
 .lp-search-label{font-size:10.5px;color:var(--dim);padding:2px 0 6px}
-.lp-sr-item{display:flex;gap:10px;align-items:flex-start;padding:9px;background:var(--bg3);border-radius:var(--r8)}
+.lp-sr-item{display:flex;gap:10px;align-items:flex-start;padding:10px;background:var(--bg2);border-radius:var(--r8)}
 .lp-sr-thumb{width:40px;height:30px;border-radius:5px;flex-shrink:0}
 .lp-sr-title{font-size:12px;color:var(--text);font-weight:500}
 .lp-sr-domain{font-size:10.5px;color:var(--dim);margin-top:2px}
@@ -1456,13 +1455,13 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 
 /* CANVAS MOCK */
 .lp-canvas-mock{position:relative;height:340px;background:var(--bg2);border-radius:var(--r16);border:1px solid var(--border);overflow:hidden}
-.lp-canvas-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);background-size:22px 22px;pointer-events:none}
-.lp-cnote{position:absolute;background:#111;border:1px solid var(--border);border-radius:var(--r8);padding:12px 14px;font-size:12px;transition:border-color .2s,transform .2s;cursor:default}
+.lp-canvas-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255, 255, 255, 0.1) 1px,transparent 1px);background-size:22px 22px;pointer-events:none}
+.lp-cnote{position:absolute;background:rgb(44, 33, 0);border:1px solid var(--border);border-radius:var(--r8);padding:12px 14px;font-size:12px;transition:border-color .2s,transform .2s;cursor:default}
 .lp-cnote-hover{border-color:var(--border2);transform:translateY(-2px)}
-.lp-cnote-label{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.lp-cnote-label{font-size:9.5px;color:rgba(255, 255, 255, 0.3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
 .lp-cnote-content{color:var(--muted);line-height:1.5;font-size:11.5px}
 .lp-cnote-link{color:#4a9eff}
-.lp-csection{position:absolute;border:1px dashed rgba(255,255,255,0.1);border-radius:var(--r8);padding:10px;display:flex;flex-direction:column;gap:5px}
+.lp-csection{background:var(--bg2);position:absolute;border:1px dashed rgba(255,255,255,0.1);border-radius:var(--r8);padding:10px;display:flex;flex-direction:column;gap:5px}
 .lp-csection-cards{display:flex;flex-direction:column;gap:4px;margin-top:4px}
 .lp-csection-card{background:var(--bg3);border-radius:4px;padding:5px 8px;font-size:10.5px;color:var(--dim)}
 .lp-cpalette-row{display:flex;gap:4px;margin-top:6px}
@@ -1470,7 +1469,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 
 /* NOTE TYPES */
 .lp-note-types{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.lp-note-type-card{display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--bg3);border-radius:var(--r8);border:1px solid var(--border)}
+.lp-note-type-card{display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--bg2);border-radius:var(--r8);border:1px solid var(--border)}
 .lp-nt-icon{width:28px;height:28px;background:var(--bg4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);flex-shrink:0}
 .lp-nt-label{font-size:12px;color:var(--text);font-weight:500}
 .lp-nt-desc{font-size:10.5px;color:var(--dim);margin-top:2px}
@@ -1543,10 +1542,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 
 @media(max-width:540px){
   .lp-ea-row{flex-direction:column;align-items:stretch;padding:7px}
-  .lp-ea-input{width:100%;height:46px;text-align:center;padding:0 16px}
+  .lp-ea-input{width:100%;height:60px;text-align:center;padding:6px 16px}
   .lp-ea-submit{width:100%;height:46px}
   .lp-ea-status{text-align:center}
-  .lp-dashboard-mockup{margin-top:42px;border-radius:var(--r16);min-height:560px}
+  .lp-dashboard-mockup{margin-top:42px;border-radius:10 10 0 0;min-height:560px}
   .lp-dash-topbar{height:52px}
   .lp-dash-switch{height:28px;padding:0 12px;font-size:11.5px}
   .lp-dash-main{padding:50px 14px 34px}
