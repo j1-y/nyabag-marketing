@@ -4,7 +4,8 @@ import { useActionState, useCallback, useEffect, useId, useRef, useState } from 
 import Image from "next/image";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
-import { earlyAccessInitialState, submitEarlyAccessSignupForm } from "@/lib/early-access-actions";
+import { submitEarlyAccessSignupForm } from "@/lib/early-access-actions";
+import { earlyAccessInitialState } from "@/lib/early-access-state";
 
 /* ─────────────────────────────────────────
    JSON-LD Schema for SEO (SoftwareApplication)

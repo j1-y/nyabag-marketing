@@ -1,23 +1,14 @@
 "use server";
 
 import { Resend } from "resend";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import type { EarlyAccessFormState } from "@/lib/early-access-state";
 import type { ActionResult } from "@/lib/types";
 
 type EarlyAccessResult = {
   duplicate: boolean;
-};
-
-export type EarlyAccessFormState = {
-  status: "idle" | "success" | "error";
-  message: string;
-  duplicate?: boolean;
-};
-
-export const earlyAccessInitialState: EarlyAccessFormState = {
-  status: "idle",
-  message: "",
 };
 
 const earlyAccessSchema = z.object({
@@ -27,6 +18,22 @@ const earlyAccessSchema = z.object({
 
 function isUniqueViolation(error: { code?: string; message?: string }) {
   return error.code === "23505" || error.message?.toLowerCase().includes("duplicate");
+}
+
+async function createEarlyAccessClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (url && serviceRoleKey) {
+    return createSupabaseClient(url, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+  }
+
+  return createServerSupabaseClient();
 }
 
 async function sendEarlyAccessNotification(email: string, source: string) {
@@ -39,16 +46,20 @@ async function sendEarlyAccessNotification(email: string, source: string) {
     return;
   }
 
-  const resend = new Resend(apiKey);
-  const { error } = await resend.emails.send({
-    from,
-    to,
-    subject: "New Nyabag early access signup",
-    text: `New Nyabag early access signup\n\nEmail: ${email}\nSource: ${source}`,
-  });
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from,
+      to,
+      subject: "New Nyabag early access signup",
+      text: `New Nyabag early access signup\n\nEmail: ${email}\nSource: ${source}`,
+    });
 
-  if (error) {
-    console.error("[early-access] Resend notification failed:", error);
+    if (error) {
+      console.error("[early-access] Resend notification failed:", error);
+    }
+  } catch (error) {
+    console.error("[early-access] Resend notification threw:", error);
   }
 }
 
@@ -64,7 +75,7 @@ export async function submitEarlyAccessSignup(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const supabase = await createClient();
+  const supabase = await createEarlyAccessClient();
   const { email, source } = parsed.data;
 
   const { error } = await supabase
