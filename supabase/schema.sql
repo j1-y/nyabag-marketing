@@ -412,6 +412,314 @@ CREATE POLICY "canvas_media_delete_own" ON storage.objects
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
 
+-- ============================================================
+-- Admin dashboard
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS admin_users (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID        NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  role        TEXT        NOT NULL DEFAULT 'admin',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION is_admin(user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM admin_users
+    WHERE admin_users.user_id = is_admin.user_id
+  );
+$$;
+
+ALTER TABLE admin_users
+  ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin',
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE admin_users
+  DROP CONSTRAINT IF EXISTS admin_users_role_check,
+  ADD CONSTRAINT admin_users_role_check CHECK (role IN ('admin'));
+
+CREATE INDEX IF NOT EXISTS idx_admin_users_user_id ON admin_users(user_id);
+
+ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "admin_users_select_admins" ON admin_users;
+CREATE POLICY "admin_users_select_admins" ON admin_users
+  FOR SELECT USING (is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "admin_users_insert_admins" ON admin_users;
+CREATE POLICY "admin_users_insert_admins" ON admin_users
+  FOR INSERT WITH CHECK (is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "admin_users_update_admins" ON admin_users;
+CREATE POLICY "admin_users_update_admins" ON admin_users
+  FOR UPDATE USING (is_admin(auth.uid())) WITH CHECK (is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "admin_users_delete_admins" ON admin_users;
+CREATE POLICY "admin_users_delete_admins" ON admin_users
+  FOR DELETE USING (is_admin(auth.uid()));
+
+ALTER TABLE early_access_signups
+  ADD COLUMN IF NOT EXISTS name TEXT,
+  ADD COLUMN IF NOT EXISTS role TEXT,
+  ADD COLUMN IF NOT EXISTS current_tool TEXT,
+  ADD COLUMN IF NOT EXISTS pain_point TEXT,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new',
+  ADD COLUMN IF NOT EXISTS notes TEXT,
+  ADD COLUMN IF NOT EXISTS invited_at TIMESTAMPTZ;
+
+ALTER TABLE early_access_signups
+  DROP CONSTRAINT IF EXISTS early_access_signups_name_check,
+  DROP CONSTRAINT IF EXISTS early_access_signups_role_check,
+  DROP CONSTRAINT IF EXISTS early_access_signups_current_tool_check,
+  DROP CONSTRAINT IF EXISTS early_access_signups_pain_point_check,
+  DROP CONSTRAINT IF EXISTS early_access_signups_status_check,
+  DROP CONSTRAINT IF EXISTS early_access_signups_notes_check,
+  ADD CONSTRAINT early_access_signups_name_check CHECK (name IS NULL OR char_length(name) <= 120),
+  ADD CONSTRAINT early_access_signups_role_check CHECK (role IS NULL OR char_length(role) <= 120),
+  ADD CONSTRAINT early_access_signups_current_tool_check CHECK (current_tool IS NULL OR char_length(current_tool) <= 160),
+  ADD CONSTRAINT early_access_signups_pain_point_check CHECK (pain_point IS NULL OR char_length(pain_point) <= 2000),
+  ADD CONSTRAINT early_access_signups_status_check CHECK (status IN ('new', 'contacted', 'replied', 'invited', 'onboarded', 'not_interested')),
+  ADD CONSTRAINT early_access_signups_notes_check CHECK (notes IS NULL OR char_length(notes) <= 2000);
+
+DROP POLICY IF EXISTS "insert_early_access_signups" ON early_access_signups;
+
+DROP POLICY IF EXISTS "early_access_select_admins" ON early_access_signups;
+CREATE POLICY "early_access_select_admins" ON early_access_signups
+  FOR SELECT USING (is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "early_access_update_admins" ON early_access_signups;
+CREATE POLICY "early_access_update_admins" ON early_access_signups
+  FOR UPDATE USING (is_admin(auth.uid())) WITH CHECK (is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "early_access_delete_admins" ON early_access_signups;
+CREATE POLICY "early_access_delete_admins" ON early_access_signups
+  FOR DELETE USING (is_admin(auth.uid()));
+
+CREATE TABLE IF NOT EXISTS email_templates (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  name          TEXT        NOT NULL,
+  slug          TEXT        NOT NULL UNIQUE,
+  subject       TEXT        NOT NULL,
+  preview_text  TEXT,
+  html_content  TEXT        NOT NULL,
+  text_content  TEXT,
+  status        TEXT        NOT NULL DEFAULT 'draft',
+  created_by    UUID        REFERENCES auth.users(id),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE email_templates
+  ADD COLUMN IF NOT EXISTS preview_text TEXT,
+  ADD COLUMN IF NOT EXISTS text_content TEXT,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'draft',
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id),
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE email_templates
+  DROP CONSTRAINT IF EXISTS email_templates_name_check,
+  DROP CONSTRAINT IF EXISTS email_templates_slug_check,
+  DROP CONSTRAINT IF EXISTS email_templates_subject_check,
+  DROP CONSTRAINT IF EXISTS email_templates_status_check,
+  ADD CONSTRAINT email_templates_name_check CHECK (char_length(name) BETWEEN 1 AND 120),
+  ADD CONSTRAINT email_templates_slug_check CHECK (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
+  ADD CONSTRAINT email_templates_subject_check CHECK (char_length(subject) BETWEEN 1 AND 200),
+  ADD CONSTRAINT email_templates_status_check CHECK (status IN ('draft', 'active', 'archived'));
+
+DROP TRIGGER IF EXISTS email_templates_updated_at ON email_templates;
+CREATE TRIGGER email_templates_updated_at
+  BEFORE UPDATE ON email_templates
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "email_templates_admins" ON email_templates;
+CREATE POLICY "email_templates_admins" ON email_templates
+  FOR ALL USING (is_admin(auth.uid())) WITH CHECK (is_admin(auth.uid()));
+
+CREATE TABLE IF NOT EXISTS email_sends (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  template_id       UUID        REFERENCES email_templates(id),
+  recipient_email   TEXT        NOT NULL,
+  recipient_name    TEXT,
+  subject           TEXT        NOT NULL,
+  status            TEXT        NOT NULL DEFAULT 'pending',
+  resend_email_id   TEXT,
+  error_message     TEXT,
+  sent_by           UUID        REFERENCES auth.users(id),
+  sent_at           TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE email_sends
+  DROP CONSTRAINT IF EXISTS email_sends_recipient_email_check,
+  DROP CONSTRAINT IF EXISTS email_sends_subject_check,
+  DROP CONSTRAINT IF EXISTS email_sends_status_check,
+  ADD CONSTRAINT email_sends_recipient_email_check CHECK (char_length(recipient_email) <= 255),
+  ADD CONSTRAINT email_sends_subject_check CHECK (char_length(subject) BETWEEN 1 AND 200),
+  ADD CONSTRAINT email_sends_status_check CHECK (status IN ('pending', 'sent', 'failed'));
+
+ALTER TABLE email_sends ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "email_sends_admins" ON email_sends;
+CREATE POLICY "email_sends_admins" ON email_sends
+  FOR ALL USING (is_admin(auth.uid())) WITH CHECK (is_admin(auth.uid()));
+
+CREATE TABLE IF NOT EXISTS admin_activity_logs (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_user_id  UUID        REFERENCES auth.users(id),
+  action         TEXT        NOT NULL,
+  entity_type    TEXT,
+  entity_id      TEXT,
+  metadata       JSONB       NOT NULL DEFAULT '{}',
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE admin_activity_logs
+  DROP CONSTRAINT IF EXISTS admin_activity_logs_action_check,
+  ADD CONSTRAINT admin_activity_logs_action_check CHECK (char_length(action) BETWEEN 1 AND 160);
+
+ALTER TABLE admin_activity_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "admin_activity_logs_admins" ON admin_activity_logs;
+CREATE POLICY "admin_activity_logs_admins" ON admin_activity_logs
+  FOR ALL USING (is_admin(auth.uid())) WITH CHECK (is_admin(auth.uid()));
+
+INSERT INTO email_templates (
+  name,
+  slug,
+  subject,
+  preview_text,
+  html_content,
+  text_content,
+  status
+)
+VALUES (
+  'Nyabag Early Access Welcome',
+  'nyabag-early-access-welcome',
+  'You''re early to Nyabag',
+  'Thanks for joining Nyabag Early Access. You''re one of the first people on the list.',
+  '<p>Hi {{firstName}},</p><p>Thanks for joining Nyabag Early Access. You''re one of the first people on the list.</p><p>Nyabag is a design memory workspace for saving references, notes, and visual context.</p><p><a href="{{nyabagUrl}}">Visit Nyabag</a></p>',
+  'Hi {{firstName}}, Thanks for joining Nyabag Early Access. You''re one of the first people on the list. Visit {{nyabagUrl}}',
+  'draft'
+)
+ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO email_templates (
+  name,
+  slug,
+  subject,
+  preview_text,
+  html_content,
+  text_content,
+  status
+)
+VALUES (
+  'Template Mark 1',
+  'template-mark-1',
+  'Thanks for signing up!',
+  'Thank you for joining the Nyabag early access list.',
+  $template_mark_1$
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Thanks for signing up!</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f1f1f1;font-family:Arial,Helvetica,sans-serif;color:#7b7b7b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f1f1;margin:0;padding:40px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="720" cellspacing="0" cellpadding="0" style="width:720px;max-width:720px;margin:0 auto;">
+            <tr>
+              <td style="padding:0 0 40px 0;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td align="left" valign="middle">
+                      <img src="{{nyabagUrl}}/nyabag-logo-email.png" width="204" alt="Nyabag" style="display:block;width:204px;height:auto;border:0;">
+                    </td>
+                    <td align="right" valign="middle">
+                      <span style="display:inline-block;border:1.5px solid #16c82f;border-radius:8px;color:#16c82f;font-size:16px;font-weight:700;line-height:20px;padding:11px 15px;">
+                        <span style="font-size:19px;vertical-align:-1px;">&#128274;</span>
+                        <span style="display:inline-block;padding-left:8px;">EARLY ACCESS</span>
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #cfcfcf;border-radius:14px;background:#ffffff;overflow:hidden;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td align="center" style="background-color:#202020;background-image:radial-gradient(circle,#3c3c3c 1.5px,transparent 1.5px);background-size:24px 24px;padding:60px 48px 0 48px;">
+                      <h1 style="margin:0 0 54px 0;color:#e5e5e5;font-size:48px;line-height:1.1;font-weight:800;letter-spacing:-0.5px;">Thanks for signing up!</h1>
+                      <img src="{{nyabagUrl}}/template-mark-1-dashboard.png" width="626" alt="Nyabag dashboard preview" style="display:block;width:626px;max-width:100%;height:auto;border:0;">
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:32px 29px 26px 29px;">
+                      <div style="font-size:27px;line-height:1.5;font-weight:400;color:#7b7b7b;">
+                        <p style="margin:0 0 40px 0;">Hey,</p>
+                        <p style="margin:0 0 42px 0;">Thank you for joining the Nyabag early access list.<br>I’m Jayanth, the guy behind Nyabag. I’m building it from a problem I kept running into myself: saving design inspiration everywhere, then never being able to find the right reference when I actually needed it.</p>
+                        <p style="margin:0 0 42px 0;">Browser bookmarks, screenshots, WhatsApp links, Telegram saves, Notion dumps, random folders, the whole chaos buffet.</p>
+                        <p style="margin:0 0 42px 0;">Nyabag is meant to become a second memory for design. A calmer place to collect visual references, websites, notes, and ideas, then retrieve them naturally when you’re designing.</p>
+                        <p style="margin:0 0 42px 0;">You’ll be one of the first people I invite when the early version is ready.</p>
+                        <p style="margin:0 0 42px 0;">Before that, I’d love to know:</p>
+                        <p style="margin:0 0 42px 0;">What do you currently use to save design inspiration? And what frustrates you the most about that workflow?</p>
+                        <p style="margin:0 0 42px 0;">A short reply is more than enough.</p>
+                        <p style="margin:0;">Thanks again,<br>Jayanth</p>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+$template_mark_1$,
+  'Hey,
+
+Thank you for joining the Nyabag early access list.
+I’m Jayanth, the guy behind Nyabag. I’m building it from a problem I kept running into myself: saving design inspiration everywhere, then never being able to find the right reference when I actually needed it.
+
+Browser bookmarks, screenshots, WhatsApp links, Telegram saves, Notion dumps, random folders, the whole chaos buffet.
+
+Nyabag is meant to become a second memory for design. A calmer place to collect visual references, websites, notes, and ideas, then retrieve them naturally when you’re designing.
+
+You’ll be one of the first people I invite when the early version is ready.
+
+Before that, I’d love to know:
+
+What do you currently use to save design inspiration? And what frustrates you the most about that workflow?
+
+A short reply is more than enough.
+
+Thanks again,
+Jayanth',
+  'active'
+)
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  subject = EXCLUDED.subject,
+  preview_text = EXCLUDED.preview_text,
+  html_content = EXCLUDED.html_content,
+  text_content = EXCLUDED.text_content,
+  status = EXCLUDED.status,
+  updated_at = NOW();
+
 -- Force Supabase/PostgREST to refresh its schema cache after new columns,
 -- tables, constraints, and policies are created.
 NOTIFY pgrst, 'reload schema';
