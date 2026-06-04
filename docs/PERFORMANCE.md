@@ -6,11 +6,12 @@ Nyabag keeps private Supabase data uncached by default and optimizes perceived s
 
 ## Bookmark Enrichment
 
-Bookmark creation inserts a basic row immediately with `processing_status = 'processing'`, fallback title, user-entered tags/note, fallback design data, and no screenshot. Heavy metadata scraping, Microlink screenshot generation, Sharp optimization, storage upload, and final row update run in `after()` through `src/lib/bookmarks/enrichment.ts`.
+Bookmark creation inserts a basic row immediately with `processing_status = 'queued'`, fallback title, user-entered tags/note, fallback design data, and no screenshot. Heavy metadata extraction, Playwright screenshot generation, Sharp optimization, storage upload, and final row update run in GitHub Actions through the standalone `processor/` worker.
 
-`after()` is good for this first pass, but it is not a durable queue. For production-grade retries and long-running jobs, move enrichment to Inngest, Trigger.dev, or a Supabase Edge Function.
+The app best-effort triggers the processor with `workflow_dispatch`, backed by a 5-minute scheduled workflow fallback. See `docs/BOOKMARK_PROCESSOR.md` for setup and debugging.
 
 Processing states:
+- `queued`: row is visible and waiting for the worker.
 - `processing`: row is visible and enrichment is running.
 - `ready`: metadata/screenshot enrichment completed.
 - `failed`: enrichment failed; the bookmark remains usable with fallback UI.

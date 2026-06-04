@@ -1,0 +1,49 @@
+name: Process Bookmark Jobs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+concurrency:
+  group: bookmark-processor
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      MAX_JOBS_PER_RUN: 5
+      SCREENSHOT_TIMEOUT_MS: 20000
+      SCREENSHOT_WIDTH: 1440
+      SCREENSHOT_HEIGHT: 1100
+      SCREENSHOT_FULL_PAGE: "true"
+      MAX_WEBP_HEIGHT: 15000
+      WEBP_QUALITY: 70
+      WORKER_ID: github-actions-${{ github.run_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: processor/package-lock.json
+
+      - name: Install processor dependencies
+        working-directory: processor
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: processor
+        run: npx playwright install --with-deps chromium
+
+      - name: Process queued bookmark jobs
+        working-directory: processor
+        run: npm run process

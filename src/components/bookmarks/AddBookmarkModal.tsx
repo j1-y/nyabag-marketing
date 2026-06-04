@@ -84,8 +84,8 @@ export function AddBookmarkModal() {
               <Input id="add-title" name="title" type="text" placeholder={domainHint} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-tags">Tags <span className="hint text-muted-foreground font-normal">(optional, auto-filled)</span></Label>
-              <Input id="add-tags" name="tags" type="text" placeholder="Leave empty for auto tags" />
+              <Label htmlFor="add-tags">Tags <span className="hint text-muted-foreground font-normal">(optional)</span></Label>
+              <Input id="add-tags" name="tags" type="text" placeholder="design, inspiration, dashboard" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="add-note">Note <span className="hint text-muted-foreground font-normal">(optional)</span></Label>

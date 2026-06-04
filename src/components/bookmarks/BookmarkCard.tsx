@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowSquareOutIcon,
@@ -8,6 +8,7 @@ import {
   PencilSimpleIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
+import { retryBookmarkProcessing } from "@/lib/actions";
 import { getDomain, getFaviconUrl } from "@/lib/data";
 import type { Bookmark } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -29,17 +30,32 @@ function BookmarkCardComponent({
   const [faviconError, setFaviconError] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [retryError, setRetryError] = useState("");
+  const [isRetrying, startRetryTransition] = useTransition();
   const cardRef = useRef<HTMLElement>(null);
 
   const domain = getDomain(bookmark.url);
   const favicon = getFaviconUrl(bookmark.url);
   const screenshot = bookmark.screenshot_url;
+  const isQueued = bookmark.processing_status === "queued";
   const isProcessing = bookmark.processing_status === "processing";
+  const isPendingPreview = isQueued || isProcessing;
   const isFailed = bookmark.processing_status === "failed";
+  const pendingLabel = isQueued ? "Queued for preview" : "Preparing preview...";
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
     setDeleteOpen(true);
+  }
+
+  function handleRetry(e: React.MouseEvent) {
+    e.stopPropagation();
+    setRetryError("");
+    startRetryTransition(async () => {
+      const result = await retryBookmarkProcessing(bookmark.id);
+      if (result.success) router.refresh();
+      else setRetryError(result.error);
+    });
   }
 
   useEffect(() => {
@@ -85,15 +101,24 @@ function BookmarkCardComponent({
                 decoding="async"
                 onError={() => setImgError(true)}
               />
-            ) : isProcessing ? (
+            ) : isPendingPreview ? (
               <div className="preview-fallback">
                 <ImageIcon />
-                <span>Processing screenshot...</span>
+                <span>{pendingLabel}</span>
               </div>
             ) : isFailed ? (
               <div className="preview-fallback">
                 <ImageIcon />
-                <span>Preview unavailable</span>
+                <span>Preview failed</span>
+                <button
+                  type="button"
+                  className="preview-retry-btn"
+                  onClick={handleRetry}
+                  disabled={isRetrying}
+                >
+                  {isRetrying ? "Retrying..." : "Retry"}
+                </button>
+                {retryError && <small>{retryError}</small>}
               </div>
             ) : (
               <div className="preview-fallback">

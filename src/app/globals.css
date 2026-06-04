@@ -2940,6 +2940,35 @@
   height: 26px;
 }
 
+.preview-retry-btn {
+  min-height: 30px;
+  padding: 0 12px;
+  color: var(--text);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.preview-retry-btn:hover {
+  border-color: var(--border2);
+  background: var(--bg4);
+}
+
+.preview-retry-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.preview-fallback small {
+  max-width: min(220px, 80%);
+  text-align: center;
+  line-height: 1.4;
+  color: var(--danger);
+}
+
 .preview-favicon {
   position: absolute;
   bottom: 8px;

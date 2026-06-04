@@ -1,16 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getDesignData } from "@/lib/data";
 import { getDomain } from "@/lib/data";
-import { mergeTags, scrapeBookmarkMetadata } from "@/lib/metadata";
-import {
-  cacheBookmarkScreenshot,
-  enrichBookmark,
-  removeBookmarkScreenshot,
-} from "@/lib/bookmarks/enrichment";
+import { removeBookmarkScreenshot } from "@/lib/bookmarks/storage";
+import { triggerBookmarkProcessor } from "@/lib/bookmarks/trigger-processor";
 import { timeAsync } from "@/lib/perf";
 import { PROFILE_AVATAR_BUCKET } from "@/lib/profile";
 import { bookmarkCreateSchema, bookmarkUpdateSchema, profileUpdateSchema } from "@/lib/validations";
@@ -19,7 +14,6 @@ import type { ActionResult, Bookmark, ImportBookmarksResult, UserProfile } from 
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-const IMPORT_BOOKMARK_DELAY_MS = 900;
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -30,7 +24,6 @@ type CreateBookmarkForUserInput = {
   title?: string;
   tags?: string[];
   note?: string;
-  paceScreenshot?: boolean;
 };
 
 function avatarExtension(file: File) {
@@ -39,8 +32,27 @@ function avatarExtension(file: File) {
   return file.type.split("/")[1] || "png";
 }
 
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+async function enqueueBookmarkProcessingJob(
+  supabase: Supabase,
+  bookmarkId: string,
+  userId: string,
+  url: string
+): Promise<ActionResult<string>> {
+  const { data, error } = await supabase.rpc("enqueue_bookmark_processing_job", {
+    p_bookmark_id: bookmarkId,
+    p_user_id: userId,
+    p_url: url,
+  });
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: String(data) };
+}
+
+async function triggerProcessorBestEffort(context: string) {
+  const triggerResult = await triggerBookmarkProcessor();
+  if (!triggerResult.success) {
+    console.error(`[${context}] Bookmark processor trigger failed:`, triggerResult.error);
+  }
 }
 
 async function createBookmarkForUser({
@@ -50,72 +62,15 @@ async function createBookmarkForUser({
   title,
   tags = [],
   note,
-  paceScreenshot,
 }: CreateBookmarkForUserInput): Promise<ActionResult<Bookmark>> {
   const domain = getDomain(url);
   const id = crypto.randomUUID();
   const designData = getDesignData(url);
 
-  if (!paceScreenshot) {
-    const fallbackTitle =
-      title?.trim() ||
-      domain.charAt(0).toUpperCase() + domain.slice(1) ||
-      url;
-
-    const { data, error } = await supabase
-      .from("bookmarks")
-      .insert({
-        id,
-        user_id: userId,
-        url,
-        title: fallbackTitle,
-        tags,
-        note: note ?? "",
-        palette: designData.palette,
-        fonts: designData.fonts,
-        screenshot_url: null,
-        screenshot_path: null,
-        screenshot_refreshed_at: null,
-        summary: "",
-        metadata_refreshed_at: null,
-        processing_status: "processing",
-        processing_error: null,
-        enrichment_started_at: new Date().toISOString(),
-        enrichment_finished_at: null,
-      })
-      .select()
-      .single();
-
-    if (error) return { success: false, error: error.message };
-
-    // Async enrichment keeps direct user interactions away from Microlink, Sharp, and storage latency.
-    after(() => enrichBookmark(id, userId, url, title, tags));
-    return { success: true, data };
-  }
-
-  const [metadata, previewData] = paceScreenshot
-    ? [
-        await scrapeBookmarkMetadata(url),
-        await cacheBookmarkScreenshot(supabase, userId, id, url),
-      ]
-    : await Promise.all([
-        scrapeBookmarkMetadata(url),
-        cacheBookmarkScreenshot(supabase, userId, id, url),
-      ]);
-
-  if (paceScreenshot) {
-    await wait(IMPORT_BOOKMARK_DELAY_MS);
-  }
-
-  const finalTitle =
+  const fallbackTitle =
     title?.trim() ||
-    metadata.title ||
     domain.charAt(0).toUpperCase() + domain.slice(1) ||
     url;
-
-  const finalTags = mergeTags(tags, metadata.tags);
-  const palette = previewData?.palette ?? designData.palette;
-  const { fonts } = designData;
 
   const { data, error } = await supabase
     .from("bookmarks")
@@ -123,28 +78,30 @@ async function createBookmarkForUser({
       id,
       user_id: userId,
       url,
-      title: finalTitle,
-      tags: finalTags,
+      title: fallbackTitle,
+      tags,
       note: note ?? "",
-      palette,
-      fonts,
-      screenshot_url: previewData?.screenshotUrl ?? null,
-      screenshot_path: previewData?.screenshotPath ?? null,
-      screenshot_refreshed_at: previewData?.refreshedAt ?? null,
-      summary: metadata.summary,
-      metadata_refreshed_at: metadata.refreshedAt,
-      processing_status: "ready",
+      palette: designData.palette,
+      fonts: designData.fonts,
+      screenshot_url: null,
+      screenshot_path: null,
+      screenshot_refreshed_at: null,
+      summary: "",
+      metadata_refreshed_at: null,
+      processing_status: "queued",
       processing_error: null,
-      enrichment_started_at: new Date().toISOString(),
-      enrichment_finished_at: new Date().toISOString(),
+      enrichment_started_at: null,
+      enrichment_finished_at: null,
     })
     .select()
     .single();
 
-  if (error) {
-    await removeBookmarkScreenshot(supabase, previewData?.screenshotPath);
-    return { success: false, error: error.message };
-  }
+  if (error) return { success: false, error: error.message };
+
+  const job = await enqueueBookmarkProcessingJob(supabase, id, userId, url);
+  if (!job.success) return { success: false, error: job.error };
+
+  await triggerProcessorBestEffort("createBookmarkForUser");
 
   return { success: true, data };
 }
@@ -266,7 +223,6 @@ export async function importBookmarks(
       userId: user.id,
       url: normalizedUrl,
       tags: [],
-      paceScreenshot: true,
     });
 
     if (created.success) {
@@ -319,18 +275,11 @@ export async function updateBookmark(
   const domain = getDomain(url);
   const urlChanged = !existing || existing.url !== url;
 
-  const [metadata, previewData] = await Promise.all([
-    urlChanged ? scrapeBookmarkMetadata(url) : Promise.resolve(null),
-    urlChanged ? cacheBookmarkScreenshot(supabase, user.id, id, url) : Promise.resolve(null),
-  ]);
-
   const title =
     parsed.data.title?.trim() ||
-    metadata?.title ||
     domain.charAt(0).toUpperCase() + domain.slice(1) ||
     url;
 
-  const finalTags = mergeTags(tags, metadata?.tags ?? []);
   const designData = getDesignData(url);
 
   const { palette, fonts } =
@@ -340,7 +289,7 @@ export async function updateBookmark(
           fonts: existing.fonts ?? designData.fonts,
         }
       : {
-          palette: previewData?.palette ?? designData.palette,
+          palette: designData.palette,
           fonts: designData.fonts,
         };
 
@@ -349,32 +298,35 @@ export async function updateBookmark(
     .update({
       url,
       title,
-      tags: finalTags,
+      tags,
       note: note ?? "",
       palette,
       fonts,
-      screenshot_url: urlChanged ? previewData?.screenshotUrl ?? null : existing?.screenshot_url ?? null,
-      screenshot_path: urlChanged ? previewData?.screenshotPath ?? null : existing?.screenshot_path ?? null,
-      screenshot_refreshed_at: urlChanged
-        ? previewData?.refreshedAt ?? null
-        : existing?.screenshot_refreshed_at ?? null,
-      summary: urlChanged ? metadata?.summary ?? "" : existing?.summary ?? "",
-      metadata_refreshed_at: urlChanged
-        ? metadata?.refreshedAt ?? null
-        : existing?.metadata_refreshed_at ?? null,
+      screenshot_url: urlChanged ? null : existing?.screenshot_url ?? null,
+      screenshot_path: urlChanged ? null : existing?.screenshot_path ?? null,
+      screenshot_refreshed_at: urlChanged ? null : existing?.screenshot_refreshed_at ?? null,
+      summary: urlChanged ? "" : existing?.summary ?? "",
+      metadata_refreshed_at: urlChanged ? null : existing?.metadata_refreshed_at ?? null,
+      processing_status: urlChanged ? "queued" : undefined,
+      processing_error: urlChanged ? null : undefined,
+      enrichment_started_at: urlChanged ? null : undefined,
+      enrichment_finished_at: urlChanged ? null : undefined,
     })
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
     .single();
 
-  if (error) {
-    await removeBookmarkScreenshot(supabase, previewData?.screenshotPath);
-    return { success: false, error: error.message };
+  if (error) return { success: false, error: error.message };
+
+  if (urlChanged && existing?.screenshot_path) {
+    await removeBookmarkScreenshot(supabase, existing.screenshot_path);
   }
 
-  if (urlChanged && previewData?.screenshotPath && existing?.screenshot_path) {
-    await removeBookmarkScreenshot(supabase, existing.screenshot_path);
+  if (urlChanged) {
+    const job = await enqueueBookmarkProcessingJob(supabase, id, user.id, url);
+    if (!job.success) return { success: false, error: job.error };
+    await triggerProcessorBestEffort("updateBookmark");
   }
 
   revalidatePath("/app");
@@ -397,28 +349,25 @@ export async function refreshBookmarkScreenshot(id: string): Promise<ActionResul
     return { success: false, error: "Bookmark not found" };
   }
 
-  const cached = await cacheBookmarkScreenshot(supabase, user.id, id, existing.url);
-  if (!cached) return { success: false, error: "Could not refresh screenshot" };
-
   const { data, error } = await supabase
     .from("bookmarks")
     .update({
-      palette: cached.palette ?? existing.palette,
-      screenshot_url: cached.screenshotUrl,
-      screenshot_path: cached.screenshotPath,
-      screenshot_refreshed_at: cached.refreshedAt,
+      processing_status: "queued",
+      processing_error: null,
+      enrichment_started_at: null,
+      enrichment_finished_at: null,
     })
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
     .single();
 
-  if (error) {
-    await removeBookmarkScreenshot(supabase, cached.screenshotPath);
-    return { success: false, error: error.message };
-  }
+  if (error) return { success: false, error: error.message };
 
-  await removeBookmarkScreenshot(supabase, existing.screenshot_path);
+  const job = await enqueueBookmarkProcessingJob(supabase, id, user.id, existing.url);
+  if (!job.success) return { success: false, error: job.error };
+
+  await triggerProcessorBestEffort("refreshBookmarkScreenshot");
 
   revalidatePath("/app");
   revalidatePath(`/app/bookmarks/${id}`);
@@ -427,6 +376,48 @@ export async function refreshBookmarkScreenshot(id: string): Promise<ActionResul
 }
 
 // ── Delete ────────────────────────────────────────────────────
+export async function retryBookmarkProcessing(id: string): Promise<ActionResult<Bookmark>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const { data: existing, error: existingError } = await supabase
+    .from("bookmarks")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (existingError || !existing) {
+    return { success: false, error: "Bookmark not found" };
+  }
+
+  const { data, error } = await supabase
+    .from("bookmarks")
+    .update({
+      processing_status: "queued",
+      processing_error: null,
+      enrichment_started_at: null,
+      enrichment_finished_at: null,
+    })
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+
+  const job = await enqueueBookmarkProcessingJob(supabase, id, user.id, existing.url);
+  if (!job.success) return { success: false, error: job.error };
+
+  await triggerProcessorBestEffort("retryBookmarkProcessing");
+
+  revalidatePath("/app");
+  revalidatePath(`/app/bookmarks/${id}`);
+
+  return { success: true, data };
+}
+
 export async function getProcessingBookmarks(): Promise<ActionResult<Bookmark[]>> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

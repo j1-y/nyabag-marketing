@@ -138,6 +138,8 @@ export const NoteTextContent = forwardRef<
     if (result.success) {
       savedPlainRef.current = result.data.content;
       savedJsonRef.current = result.data.content_json ?? contentJson;
+    } else if (result.error === "Note not found" || result.error === "Note no longer exists") {
+      return;
     } else {
       console.error("Failed to save rich text note:", result.error);
     }

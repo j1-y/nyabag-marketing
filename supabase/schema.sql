@@ -63,7 +63,7 @@ ALTER TABLE bookmarks
   ADD CONSTRAINT bookmarks_screenshot_path_check CHECK (screenshot_path IS NULL OR char_length(screenshot_path) <= 1024),
   ADD CONSTRAINT bookmarks_summary_check CHECK (char_length(summary) <= 1000),
   ADD CONSTRAINT bookmarks_note_check CHECK (char_length(note) <= 2000),
-  ADD CONSTRAINT bookmarks_processing_status_check CHECK (processing_status IN ('ready', 'processing', 'failed'));
+  ADD CONSTRAINT bookmarks_processing_status_check CHECK (processing_status IN ('queued', 'processing', 'ready', 'failed'));
 
 DROP TRIGGER IF EXISTS bookmarks_updated_at ON bookmarks;
 CREATE TRIGGER bookmarks_updated_at
@@ -93,6 +93,231 @@ CREATE POLICY "update_own_bookmarks" ON bookmarks
 DROP POLICY IF EXISTS "delete_own_bookmarks" ON bookmarks;
 CREATE POLICY "delete_own_bookmarks" ON bookmarks
   FOR DELETE USING (auth.uid() = user_id);
+
+-- ============================================================
+-- Bookmark processing queue
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS bookmark_processing_jobs (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  bookmark_id   UUID        NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
+  user_id       UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  url           TEXT        NOT NULL,
+  status        TEXT        NOT NULL DEFAULT 'queued',
+  attempts      INTEGER     NOT NULL DEFAULT 0,
+  max_attempts  INTEGER     NOT NULL DEFAULT 3,
+  error_message TEXT,
+  locked_at     TIMESTAMPTZ,
+  locked_by     TEXT,
+  run_after     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE bookmark_processing_jobs
+  ADD COLUMN IF NOT EXISTS bookmark_id UUID,
+  ADD COLUMN IF NOT EXISTS user_id UUID,
+  ADD COLUMN IF NOT EXISTS url TEXT,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'queued',
+  ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS max_attempts INTEGER NOT NULL DEFAULT 3,
+  ADD COLUMN IF NOT EXISTS error_message TEXT,
+  ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS locked_by TEXT,
+  ADD COLUMN IF NOT EXISTS run_after TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE bookmark_processing_jobs
+  DROP CONSTRAINT IF EXISTS bookmark_processing_jobs_bookmark_id_fkey,
+  DROP CONSTRAINT IF EXISTS bookmark_processing_jobs_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS bookmark_processing_jobs_url_check,
+  DROP CONSTRAINT IF EXISTS bookmark_processing_jobs_status_check,
+  DROP CONSTRAINT IF EXISTS bookmark_processing_jobs_attempts_check,
+  DROP CONSTRAINT IF EXISTS bookmark_processing_jobs_max_attempts_check,
+  DROP CONSTRAINT IF EXISTS bookmark_processing_jobs_error_message_check,
+  ADD CONSTRAINT bookmark_processing_jobs_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES bookmarks(id) ON DELETE CASCADE,
+  ADD CONSTRAINT bookmark_processing_jobs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  ADD CONSTRAINT bookmark_processing_jobs_url_check CHECK (char_length(url) <= 2048),
+  ADD CONSTRAINT bookmark_processing_jobs_status_check CHECK (status IN ('queued', 'processing', 'ready', 'failed', 'cancelled')),
+  ADD CONSTRAINT bookmark_processing_jobs_attempts_check CHECK (attempts >= 0),
+  ADD CONSTRAINT bookmark_processing_jobs_max_attempts_check CHECK (max_attempts BETWEEN 1 AND 10),
+  ADD CONSTRAINT bookmark_processing_jobs_error_message_check CHECK (error_message IS NULL OR char_length(error_message) <= 1000);
+
+DROP TRIGGER IF EXISTS bookmark_processing_jobs_updated_at ON bookmark_processing_jobs;
+CREATE TRIGGER bookmark_processing_jobs_updated_at
+  BEFORE UPDATE ON bookmark_processing_jobs
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_bookmark_jobs_status_run_after
+  ON bookmark_processing_jobs(status, run_after, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_bookmark_jobs_bookmark_id
+  ON bookmark_processing_jobs(bookmark_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmark_jobs_one_active_per_bookmark
+  ON bookmark_processing_jobs(bookmark_id)
+  WHERE status IN ('queued', 'processing');
+
+ALTER TABLE bookmark_processing_jobs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_bookmark_processing_jobs" ON bookmark_processing_jobs;
+CREATE POLICY "select_own_bookmark_processing_jobs" ON bookmark_processing_jobs
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_bookmark_processing_jobs" ON bookmark_processing_jobs;
+CREATE POLICY "insert_own_bookmark_processing_jobs" ON bookmark_processing_jobs
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE OR REPLACE FUNCTION claim_bookmark_processing_job(worker_id TEXT)
+RETURNS bookmark_processing_jobs
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  claimed_job bookmark_processing_jobs;
+BEGIN
+  WITH next_job AS (
+    SELECT id
+    FROM bookmark_processing_jobs
+    WHERE status = 'queued'
+      AND run_after <= NOW()
+    ORDER BY created_at ASC
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED
+  )
+  UPDATE bookmark_processing_jobs jobs
+  SET
+    status = 'processing',
+    attempts = jobs.attempts + 1,
+    locked_at = NOW(),
+    locked_by = worker_id,
+    error_message = NULL
+  FROM next_job
+  WHERE jobs.id = next_job.id
+  RETURNING jobs.* INTO claimed_job;
+
+  RETURN claimed_job;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION enqueue_bookmark_processing_job(
+  p_bookmark_id UUID,
+  p_user_id UUID,
+  p_url TEXT
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  active_job_id UUID;
+  active_job_status TEXT;
+  next_job_id UUID;
+BEGIN
+  IF auth.uid() IS DISTINCT FROM p_user_id THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM bookmarks
+    WHERE id = p_bookmark_id
+      AND user_id = p_user_id
+  ) THEN
+    RAISE EXCEPTION 'Bookmark not found';
+  END IF;
+
+  SELECT id, status
+  INTO active_job_id, active_job_status
+  FROM bookmark_processing_jobs
+  WHERE bookmark_id = p_bookmark_id
+    AND status IN ('queued', 'processing')
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF active_job_id IS NOT NULL AND active_job_status = 'processing' THEN
+    RETURN active_job_id;
+  END IF;
+
+  SELECT id
+  INTO active_job_id
+  FROM bookmark_processing_jobs
+  WHERE bookmark_id = p_bookmark_id
+    AND status = 'queued'
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF active_job_id IS NOT NULL THEN
+    UPDATE bookmark_processing_jobs
+    SET
+      url = p_url,
+      status = 'queued',
+      error_message = NULL,
+      locked_at = NULL,
+      locked_by = NULL,
+      run_after = NOW()
+    WHERE id = active_job_id
+    RETURNING id INTO next_job_id;
+  ELSE
+    INSERT INTO bookmark_processing_jobs(bookmark_id, user_id, url, status)
+    VALUES (p_bookmark_id, p_user_id, p_url, 'queued')
+    RETURNING id INTO next_job_id;
+  END IF;
+
+  RETURN next_job_id;
+END;
+$$;
+
+CREATE TABLE IF NOT EXISTS processor_trigger_state (
+  key                 TEXT        PRIMARY KEY,
+  last_triggered_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+DROP TRIGGER IF EXISTS processor_trigger_state_updated_at ON processor_trigger_state;
+CREATE TRIGGER processor_trigger_state_updated_at
+  BEFORE UPDATE ON processor_trigger_state
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+ALTER TABLE processor_trigger_state ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION request_processor_trigger(
+  trigger_key TEXT,
+  debounce_seconds INTEGER DEFAULT 30
+)
+RETURNS TABLE(should_trigger BOOLEAN, reason TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  previous_trigger TIMESTAMPTZ;
+BEGIN
+  SELECT last_triggered_at
+  INTO previous_trigger
+  FROM processor_trigger_state
+  WHERE key = trigger_key
+  FOR UPDATE;
+
+  IF previous_trigger IS NOT NULL
+     AND previous_trigger > NOW() - make_interval(secs => debounce_seconds) THEN
+    should_trigger := FALSE;
+    reason := 'debounced';
+    RETURN NEXT;
+    RETURN;
+  END IF;
+
+  INSERT INTO processor_trigger_state(key, last_triggered_at)
+  VALUES (trigger_key, NOW())
+  ON CONFLICT (key)
+  DO UPDATE SET last_triggered_at = EXCLUDED.last_triggered_at;
+
+  should_trigger := TRUE;
+  reason := 'triggered';
+  RETURN NEXT;
+END;
+$$;
 
 -- ============================================================
 -- Early access signups

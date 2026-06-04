@@ -12,7 +12,7 @@ export type Bookmark = {
   summary: string;
   metadata_refreshed_at: string | null;
   note: string;
-  processing_status: "ready" | "processing" | "failed";
+  processing_status: "queued" | "processing" | "ready" | "failed";
   processing_error: string | null;
   enrichment_started_at: string | null;
   enrichment_finished_at: string | null;

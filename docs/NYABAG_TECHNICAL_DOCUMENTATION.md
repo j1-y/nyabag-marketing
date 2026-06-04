@@ -364,10 +364,12 @@ Security is enforced at several layers:
 Main action: `createBookmark(formData)` in `src/lib/actions.ts`.
 
 Performance lifecycle:
-- `createBookmark(formData)` now inserts a basic bookmark row immediately and returns it with `processing_status = "processing"`.
-- Metadata, Microlink screenshot generation, Sharp optimization, Supabase Storage upload, and final row updates run in `src/lib/bookmarks/enrichment.ts` via Next.js `after()`.
+- `createBookmark(formData)` inserts a basic bookmark row immediately and returns it with `processing_status = "queued"`.
+- A `bookmark_processing_jobs` row is created for the same bookmark.
+- The app best-effort triggers the GitHub Actions processor through `workflow_dispatch`; a 5-minute cron fallback also runs the processor.
+- The standalone `processor/` worker uses Playwright for screenshots, Sharp for WebP compression, and Supabase Storage for uploads.
 - Completed enrichment marks the row `ready`; failures mark it `failed` with `processing_error` while keeping the bookmark usable.
-- The dashboard uses bounded polling for processing bookmarks instead of storing private bookmark data in LocalStorage.
+- The dashboard uses bounded polling for queued/processing bookmarks instead of storing private bookmark data in LocalStorage.
 
 Flow:
 
@@ -375,18 +377,15 @@ Flow:
 2. Resolve authenticated user.
 3. Validate form data with `bookmarkCreateSchema`.
 4. Normalize/parse URL.
-5. In parallel:
-   - scrape metadata with `scrapeBookmarkMetadata(url)`.
-   - fetch screenshot and palette with `getMicrolinkPreviewData(url)`.
-6. Choose title:
+5. Choose fallback title:
    - explicit user title
-   - scraped metadata title
    - formatted domain
    - raw URL fallback
-7. Merge user tags with inferred metadata tags.
-8. Resolve design data from known domain database or deterministic fallback.
-9. Insert bookmark row.
-10. Revalidate `/`.
+6. Resolve design data from known domain database or deterministic fallback.
+7. Insert bookmark row with `processing_status = "queued"`.
+8. Enqueue `bookmark_processing_jobs`.
+9. Trigger the GitHub Actions processor best-effort.
+10. Revalidate `/app`.
 
 ### Bookmark Update Flow
 
@@ -396,10 +395,11 @@ Flow:
 
 1. Validate input with `bookmarkUpdateSchema`.
 2. Fetch existing bookmark metadata.
-3. If URL changed, refresh scraped metadata and Microlink data.
+3. If URL changed, clear stale preview fields and set `processing_status = "queued"`.
 4. If URL did not change, preserve screenshot, palette, fonts, and summary where possible.
 5. Update the owner-scoped row.
-6. Revalidate `/`.
+6. If URL changed, enqueue a new processing job and trigger the processor best-effort.
+7. Revalidate `/app`.
 
 ### Bookmark Delete Flow
 

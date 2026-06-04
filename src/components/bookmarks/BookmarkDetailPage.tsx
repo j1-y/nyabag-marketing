@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -14,7 +14,7 @@ import {
   TextTIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { deleteBookmark, refreshBookmarkScreenshot } from "@/lib/actions";
+import { deleteBookmark, getProcessingBookmarks, refreshBookmarkScreenshot, retryBookmarkProcessing } from "@/lib/actions";
 import { getDomain } from "@/lib/data";
 import type { Bookmark } from "@/lib/types";
 import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
@@ -30,6 +30,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isRefreshing, startRefreshTransition] = useTransition();
+  const [isRetrying, startRetryTransition] = useTransition();
   const [refreshError, setRefreshError] = useState("");
   const domain = getDomain(currentBookmark.url);
   const savedDate = new Intl.DateTimeFormat("en-GB", {
@@ -59,6 +60,45 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
       }
     });
   }
+
+  function handleRetryProcessing() {
+    setRefreshError("");
+    startRetryTransition(async () => {
+      const result = await retryBookmarkProcessing(currentBookmark.id);
+      if (result.success) {
+        setCurrentBookmark(result.data);
+        router.refresh();
+      } else {
+        setRefreshError(result.error);
+      }
+    });
+  }
+
+  useEffect(() => {
+    const isActive =
+      currentBookmark.processing_status === "queued" ||
+      currentBookmark.processing_status === "processing";
+    if (!isActive) return;
+
+    let cancelled = false;
+    const interval = window.setInterval(async () => {
+      const result = await getProcessingBookmarks();
+      if (cancelled || !result.success) return;
+      const next = result.data.find((item) => item.id === currentBookmark.id);
+      if (next) {
+        setCurrentBookmark(next);
+        if (next.processing_status !== "queued" && next.processing_status !== "processing") {
+          window.clearInterval(interval);
+          router.refresh();
+        }
+      }
+    }, 10_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [currentBookmark.id, currentBookmark.processing_status, router]);
 
   return (
     <div className="bookmark-detail-page">
@@ -137,8 +177,14 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             </Button>
             <Button variant="outline" onClick={handleRefreshScreenshot} disabled={isRefreshing}>
               {isRefreshing ? <SpinnerIcon className="animate-spin" /> : <ArrowsClockwiseIcon />}
-              {isRefreshing ? "Refreshing..." : "Refresh screenshot"}
+              {isRefreshing ? "Queueing..." : "Refresh preview"}
             </Button>
+            {currentBookmark.processing_status === "failed" && (
+              <Button variant="outline" onClick={handleRetryProcessing} disabled={isRetrying}>
+                {isRetrying ? <SpinnerIcon className="animate-spin" /> : <ArrowsClockwiseIcon />}
+                {isRetrying ? "Retrying..." : "Retry preview"}
+              </Button>
+            )}
             <Button asChild>
               <a href={currentBookmark.url} target="_blank" rel="noopener noreferrer">
                 <ArrowSquareOutIcon /> Visit site
@@ -162,6 +208,26 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             <div className="browser-shot">
               {currentBookmark.screenshot_url ? (
                 <img src={currentBookmark.screenshot_url} alt={`${currentBookmark.title} full page screenshot`} />
+              ) : currentBookmark.processing_status === "queued" ? (
+                <div className="preview-fallback">
+                  <span>Queued for preview</span>
+                </div>
+              ) : currentBookmark.processing_status === "processing" ? (
+                <div className="preview-fallback">
+                  <span>Preparing preview...</span>
+                </div>
+              ) : currentBookmark.processing_status === "failed" ? (
+                <div className="preview-fallback">
+                  <span>Preview failed</span>
+                  <button
+                    type="button"
+                    className="preview-retry-btn"
+                    onClick={handleRetryProcessing}
+                    disabled={isRetrying}
+                  >
+                    {isRetrying ? "Retrying..." : "Retry"}
+                  </button>
+                </div>
               ) : (
                 <div className="preview-fallback">
                   <span>No screenshot yet</span>

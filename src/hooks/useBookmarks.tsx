@@ -87,11 +87,14 @@ export function BookmarksProvider({
   }, []);
 
   useEffect(() => {
-    if (!bookmarks.some((bookmark) => bookmark.processing_status === "processing")) return;
+    const hasActiveProcessing = bookmarks.some((bookmark) =>
+      bookmark.processing_status === "queued" || bookmark.processing_status === "processing"
+    );
+    if (!hasActiveProcessing) return;
 
     let attempts = 0;
     let cancelled = false;
-    const maxAttempts = 24;
+    const maxAttempts = 60;
 
     const interval = window.setInterval(async () => {
       attempts += 1;
@@ -99,12 +102,14 @@ export function BookmarksProvider({
       if (cancelled) return;
       if (result.success) {
         setBookmarks(result.data);
-        if (!result.data.some((bookmark) => bookmark.processing_status === "processing")) {
+        if (!result.data.some((bookmark) =>
+          bookmark.processing_status === "queued" || bookmark.processing_status === "processing"
+        )) {
           window.clearInterval(interval);
         }
       }
       if (attempts >= maxAttempts) window.clearInterval(interval);
-    }, 3500);
+    }, 10_000);
 
     return () => {
       cancelled = true;

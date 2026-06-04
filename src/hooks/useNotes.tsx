@@ -27,6 +27,7 @@ import {
   updateNoteColor,
   updateNotePosition,
   updateNoteSize,
+  updateTextNoteRichContent,
   uploadNoteMedia,
 } from "@/lib/canvas-actions";
 import type {
@@ -408,19 +409,14 @@ export function NotesProvider({
         })
       );
 
-      const result = await fetch(`/api/canvas/notes/${id}/rich-text`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: plainText,
-          content_json: contentJson,
-        }),
-      })
-        .then((response) => response.json() as Promise<ActionResult<CanvasNote>>)
-        .catch((error) => ({
+      if (!previous) {
+        return {
           success: false,
-          error: error instanceof Error ? error.message : "Failed to save rich text",
-        } satisfies ActionResult<CanvasNote>));
+          error: "Note no longer exists",
+        } satisfies ActionResult<CanvasNote>;
+      }
+
+      const result = await updateTextNoteRichContent(id, plainText, contentJson);
       if (result.success) {
         setNotes((prev) => prev.map((note) => (note.id === id ? result.data : note)));
       } else if (previous) {
