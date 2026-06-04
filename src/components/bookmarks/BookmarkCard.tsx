@@ -34,6 +34,8 @@ function BookmarkCardComponent({
   const domain = getDomain(bookmark.url);
   const favicon = getFaviconUrl(bookmark.url);
   const screenshot = bookmark.screenshot_url;
+  const isProcessing = bookmark.processing_status === "processing";
+  const isFailed = bookmark.processing_status === "failed";
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
@@ -80,8 +82,19 @@ function BookmarkCardComponent({
                 src={screenshot}
                 alt={`${bookmark.title} preview`}
                 loading="lazy"
+                decoding="async"
                 onError={() => setImgError(true)}
               />
+            ) : isProcessing ? (
+              <div className="preview-fallback">
+                <ImageIcon />
+                <span>Processing screenshot...</span>
+              </div>
+            ) : isFailed ? (
+              <div className="preview-fallback">
+                <ImageIcon />
+                <span>Preview unavailable</span>
+              </div>
             ) : (
               <div className="preview-fallback">
                 <ImageIcon />
@@ -97,6 +110,7 @@ function BookmarkCardComponent({
                   src={favicon}
                   alt=""
                   loading="lazy"
+                  decoding="async"
                   onError={() => setFaviconError(true)}
                 />
               ) : (

@@ -33,7 +33,7 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
         </label>
         <label>
           Slug
-          <input name="slug" defaultValue={template?.slug ?? `nyabag-template-${Date.now()}`} required />
+          <input name="slug" defaultValue={template?.slug ?? "nyabag-template-new"} required />
         </label>
         <label>
           Status

@@ -363,6 +363,12 @@ Security is enforced at several layers:
 
 Main action: `createBookmark(formData)` in `src/lib/actions.ts`.
 
+Performance lifecycle:
+- `createBookmark(formData)` now inserts a basic bookmark row immediately and returns it with `processing_status = "processing"`.
+- Metadata, Microlink screenshot generation, Sharp optimization, Supabase Storage upload, and final row updates run in `src/lib/bookmarks/enrichment.ts` via Next.js `after()`.
+- Completed enrichment marks the row `ready`; failures mark it `failed` with `processing_error` while keeping the bookmark usable.
+- The dashboard uses bounded polling for processing bookmarks instead of storing private bookmark data in LocalStorage.
+
 Flow:
 
 1. Create Supabase server client.
@@ -479,6 +485,13 @@ Module: `src/lib/data.ts`.
 ### Canvas State
 
 Main hook: `useNotes` in `src/hooks/useNotes.tsx`.
+
+Performance notes:
+- Initial canvas loading uses explicit render columns for notes and sections instead of `select("*")`.
+- Uploaded media signed URLs are created with one `createSignedUrls(..., 3600)` batch call and mapped back to notes.
+- `src/features/canvas/store/useCanvasStore.ts` keeps normalized notes/sections plus isolated viewport, selection, and tool state for selector-based rendering.
+- Canvas viewport is the only canvas state persisted to LocalStorage; private notes/media are not stored there.
+- TODO for large canvases: load notes inside or near the current viewport rather than all notes.
 
 Primary state:
 
@@ -693,7 +706,7 @@ Modules:
 | `updateNotePosition(...)` | Persist note position | Updates `x`, `y` |
 | `updateNoteSize(...)` | Persist note dimensions | Updates `width`, `height` |
 | `bringNoteToFront(id)` | Persist note z-index | Updates `z_index` |
-| `deleteNote(id)` / `deleteNotes(ids)` | Delete notes and return fresh canvas snapshot | Deletes notes/storage and returns notes/sections |
+| `deleteNote(id)` / `deleteNotes(ids)` | Delete notes and return changed IDs by default | Deletes notes/storage and only returns a snapshot when requested |
 | `createSectionFromNotes(...)` | Create section around selected notes | Inserts `canvas_sections`, updates note `section_id` |
 | `updateSectionPosition(...)` | Move section and member notes | Updates section and notes |
 | `updateSectionSize(...)` | Resize section | Updates section |
@@ -972,4 +985,3 @@ Existing warnings:
 8. Add collaborative cursors/multiplayer only after persistence is fully stable.
 9. Add monitoring around screenshot failures and storage upload failures.
 10. Consider a dedicated migration system instead of only maintaining `supabase/schema.sql`.
-

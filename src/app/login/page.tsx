@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SpinnerIcon } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
+import { timeAsync } from "@/lib/perf";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,18 +27,19 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      await timeAsync("login submit client flow", async () => {
+        const supabase = createClient();
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (authError) {
+          setError(authError.message);
+          setLoading(false);
+        } else {
+          router.replace("/app");
+        }
       });
-      if (authError) {
-        setError(authError.message);
-        setLoading(false);
-      } else {
-        router.push("/app");
-        router.refresh();
-      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Authentication failed");
       setLoading(false);

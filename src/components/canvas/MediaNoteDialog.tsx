@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { FileArrowUpIcon, LinkSimpleIcon, XIcon } from "@phosphor-icons/react";
-import type { PendingMediaNote } from "@/hooks/useNotes";
+import type { PendingMediaNote } from "@/lib/types";
 
 type MediaType = "image" | "video";
 type MediaSource = "upload" | "url";

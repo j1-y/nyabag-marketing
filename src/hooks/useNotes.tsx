@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -26,7 +27,6 @@ import {
   updateNoteColor,
   updateNotePosition,
   updateNoteSize,
-  updateTextNoteRichContent,
   uploadNoteMedia,
 } from "@/lib/canvas-actions";
 import type {
@@ -37,14 +37,9 @@ import type {
   CanvasViewport,
   NoteMediaSource,
   NoteType,
+  PendingMediaNote,
 } from "@/lib/types";
-
-export type PendingMediaNote = {
-  type: "image" | "video";
-  source: "upload" | "url";
-  file?: File;
-  url?: string;
-};
+import { useCanvasStore } from "@/features/canvas/store/useCanvasStore";
 
 export const NOTE_COLORS = [
   "#12CFF3",
@@ -135,10 +130,47 @@ export function NotesProvider({
   const [pendingMediaNote, setPendingMediaNoteState] = useState<PendingMediaNote | null>(null);
   const [isCreatingMediaNote, setIsCreatingMediaNote] = useState(false);
   const [mediaPlacementError, setMediaPlacementError] = useState("");
-  const [viewport, setViewport] = useState<CanvasViewport>({ x: 0, y: 0, scale: 1 });
+  const [viewport, setViewport] = useState<CanvasViewport>(() => {
+    if (typeof window === "undefined") return { x: 0, y: 0, scale: 1 };
+    try {
+      const stored = window.localStorage.getItem("nyabag:canvas-viewport");
+      if (!stored) return { x: 0, y: 0, scale: 1 };
+      const parsed = JSON.parse(stored) as Partial<CanvasViewport>;
+      if (
+        typeof parsed.x === "number" &&
+        typeof parsed.y === "number" &&
+        typeof parsed.scale === "number"
+      ) {
+        return parsed as CanvasViewport;
+      }
+    } catch {
+      // Canvas viewport is a non-sensitive UI preference; ignore corrupt storage.
+    }
+    return { x: 0, y: 0, scale: 1 };
+  });
   const [selectedIds, setSelectedIdsState] = useState<string[]>([]);
   const colorIndexRef = useRef(0);
   const selectedId = selectedIds.length === 1 ? selectedIds[0] : null;
+  const initializeCanvasStore = useCanvasStore((state) => state.initialize);
+  const setStoreViewport = useCanvasStore((state) => state.setViewport);
+
+  useEffect(() => {
+    initializeCanvasStore(initial, initialSections);
+  }, [initial, initialSections, initializeCanvasStore]);
+
+  useEffect(() => {
+    setStoreViewport(viewport);
+  }, [setStoreViewport, viewport]);
+
+  const setPersistentViewport = useCallback((nextViewport: CanvasViewport) => {
+    setViewport(nextViewport);
+    setStoreViewport(nextViewport);
+    try {
+      window.localStorage.setItem("nyabag:canvas-viewport", JSON.stringify(nextViewport));
+    } catch {
+      // Do not persist private canvas content; viewport only is safe to drop.
+    }
+  }, [setStoreViewport]);
 
   const setSelectedIds = useCallback((ids: string[]) => {
     setSelectedIdsState([...new Set(ids)]);
@@ -289,7 +321,12 @@ export function NotesProvider({
 
       const result = await deleteNotesAction(uniqueIds);
       if (result.success) {
-        applyServerSnapshot(result.data);
+        if (result.data.snapshot) {
+          applyServerSnapshot(result.data.snapshot);
+        } else {
+          setNotes((prev) => prev.filter((note) => !result.data.deletedIds.includes(note.id)));
+          setSelectedIdsState((prev) => prev.filter((selected) => !result.data.deletedIds.includes(selected)));
+        }
       } else {
         console.error("Failed to delete note:", result.error);
       }
@@ -301,7 +338,12 @@ export function NotesProvider({
     async (id: string) => {
       const result = await deleteNoteAction(id);
       if (result.success) {
-        applyServerSnapshot(result.data);
+        if (result.data.snapshot) {
+          applyServerSnapshot(result.data.snapshot);
+        } else {
+          setNotes((prev) => prev.filter((note) => !result.data.deletedIds.includes(note.id)));
+          setSelectedIdsState((prev) => prev.filter((selected) => !result.data.deletedIds.includes(selected)));
+        }
       } else {
         console.error("Failed to delete note:", result.error);
       }
@@ -366,7 +408,19 @@ export function NotesProvider({
         })
       );
 
-      const result = await updateTextNoteRichContent(id, plainText, contentJson);
+      const result = await fetch(`/api/canvas/notes/${id}/rich-text`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: plainText,
+          content_json: contentJson,
+        }),
+      })
+        .then((response) => response.json() as Promise<ActionResult<CanvasNote>>)
+        .catch((error) => ({
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to save rich text",
+        } satisfies ActionResult<CanvasNote>));
       if (result.success) {
         setNotes((prev) => prev.map((note) => (note.id === id ? result.data : note)));
       } else if (previous) {
@@ -589,7 +643,7 @@ export function NotesProvider({
       isCreatingMediaNote,
       mediaPlacementError,
       viewport,
-      setViewport,
+      setViewport: setPersistentViewport,
       selectedId,
       setSelectedId,
       selectedIds,
@@ -629,6 +683,7 @@ export function NotesProvider({
       isCreatingMediaNote,
       mediaPlacementError,
       viewport,
+      setPersistentViewport,
       selectedId,
       selectedIds,
       setSelectedId,

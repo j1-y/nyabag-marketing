@@ -136,7 +136,7 @@ export async function scrapeBookmarkMetadata(url: string): Promise<ExtractedMeta
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), 2500);
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {

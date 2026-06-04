@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type Dispatch,
@@ -11,7 +12,7 @@ import {
   type SetStateAction,
 } from "react";
 import type { Bookmark } from "@/lib/types";
-import { deleteBookmark } from "@/lib/actions";
+import { deleteBookmark, getProcessingBookmarks } from "@/lib/actions";
 
 export type PendingBookmark = {
   id: string;
@@ -61,12 +62,55 @@ export function BookmarksProvider({
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(initial);
   const [pendingBookmarks, setPendingBookmarks] = useState<PendingBookmark[]>([]);
   const [activeTag, setActiveTag] = useState("All");
-  const [activeFilter, setActiveFilter] = useState<"all" | "recent">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "recent">(() => {
+    if (typeof window === "undefined") return "all";
+    try {
+      const stored = window.localStorage.getItem("nyabag:dashboard-filter");
+      return stored === "all" || stored === "recent" ? stored : "all";
+    } catch {
+      return "all";
+    }
+  });
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Bookmark | null>(null);
   const [detailTarget, setDetailTarget] = useState<Bookmark | null>(null);
+
+  const setPersistentActiveFilter = useCallback((filter: "all" | "recent") => {
+    setActiveFilter(filter);
+    try {
+      window.localStorage.setItem("nyabag:dashboard-filter", filter);
+    } catch {
+      // Do not store private bookmark data; ignore preference storage failures.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!bookmarks.some((bookmark) => bookmark.processing_status === "processing")) return;
+
+    let attempts = 0;
+    let cancelled = false;
+    const maxAttempts = 24;
+
+    const interval = window.setInterval(async () => {
+      attempts += 1;
+      const result = await getProcessingBookmarks();
+      if (cancelled) return;
+      if (result.success) {
+        setBookmarks(result.data);
+        if (!result.data.some((bookmark) => bookmark.processing_status === "processing")) {
+          window.clearInterval(interval);
+        }
+      }
+      if (attempts >= maxAttempts) window.clearInterval(interval);
+    }, 3500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [bookmarks]);
 
   const deleteItem = useCallback(async (id: string) => {
     // Keep reference to previous state for rollback
@@ -134,7 +178,7 @@ export function BookmarksProvider({
       addPendingBookmark,
       removePendingBookmark,
       activeTag, setActiveTag,
-      activeFilter, setActiveFilter,
+      activeFilter, setActiveFilter: setPersistentActiveFilter,
       search, setSearch,
       addOpen,
       openAdd,
@@ -173,6 +217,7 @@ export function BookmarksProvider({
       pendingBookmarks,
       removePendingBookmark,
       search,
+      setPersistentActiveFilter,
     ]
   );
 

@@ -131,11 +131,13 @@ export function NoteVideoContent({ note, isSelected }: { note: CanvasNote; isSel
         <video
           src={uploadedVideoUrl}
           controls
+          preload="metadata"
           style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
         />
       ) : (
         <iframe
           src={embed?.src}
+          loading="lazy"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
           style={{ width: "100%", height: "100%", border: "none", display: "block" }}

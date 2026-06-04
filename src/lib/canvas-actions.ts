@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { CANVAS_NOTE_COLUMNS, CANVAS_SECTION_COLUMNS } from "@/lib/canvas-data";
+import { isPerfEnabled, timeAsync } from "@/lib/perf";
 import {
   noteCreateSchema,
   noteDeleteSchema,
@@ -17,6 +19,7 @@ import type {
   CanvasNote,
   CanvasSection,
   CanvasSnapshot,
+  DeleteNotesResult,
   NoteMediaSource,
   NoteType,
 } from "@/lib/types";
@@ -96,13 +99,13 @@ async function getOwnedNote(
 ): Promise<CanvasNote | null> {
   const { data, error } = await supabase
     .from("canvas_notes")
-    .select("*")
+    .select(CANVAS_NOTE_COLUMNS)
     .eq("id", id)
     .eq("user_id", userId)
     .single();
 
   if (error || !data) return null;
-  return data as CanvasNote;
+  return data as unknown as CanvasNote;
 }
 
 async function getOwnedSection(
@@ -112,13 +115,13 @@ async function getOwnedSection(
 ): Promise<CanvasSection | null> {
   const { data, error } = await supabase
     .from("canvas_sections")
-    .select("*")
+    .select(CANVAS_SECTION_COLUMNS)
     .eq("id", id)
     .eq("user_id", userId)
     .single();
 
   if (error || !data) return null;
-  return data as CanvasSection;
+  return data as unknown as CanvasSection;
 }
 
 async function removeStoredMedia(supabase: Supabase, note: CanvasNote | null) {
@@ -129,15 +132,15 @@ async function removeStoredMedia(supabase: Supabase, note: CanvasNote | null) {
 
 async function getCanvasSnapshot(supabase: Supabase): Promise<CanvasSnapshot> {
   const [{ data: notesData }, { data: sectionsData }] = await Promise.all([
-    supabase.from("canvas_notes").select("*").order("z_index", { ascending: true }),
-    supabase.from("canvas_sections").select("*").order("z_index", { ascending: true }),
+    supabase.from("canvas_notes").select(CANVAS_NOTE_COLUMNS).order("z_index", { ascending: true }),
+    supabase.from("canvas_sections").select(CANVAS_SECTION_COLUMNS).order("z_index", { ascending: true }),
   ]);
-  const notes = (notesData ?? []) as CanvasNote[];
+  const notes = (notesData ?? []) as unknown as CanvasNote[];
   const signedNotes = await Promise.all(notes.map((note) => withSignedUrl(supabase, note)));
 
   return {
     notes: signedNotes,
-    sections: (sectionsData ?? []) as CanvasSection[],
+    sections: (sectionsData ?? []) as unknown as CanvasSection[],
   };
 }
 
@@ -204,43 +207,45 @@ export async function createNote(
   width?: number,
   height?: number
 ): Promise<ActionResult<CanvasNote>> {
-  const supabase = await createClient();
-  const user = await getUser(supabase);
-  if (!user) return { success: false, error: "Not authenticated" };
+  return timeAsync("createNote", async () => {
+    const supabase = await createClient();
+    const user = await getUser(supabase);
+    if (!user) return { success: false, error: "Not authenticated" };
 
-  const z_index = await getNextNoteZIndex(supabase, user.id);
-  const isSocial = type === "social";
-  const noteWidth = width ?? 240;
-  const noteHeight = height ?? 180;
-  const parsed = noteCreateSchema.safeParse({
-    type,
-    content: isSocial ? SOCIAL_NOTE_PREFIX : "",
-    media_source: null,
-    media_path: null,
-    media_mime: null,
-    media_name: null,
-    x,
-    y,
-    width: noteWidth,
-    height: noteHeight,
-    color,
-    z_index,
+    const z_index = await getNextNoteZIndex(supabase, user.id);
+    const isSocial = type === "social";
+    const noteWidth = width ?? 240;
+    const noteHeight = height ?? 180;
+    const parsed = noteCreateSchema.safeParse({
+      type,
+      content: isSocial ? SOCIAL_NOTE_PREFIX : "",
+      media_source: null,
+      media_path: null,
+      media_mime: null,
+      media_name: null,
+      x,
+      y,
+      width: noteWidth,
+      height: noteHeight,
+      color,
+      z_index,
+    });
+
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
+
+    const { section_id, ...noteInput } = parsed.data;
+    const { data, error } = await supabase
+      .from("canvas_notes")
+      .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    // The client inserts this into local state immediately; route revalidation would rebuild the canvas.
+    return { success: true, data: data as unknown as CanvasNote };
   });
-
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message };
-  }
-
-  const { section_id, ...noteInput } = parsed.data;
-  const { data, error } = await supabase
-    .from("canvas_notes")
-    .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
-    .select()
-    .single();
-
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/app/canvas");
-  return { success: true, data: data as CanvasNote };
 }
 
 export async function createSocialNoteFromUrl(
@@ -295,8 +300,8 @@ export async function createSocialNoteFromUrl(
     .single();
 
   if (error) return { success: false, error: error.message };
-  revalidatePath("/app/canvas");
-  return { success: true, data: data as CanvasNote };
+  // Color changes are local-authoritative and should not rebuild the canvas route.
+  return { success: true, data: data as unknown as CanvasNote };
 }
 
 export async function createMediaNoteFromUrl(
@@ -347,7 +352,7 @@ export async function createMediaNoteFromUrl(
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/app/canvas");
-  return { success: true, data: data as CanvasNote };
+  return { success: true, data: data as unknown as CanvasNote };
 }
 
 export async function createMediaNoteWithUpload(
@@ -411,7 +416,7 @@ export async function createMediaNoteWithUpload(
     return { success: false, error: createError?.message ?? "Failed to create note" };
   }
 
-  const note = created as CanvasNote;
+  const note = created as unknown as CanvasNote;
   const path = `${user.id}/${note.id}/${crypto.randomUUID()}-${safeFilename(file.name)}`;
   const { error: uploadError } = await supabase.storage
     .from(MEDIA_BUCKET)
@@ -448,7 +453,7 @@ export async function createMediaNoteWithUpload(
   }
 
   revalidatePath("/app/canvas");
-  const signed = await withSignedUrl(supabase, updated as CanvasNote);
+  const signed = await withSignedUrl(supabase, updated as unknown as CanvasNote);
   return { success: true, data: signed };
 }
 
@@ -504,7 +509,7 @@ export async function updateNoteContent(
 
   if (error) return { success: false, error: error.message };
   if (mediaSource !== undefined) await removeStoredMedia(supabase, oldNote);
-  return { success: true, data: data as CanvasNote };
+  return { success: true, data: data as unknown as CanvasNote };
 }
 
 export async function updateTextNoteRichContent(
@@ -548,7 +553,7 @@ export async function updateTextNoteRichContent(
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/app/canvas");
-  return { success: true, data: data as CanvasNote };
+  return { success: true, data: data as unknown as CanvasNote };
 }
 
 export async function updateNoteColor(
@@ -574,7 +579,7 @@ export async function updateNoteColor(
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/app/canvas");
-  return { success: true, data: data as CanvasNote };
+  return { success: true, data: data as unknown as CanvasNote };
 }
 
 export async function uploadNoteMedia(
@@ -637,7 +642,7 @@ export async function uploadNoteMedia(
 
   await removeStoredMedia(supabase, note);
   revalidatePath("/app/canvas");
-  const signed = await withSignedUrl(supabase, data as CanvasNote);
+  const signed = await withSignedUrl(supabase, data as unknown as CanvasNote);
   return { success: true, data: signed };
 }
 
@@ -666,7 +671,7 @@ export async function removeNoteMedia(id: string): Promise<ActionResult<CanvasNo
   if (error) return { success: false, error: error.message };
   await removeStoredMedia(supabase, note);
   revalidatePath("/app/canvas");
-  return { success: true, data: data as CanvasNote };
+  return { success: true, data: data as unknown as CanvasNote };
 }
 
 export async function updateNotePosition(
@@ -674,23 +679,27 @@ export async function updateNotePosition(
   x: number,
   y: number
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const user = await getUser(supabase);
-  if (!user) return { success: false, error: "Not authenticated" };
+  const persist = async (): Promise<ActionResult> => {
+    const supabase = await createClient();
+    const user = await getUser(supabase);
+    if (!user) return { success: false, error: "Not authenticated" };
 
-  const parsed = notePositionSchema.safeParse({ id, x, y, z_index: 1 });
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message };
-  }
+    const parsed = notePositionSchema.safeParse({ id, x, y, z_index: 1 });
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
 
-  const { error } = await supabase
-    .from("canvas_notes")
-    .update({ x, y })
-    .eq("id", id)
-    .eq("user_id", user.id);
+    const { error } = await supabase
+      .from("canvas_notes")
+      .update({ x, y })
+      .eq("id", id)
+      .eq("user_id", user.id);
 
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: undefined };
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: undefined };
+  };
+
+  return isPerfEnabled() ? timeAsync("updateNotePosition", persist) : persist();
 }
 
 export async function updateNoteSize(
@@ -741,39 +750,48 @@ export async function bringNoteToFront(id: string): Promise<ActionResult<number>
   return { success: true, data: newZIndex };
 }
 
-export async function deleteNotes(ids: string[]): Promise<ActionResult<CanvasSnapshot>> {
-  const supabase = await createClient();
-  const user = await getUser(supabase);
-  if (!user) return { success: false, error: "Not authenticated" };
+export async function deleteNotes(
+  ids: string[],
+  options: { returnSnapshot?: boolean } = {}
+): Promise<ActionResult<DeleteNotesResult>> {
+  return timeAsync("deleteNotes", async () => {
+    const supabase = await createClient();
+    const user = await getUser(supabase);
+    if (!user) return { success: false, error: "Not authenticated" };
 
-  const parsed = noteDeleteSchema.safeParse({ ids });
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message };
-  }
+    const parsed = noteDeleteSchema.safeParse({ ids });
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
 
-  const uniqueIds = [...new Set(parsed.data.ids)];
-  const { data: ownedNotes, error: lookupError } = await supabase
-    .from("canvas_notes")
-    .select("*")
-    .eq("user_id", user.id)
-    .in("id", uniqueIds);
+    const uniqueIds = [...new Set(parsed.data.ids)];
+    const { data: ownedNotes, error: lookupError } = await supabase
+      .from("canvas_notes")
+      .select(CANVAS_NOTE_COLUMNS)
+      .eq("user_id", user.id)
+      .in("id", uniqueIds);
 
-  if (lookupError) return { success: false, error: lookupError.message };
-  const notes = (ownedNotes ?? []) as CanvasNote[];
+    if (lookupError) return { success: false, error: lookupError.message };
+    const notes = (ownedNotes ?? []) as unknown as CanvasNote[];
+    const deletedIds = notes.map((note) => note.id);
+    const removedMediaPaths = notes
+      .filter((note) => note.media_source === "upload" && note.media_path)
+      .map((note) => note.media_path as string);
 
-  const { error } = await supabase
-    .from("canvas_notes")
-    .delete()
-    .eq("user_id", user.id)
-    .in("id", uniqueIds);
+    const { error } = await supabase
+      .from("canvas_notes")
+      .delete()
+      .eq("user_id", user.id)
+      .in("id", uniqueIds);
 
-  if (error) return { success: false, error: error.message };
-  await Promise.all(notes.map((note) => removeStoredMedia(supabase, note)));
-  revalidatePath("/app/canvas");
-  return { success: true, data: await getCanvasSnapshot(supabase) };
+    if (error) return { success: false, error: error.message };
+    await Promise.all(notes.map((note) => removeStoredMedia(supabase, note)));
+    const snapshot = options.returnSnapshot ? await getCanvasSnapshot(supabase) : undefined;
+    return { success: true, data: { deletedIds, removedMediaPaths, snapshot } };
+  });
 }
 
-export async function deleteNote(id: string): Promise<ActionResult<CanvasSnapshot>> {
+export async function deleteNote(id: string): Promise<ActionResult<DeleteNotesResult>> {
   return deleteNotes([id]);
 }
 
@@ -798,7 +816,7 @@ export async function createSectionFromNotes(
     .in("id", uniqueIds);
 
   if (notesError) return { success: false, error: notesError.message };
-  const notes = (notesData ?? []) as CanvasNote[];
+  const notes = (notesData ?? []) as unknown as CanvasNote[];
   const foundIds = new Set(notes.map((note) => note.id));
   const missingNoteIds = uniqueIds.filter((id) => !foundIds.has(id));
   if (notes.length === 0) {
@@ -836,7 +854,7 @@ export async function createSectionFromNotes(
     .single();
 
   if (sectionError) return { success: false, error: sectionError.message };
-  const section = sectionData as CanvasSection;
+  const section = sectionData as unknown as CanvasSection;
 
   const { data: updatedNotes, error: updateError } = await supabase
     .from("canvas_notes")
@@ -853,7 +871,7 @@ export async function createSectionFromNotes(
   revalidatePath("/app/canvas");
   return {
     success: true,
-    data: { section, notes: (updatedNotes ?? []) as CanvasNote[], missingNoteIds },
+    data: { section, notes: (updatedNotes ?? []) as unknown as CanvasNote[], missingNoteIds },
   };
 }
 
@@ -880,7 +898,7 @@ export async function updateSectionLabel(
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/app/canvas");
-  return { success: true, data: data as CanvasSection };
+  return { success: true, data: data as unknown as CanvasSection };
 }
 
 export async function updateSectionPosition(
@@ -948,7 +966,7 @@ export async function updateSectionSize(
     .single();
 
   if (error) return { success: false, error: error.message };
-  return { success: true, data: data as CanvasSection };
+  return { success: true, data: data as unknown as CanvasSection };
 }
 
 export async function deleteSection(id: string): Promise<ActionResult> {

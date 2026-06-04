@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const https = require('https');
 
 https.get("https://api.microlink.io/?url=https://stripe.com&screenshot=true&fullPage=true&meta=false", res => {

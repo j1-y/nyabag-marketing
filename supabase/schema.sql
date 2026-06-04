@@ -45,7 +45,11 @@ ALTER TABLE bookmarks
   ADD COLUMN IF NOT EXISTS screenshot_path TEXT,
   ADD COLUMN IF NOT EXISTS screenshot_refreshed_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS summary TEXT NOT NULL DEFAULT '',
-  ADD COLUMN IF NOT EXISTS metadata_refreshed_at TIMESTAMPTZ;
+  ADD COLUMN IF NOT EXISTS metadata_refreshed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS processing_status TEXT NOT NULL DEFAULT 'ready',
+  ADD COLUMN IF NOT EXISTS processing_error TEXT,
+  ADD COLUMN IF NOT EXISTS enrichment_started_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS enrichment_finished_at TIMESTAMPTZ;
 
 ALTER TABLE bookmarks
   DROP CONSTRAINT IF EXISTS bookmarks_url_check,
@@ -53,11 +57,13 @@ ALTER TABLE bookmarks
   DROP CONSTRAINT IF EXISTS bookmarks_screenshot_path_check,
   DROP CONSTRAINT IF EXISTS bookmarks_summary_check,
   DROP CONSTRAINT IF EXISTS bookmarks_note_check,
+  DROP CONSTRAINT IF EXISTS bookmarks_processing_status_check,
   ADD CONSTRAINT bookmarks_url_check CHECK (char_length(url) <= 2048),
   ADD CONSTRAINT bookmarks_title_check CHECK (char_length(title) <= 255),
   ADD CONSTRAINT bookmarks_screenshot_path_check CHECK (screenshot_path IS NULL OR char_length(screenshot_path) <= 1024),
   ADD CONSTRAINT bookmarks_summary_check CHECK (char_length(summary) <= 1000),
-  ADD CONSTRAINT bookmarks_note_check CHECK (char_length(note) <= 2000);
+  ADD CONSTRAINT bookmarks_note_check CHECK (char_length(note) <= 2000),
+  ADD CONSTRAINT bookmarks_processing_status_check CHECK (processing_status IN ('ready', 'processing', 'failed'));
 
 DROP TRIGGER IF EXISTS bookmarks_updated_at ON bookmarks;
 CREATE TRIGGER bookmarks_updated_at
@@ -67,6 +73,8 @@ CREATE TRIGGER bookmarks_updated_at
 CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_tags ON bookmarks USING GIN(tags);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_created ON bookmarks(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_user_url ON bookmarks(user_id, url);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_processing_status ON bookmarks(processing_status);
 
 ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 
@@ -214,6 +222,7 @@ CREATE TRIGGER canvas_sections_updated_at
 
 CREATE INDEX IF NOT EXISTS idx_sections_user_id ON canvas_sections(user_id);
 CREATE INDEX IF NOT EXISTS idx_sections_user_created ON canvas_sections(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sections_user_z ON canvas_sections(user_id, z_index);
 
 ALTER TABLE canvas_sections ENABLE ROW LEVEL SECURITY;
 
@@ -294,6 +303,8 @@ CREATE TRIGGER canvas_notes_updated_at
 CREATE INDEX IF NOT EXISTS idx_notes_user_id ON canvas_notes(user_id);
 CREATE INDEX IF NOT EXISTS idx_notes_user_created ON canvas_notes(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notes_section_id ON canvas_notes(section_id);
+CREATE INDEX IF NOT EXISTS idx_notes_user_z ON canvas_notes(user_id, z_index);
+CREATE INDEX IF NOT EXISTS idx_notes_user_position ON canvas_notes(user_id, x, y);
 
 ALTER TABLE canvas_notes ENABLE ROW LEVEL SECURITY;
 

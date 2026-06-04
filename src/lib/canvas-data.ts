@@ -1,36 +1,88 @@
 import { createClient } from "@/lib/supabase/server";
+import { timeAsync } from "@/lib/perf";
 import type { CanvasNote, CanvasSection } from "@/lib/types";
 
+export const CANVAS_NOTE_COLUMNS = [
+  "id",
+  "user_id",
+  "section_id",
+  "type",
+  "content",
+  "media_source",
+  "media_path",
+  "media_mime",
+  "media_name",
+  "content_json",
+  "content_format",
+  "x",
+  "y",
+  "width",
+  "height",
+  "color",
+  "z_index",
+  "created_at",
+  "updated_at",
+].join(",");
+
+export const CANVAS_SECTION_COLUMNS = [
+  "id",
+  "user_id",
+  "label",
+  "x",
+  "y",
+  "width",
+  "height",
+  "color",
+  "z_index",
+  "created_at",
+  "updated_at",
+].join(",");
+
 export async function getNotes(): Promise<CanvasNote[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("canvas_notes")
-    .select("*")
-    .order("z_index", { ascending: true });
+  return timeAsync("getNotes", async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("canvas_notes")
+      .select(CANVAS_NOTE_COLUMNS)
+      .order("z_index", { ascending: true });
 
-  if (error || !data) return [];
-  const notes = data as CanvasNote[];
+    if (error || !data) return [];
+    const notes = data as unknown as CanvasNote[];
+    const uploadedPaths = notes
+      .filter((note) => note.media_source === "upload" && note.media_path)
+      .map((note) => note.media_path as string);
 
-  return Promise.all(
-    notes.map(async (note) => {
-      if (note.media_source !== "upload" || !note.media_path) return note;
+    if (uploadedPaths.length === 0) return notes;
 
+    const signedUrlByPath = await timeAsync("signed URL generation", async () => {
       const { data: signed } = await supabase.storage
         .from("canvas-media")
-        .createSignedUrl(note.media_path, 60 * 60);
+        .createSignedUrls(uploadedPaths, 60 * 60);
+      return new Map(
+        (signed ?? [])
+          .filter((item) => item.signedUrl)
+          .map((item, index) => [uploadedPaths[index], item.signedUrl as string])
+      );
+    });
 
-      return signed?.signedUrl ? { ...note, media_url: signed.signedUrl } : note;
-    })
-  );
+    // Signed URLs are batched to avoid one storage round trip per uploaded media note.
+    return notes.map((note) => {
+      if (note.media_source !== "upload" || !note.media_path) return note;
+      const mediaUrl = signedUrlByPath.get(note.media_path);
+      return mediaUrl ? { ...note, media_url: mediaUrl } : note;
+    });
+  });
 }
 
 export async function getSections(): Promise<CanvasSection[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("canvas_sections")
-    .select("*")
-    .order("z_index", { ascending: true });
+  return timeAsync("getSections", async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("canvas_sections")
+      .select(CANVAS_SECTION_COLUMNS)
+      .order("z_index", { ascending: true });
 
-  if (error || !data) return [];
-  return data as CanvasSection[];
+    if (error || !data) return [];
+    return data as unknown as CanvasSection[];
+  });
 }

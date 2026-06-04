@@ -12,6 +12,10 @@ export type Bookmark = {
   summary: string;
   metadata_refreshed_at: string | null;
   note: string;
+  processing_status: "ready" | "processing" | "failed";
+  processing_error: string | null;
+  enrichment_started_at: string | null;
+  enrichment_finished_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -49,6 +53,13 @@ export type NoteType = "text" | "text_frame" | "link" | "image" | "video" | "soc
 export type NoteMediaSource = "url" | "upload";
 export type NoteContentFormat = "plain" | "rich";
 export type CanvasToolMode = "select" | "pan";
+
+export type PendingMediaNote = {
+  type: "image" | "video";
+  source: "upload" | "url";
+  file?: File;
+  url?: string;
+};
 
 export type CanvasSection = {
   id: string;
@@ -96,4 +107,10 @@ export type CanvasViewport = {
 export type CanvasSnapshot = {
   notes: CanvasNote[];
   sections: CanvasSection[];
+};
+
+export type DeleteNotesResult = {
+  deletedIds: string[];
+  removedMediaPaths: string[];
+  snapshot?: CanvasSnapshot;
 };

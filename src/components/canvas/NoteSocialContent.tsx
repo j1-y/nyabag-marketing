@@ -89,6 +89,7 @@ function SocialFallback({ url, label, message }: { url: string; label: string; m
 }
 
 export function NoteSocialContent({ note, isSelected }: { note: CanvasNote; isSelected: boolean }) {
+  void isSelected;
   const { updateContent, setNoteSize, commitSize } = useNotes();
   const [editOpen, setEditOpen] = useState(false);
   const [status, setStatus] = useState("");
@@ -123,9 +124,12 @@ export function NoteSocialContent({ note, isSelected }: { note: CanvasNote; isSe
   useEffect(() => {
     if (!hasEmbed || !embed || embed.provider !== "x") return;
     let cancelled = false;
-    setXReady(false);
-    setXFailed(false);
-    setStatus("");
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setXReady(false);
+      setXFailed(false);
+      setStatus("");
+    });
 
     getXPostEmbedHtml(embed.url).then((result) => {
       if (cancelled) return;
