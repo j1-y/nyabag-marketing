@@ -1,5 +1,5 @@
 import dns from "node:dns/promises";
-import WebSocket from "ws";
+import ws from "ws";
 import net from "node:net";
 import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
@@ -575,7 +575,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
     autoRefreshToken: false,
   },
   realtime: {
-    WebSocket,
+    transport: ws,
   },
 });
 
