@@ -43,7 +43,7 @@ async function sendEarlyAccessNotification(email: string, source: string) {
 
   if (!apiKey || !to || !from) {
     console.warn("[early-access] Resend env vars missing; signup stored without notification.");
-    return;
+    return false;
   }
 
   try {
@@ -57,9 +57,13 @@ async function sendEarlyAccessNotification(email: string, source: string) {
 
     if (error) {
       console.error("[early-access] Resend notification failed:", error);
+      return false;
     }
+
+    return true;
   } catch (error) {
     console.error("[early-access] Resend notification threw:", error);
+    return false;
   }
 }
 
@@ -90,7 +94,23 @@ export async function submitEarlyAccessSignup(
       return { success: true, data: { duplicate: true } };
     }
 
-    return { success: false, error: "Could not join early access. Please try again." };
+    console.error("[early-access] Signup insert failed:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+
+    const notified = await sendEarlyAccessNotification(
+      email,
+      `${source} (database insert failed: ${error.code ?? "unknown"})`
+    );
+
+    if (notified) {
+      return { success: true, data: { duplicate: false } };
+    }
+
+    return { success: false, error: "Could not join early access. Please email hello@nyabag.com." };
   }
 
   await sendEarlyAccessNotification(email, source);

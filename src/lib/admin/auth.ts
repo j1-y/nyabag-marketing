@@ -40,6 +40,13 @@ export async function getCurrentAdmin(): Promise<CurrentAdmin | null> {
 }
 
 export async function requireAdmin(): Promise<CurrentAdmin> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
   const admin = await getCurrentAdmin();
   if (!admin) redirect("/");
   return admin;

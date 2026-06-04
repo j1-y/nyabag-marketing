@@ -489,6 +489,10 @@ ALTER TABLE early_access_signups
 
 DROP POLICY IF EXISTS "insert_early_access_signups" ON early_access_signups;
 
+DROP POLICY IF EXISTS "early_access_insert_public" ON early_access_signups;
+CREATE POLICY "early_access_insert_public" ON early_access_signups
+  FOR INSERT WITH CHECK (true);
+
 DROP POLICY IF EXISTS "early_access_select_admins" ON early_access_signups;
 CREATE POLICY "early_access_select_admins" ON early_access_signups
   FOR SELECT USING (is_admin(auth.uid()));
