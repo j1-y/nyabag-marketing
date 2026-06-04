@@ -26,7 +26,11 @@ function BookmarkCardComponent({
   onDelete: (id: string) => void;
 }) {
   const router = useRouter();
-  const [imgError, setImgError] = useState(false);
+  const [imageState, setImageState] = useState({
+    src: bookmark.screenshot_url,
+    loaded: false,
+    error: false,
+  });
   const [faviconError, setFaviconError] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -37,6 +41,9 @@ function BookmarkCardComponent({
   const domain = getDomain(bookmark.url);
   const favicon = getFaviconUrl(bookmark.url);
   const screenshot = bookmark.screenshot_url;
+  const imageLoaded = imageState.src === screenshot && imageState.loaded;
+  const imageError = imageState.src === screenshot && imageState.error;
+  const isImageLoading = Boolean(screenshot && !imageError && !imageLoaded);
   const isQueued = bookmark.processing_status === "queued";
   const isProcessing = bookmark.processing_status === "processing";
   const isPendingPreview = isQueued || isProcessing;
@@ -92,15 +99,38 @@ function BookmarkCardComponent({
       >
         <div className="moodboard-shot">
           <div className="moodboard-shot-frame">
-            {screenshot && !imgError ? (
-              <img
-                className="moodboard-img"
-                src={screenshot}
-                alt={`${bookmark.title} preview`}
-                loading="lazy"
-                decoding="async"
-                onError={() => setImgError(true)}
-              />
+            {screenshot && !imageError ? (
+              <>
+                {isImageLoading && (
+                  <div className="preview-loading-skeleton" aria-hidden="true">
+                    <div className="preview-loading-browser">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                    <div className="preview-loading-body">
+                      <div className="preview-loading-line preview-loading-line-sm" />
+                      <div className="preview-loading-hero" />
+                      <div className="preview-loading-line" />
+                      <div className="preview-loading-line preview-loading-line-mid" />
+                    </div>
+                    <div className="skeleton-preview-status">
+                      <ImageIcon />
+                      <span>Loading preview...</span>
+                    </div>
+                  </div>
+                )}
+                <img
+                  className={`moodboard-img ${imageLoaded ? "is-loaded" : "is-loading"}`}
+                  key={screenshot}
+                  src={screenshot}
+                  alt={`${bookmark.title} preview`}
+                  loading="lazy"
+                  decoding="async"
+                  onLoad={() => setImageState({ src: screenshot, loaded: true, error: false })}
+                  onError={() => setImageState({ src: screenshot, loaded: false, error: true })}
+                />
+              </>
             ) : isPendingPreview ? (
               <div className="preview-fallback">
                 <ImageIcon />

@@ -1,0 +1,89 @@
+import { BookmarksIcon, NoteIcon, SpinnerIcon } from "@phosphor-icons/react/dist/ssr";
+
+type DashboardRouteSkeletonProps = {
+  variant: "bookmarks" | "canvas";
+};
+
+function SkeletonPreviewStatus({ label }: { label: string }) {
+  return (
+    <div className="skeleton-preview-status">
+      <SpinnerIcon size={14} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+export function BookmarkGridSkeleton() {
+  return (
+    <div className="dashboard-route-skeleton" role="status" aria-live="polite">
+      <section className="dashboard-skeleton-heading" aria-label="Loading bookmarks">
+        <div>
+          <div className="skeleton-line skeleton-line-kicker" />
+          <div className="skeleton-line skeleton-line-title" />
+        </div>
+        <div className="skeleton-button" />
+      </section>
+
+      <div className="bm-grid view-moodboard dashboard-skeleton-grid">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <article
+            key={index}
+            className="bm-card moodboard-card dashboard-skeleton-card"
+            aria-hidden="true"
+          >
+            <div className="moodboard-shot pending-shot">
+              <div className="pending-browser-bar">
+                <span />
+                <span />
+                <span />
+                <strong />
+              </div>
+              <div className="pending-skeleton">
+                <div className="pending-line pending-line-sm" />
+                <div className="pending-hero" />
+                <div className="pending-line" />
+                <div className="pending-line pending-line-mid" />
+                <div className="pending-grid">
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+              {index === 0 && <SkeletonPreviewStatus label="Loading bookmarks..." />}
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function CanvasBoardSkeleton() {
+  return (
+    <div className="dashboard-route-skeleton canvas-board-skeleton" role="status" aria-live="polite">
+      <div className="canvas-skeleton-world" aria-hidden="true">
+        <div className="canvas-skeleton-section canvas-skeleton-section-a" />
+        <div className="canvas-skeleton-section canvas-skeleton-section-b" />
+        <div className="canvas-skeleton-note canvas-skeleton-note-a" />
+        <div className="canvas-skeleton-note canvas-skeleton-note-b" />
+        <div className="canvas-skeleton-note canvas-skeleton-note-c" />
+        <div className="canvas-skeleton-note canvas-skeleton-note-d" />
+      </div>
+      <div className="canvas-loading-pill canvas-loading-pill-floating">
+        <SpinnerIcon size={16} />
+        <span>Loading canvas...</span>
+      </div>
+    </div>
+  );
+}
+
+export function DashboardRouteSkeleton({ variant }: DashboardRouteSkeletonProps) {
+  if (variant === "canvas") return <CanvasBoardSkeleton />;
+
+  return <BookmarkGridSkeleton />;
+}
+
+export function DashboardRouteSkeletonIcon({ variant }: DashboardRouteSkeletonProps) {
+  return variant === "canvas" ? <NoteIcon size={14} /> : <BookmarksIcon size={14} />;
+}

@@ -1,8 +1,36 @@
 "use client";
 
 import Link from "next/link";
+import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { NoteIcon, SquaresFourIcon } from "@phosphor-icons/react";
+import { NoteIcon, SpinnerIcon, SquaresFourIcon } from "@phosphor-icons/react";
+
+function FeatureSwitchLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link href={href} className={`feature-switch-item ${active ? "active" : ""}`}>
+      <FeatureSwitchLinkInner>{children}</FeatureSwitchLinkInner>
+    </Link>
+  );
+}
+
+function FeatureSwitchLinkInner({ children }: { children: React.ReactNode }) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <>
+      <span className="feature-switch-copy">{children}</span>
+      {pending && <SpinnerIcon className="feature-switch-spinner" size={13} weight="bold" aria-hidden="true" />}
+    </>
+  );
+}
 
 export function FeatureSwitch() {
   const pathname = usePathname();
@@ -10,14 +38,14 @@ export function FeatureSwitch() {
 
   return (
     <nav className="feature-switch" aria-label="Primary">
-      <Link href="/app" className={`feature-switch-item ${!isNotes ? "active" : ""}`}>
+      <FeatureSwitchLink href="/app" active={!isNotes}>
         <SquaresFourIcon size={14} weight="bold" />
         Bookmarks
-      </Link>
-      <Link href="/app/canvas" className={`feature-switch-item ${isNotes ? "active" : ""}`}>
+      </FeatureSwitchLink>
+      <FeatureSwitchLink href="/app/canvas" active={isNotes}>
         <NoteIcon size={14} weight="bold" />
         Canvas
-      </Link>
+      </FeatureSwitchLink>
     </nav>
   );
 }
