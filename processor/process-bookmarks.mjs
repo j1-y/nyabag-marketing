@@ -4,6 +4,11 @@ import net from "node:net";
 import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
 import sharp from "sharp";
+import {
+  analyzeBookmarkScreenshot,
+  extractPaletteFromImage,
+  upsertAiFailed,
+} from "./bookmark-ai.mjs";
 
 const BUCKET = "bookmark-screenshots";
 
@@ -350,6 +355,187 @@ async function extractMetadata(page, url) {
   };
 }
 
+function compactFontFamily(value) {
+  return cleanText(value)
+    .split(",")[0]
+    ?.replaceAll("\"", "")
+    .replaceAll("'", "")
+    .trim();
+}
+
+async function extractDomDesignData(page, url) {
+  const observed = await page.evaluate(() => {
+    const isVisible = (element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return (
+        rect.width > 1 &&
+        rect.height > 1 &&
+        style.visibility !== "hidden" &&
+        style.display !== "none" &&
+        Number.parseFloat(style.opacity || "1") > 0.05
+      );
+    };
+
+    const text = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
+    const meta = (...names) => {
+      for (const name of names) {
+        const selector = `meta[name="${name}"], meta[property="${name}"]`;
+        const value = document.querySelector(selector)?.getAttribute("content");
+        if (value) return value;
+      }
+      return "";
+    };
+
+    const elements = Array.from(document.querySelectorAll("body *"))
+      .filter(isVisible)
+      .slice(0, 900);
+
+    const fontCounts = new Map();
+    const colorCounts = new Map();
+    const backgroundCounts = new Map();
+    const roleFonts = {};
+    const roleSamples = {
+      headings: [],
+      buttons: [],
+      nav: [],
+      links: [],
+      inputs: [],
+      cards: [],
+    };
+
+    const addCount = (map, value) => {
+      const next = text(value);
+      if (!next || next === "rgba(0, 0, 0, 0)") return;
+      map.set(next, (map.get(next) ?? 0) + 1);
+    };
+
+    const addRoleFont = (role, value) => {
+      if (!value) return;
+      roleFonts[role] ??= {};
+      roleFonts[role][value] = (roleFonts[role][value] ?? 0) + 1;
+    };
+
+    const addSample = (role, value) => {
+      const next = text(value);
+      if (!next || next.length < 2 || roleSamples[role].includes(next)) return;
+      if (roleSamples[role].length < 12) roleSamples[role].push(next.slice(0, 90));
+    };
+
+    for (const element of elements) {
+      const style = getComputedStyle(element);
+      const tag = element.tagName.toLowerCase();
+      const className = String(element.className || "");
+      const content = text(element.textContent).slice(0, 120);
+      const font = style.fontFamily;
+
+      addCount(fontCounts, font);
+      addCount(colorCounts, style.color);
+      addCount(backgroundCounts, style.backgroundColor);
+      if (style.borderColor && style.borderStyle !== "none") addCount(colorCounts, style.borderColor);
+
+      if (/^h[1-6]$/.test(tag)) {
+        addRoleFont("headings", font);
+        addSample("headings", content);
+      } else if (tag === "button" || element.getAttribute("role") === "button") {
+        addRoleFont("buttons", font);
+        addSample("buttons", content);
+      } else if (tag === "nav" || element.closest("nav")) {
+        addRoleFont("nav", font);
+        addSample("nav", content);
+      } else if (tag === "a") {
+        addRoleFont("links", font);
+        addSample("links", content);
+      } else if (["input", "textarea", "select"].includes(tag)) {
+        addRoleFont("inputs", font);
+        addSample("inputs", element.getAttribute("placeholder") || content);
+      }
+
+      if (
+        className.toLowerCase().includes("card") ||
+        element.getAttribute("role") === "article" ||
+        tag === "article"
+      ) {
+        addRoleFont("cards", font);
+        addSample("cards", content);
+      }
+    }
+
+    const topEntries = (map, limit) =>
+      Array.from(map.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([value, count]) => ({ value, count }));
+
+    const sections = Array.from(document.querySelectorAll("section, article, main > div, [class*='section'], [class*='card']"))
+      .filter(isVisible)
+      .slice(0, 30)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          tag: element.tagName.toLowerCase(),
+          className: String(element.className || "").slice(0, 90),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          text: text(element.textContent).slice(0, 140),
+        };
+      });
+
+    return {
+      metadata: {
+        title: document.title || "",
+        description: meta("description", "og:description", "twitter:description"),
+        ogTitle: meta("og:title", "twitter:title"),
+        canonical: document.querySelector("link[rel='canonical']")?.getAttribute("href") || "",
+      },
+      typography: {
+        fonts: topEntries(fontCounts, 12),
+        roleFonts,
+      },
+      colors: {
+        textColors: topEntries(colorCounts, 14),
+        backgrounds: topEntries(backgroundCounts, 14),
+      },
+      layout: {
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        page: {
+          width: document.documentElement.scrollWidth,
+          height: document.documentElement.scrollHeight,
+        },
+        counts: {
+          headings: document.querySelectorAll("h1,h2,h3,h4,h5,h6").length,
+          buttons: document.querySelectorAll("button,[role='button']").length,
+          links: document.querySelectorAll("a[href]").length,
+          forms: document.querySelectorAll("form,input,textarea,select").length,
+          images: document.querySelectorAll("img,svg,picture,video").length,
+          navs: document.querySelectorAll("nav").length,
+        },
+        samples: roleSamples,
+        sections,
+      },
+    };
+  });
+
+  const fontCandidates = [];
+  for (const entry of observed.typography.fonts ?? []) {
+    const font = compactFontFamily(entry.value);
+    if (font && !fontCandidates.includes(font)) fontCandidates.push(font);
+  }
+
+  return {
+    ...observed,
+    metadata: {
+      ...observed.metadata,
+      url,
+      domain: getDomain(url),
+    },
+    typography: {
+      ...observed.typography,
+      fontCandidates: fontCandidates.slice(0, 8),
+    },
+  };
+}
+
 async function preparePageForScreenshot(page, timeoutMs) {
   console.log("[processor] preparing dynamic page");
 
@@ -438,6 +624,7 @@ async function capturePreview(browser, url, timeoutMs, width, height, fullPage, 
     });
 
     await preparePageForScreenshot(page, timeoutMs);
+    const observed = await extractDomDesignData(page, safeUrl);
 
     const png = await page.screenshot({
       type: "png",
@@ -467,9 +654,33 @@ async function capturePreview(browser, url, timeoutMs, width, height, fullPage, 
 
     console.log("[processor] compression completed");
 
+    const screenshotPalette = await extractPaletteFromImage(webp);
     const metadata = await extractMetadata(page, safeUrl);
+    const fonts = observed.typography.fontCandidates?.length
+      ? observed.typography.fontCandidates
+      : metadata.fonts;
 
-    return { webp, metadata, resolvedUrl: safeUrl };
+    return {
+      webp,
+      metadata: {
+        ...metadata,
+        fonts,
+        palette: screenshotPalette,
+      },
+      observed: {
+        ...observed,
+        colors: {
+          ...observed.colors,
+          screenshotPalette,
+        },
+        screenshot: {
+          mimeType: "image/webp",
+          palette: screenshotPalette,
+          capturedAt: nowIso(),
+        },
+      },
+      resolvedUrl: safeUrl,
+    };
   } finally {
     await page.close().catch(() => undefined);
   }
@@ -496,7 +707,7 @@ async function markJobReady(supabase, job, screenshotPath, screenshotUrl, metada
       title: metadata.title || fallbackTitle,
       summary: metadata.summary,
       tags: mergeTags(existingBookmark?.tags, metadata.tags),
-      palette: fallbackPalette(job.url),
+      palette: metadata.palette?.length ? metadata.palette : fallbackPalette(job.url),
       fonts: metadata.fonts,
       screenshot_url: screenshotUrl,
       screenshot_path: screenshotPath,
@@ -600,7 +811,7 @@ async function processJob(supabase, browser, job, config) {
 
   await updateBookmarkProcessing(supabase, job);
 
-  const { webp, metadata, resolvedUrl } = await capturePreview(
+  const { webp, metadata, observed, resolvedUrl } = await capturePreview(
     browser,
     job.url,
     config.timeoutMs,
@@ -634,6 +845,54 @@ async function processJob(supabase, browser, job, config) {
   await markJobReady(supabase, job, screenshotPath, screenshotUrl, metadata, resolvedUrl);
 
   console.log(`[processor] job ready: ${job.id}`);
+
+  try {
+    const { data: bookmarkForAi, error: bookmarkForAiError } = await supabase
+      .from("bookmarks")
+      .select("*")
+      .eq("id", job.bookmark_id)
+      .eq("user_id", job.user_id)
+      .maybeSingle();
+
+    if (bookmarkForAiError) {
+      throw new Error(`Could not read bookmark for AI: ${bookmarkForAiError.message}`);
+    }
+
+    if (!bookmarkForAi) {
+      throw new Error("Bookmark disappeared before AI analysis");
+    }
+
+    const aiMetadata = await analyzeBookmarkScreenshot({
+      supabase,
+      job,
+      bookmark: bookmarkForAi,
+      screenshot: webp,
+      observed,
+    });
+
+    if (aiMetadata?.suggested_tags?.length) {
+      const { data: bookmarkTags } = await supabase
+        .from("bookmarks")
+        .select("tags")
+        .eq("id", job.bookmark_id)
+        .eq("user_id", job.user_id)
+        .maybeSingle();
+
+      await supabase
+        .from("bookmarks")
+        .update({ tags: mergeTags(bookmarkTags?.tags, aiMetadata.suggested_tags) })
+        .eq("id", job.bookmark_id)
+        .eq("user_id", job.user_id);
+    }
+
+    if (aiMetadata) console.log(`[processor] AI metadata ready: ${job.id}`);
+  } catch (error) {
+    console.error(
+      `[processor] AI metadata failed: ${job.id}`,
+      error instanceof Error ? error.message : error
+    );
+    await upsertAiFailed(supabase, job, error);
+  }
 }
 
 async function main() {

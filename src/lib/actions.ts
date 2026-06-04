@@ -1,11 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getDesignData } from "@/lib/data";
 import { getDomain } from "@/lib/data";
-import { enrichBookmarkDesignMetadata } from "@/lib/ai/bookmark-enrichment";
+import { enrichBookmarkDesignMetadataFromScreenshot } from "@/lib/ai/bookmark-enrichment";
 import { GEMINI_MODEL } from "@/lib/ai/gemini";
 import { attachAiMetadataToBookmarks } from "@/lib/bookmarks/ai-metadata";
 import { removeBookmarkScreenshot } from "@/lib/bookmarks/storage";
@@ -124,6 +123,19 @@ async function enrichBookmarkWithAIScoped({
     }
   }
 
+  const bookmarkRecord = bookmark as Bookmark;
+  if (!bookmarkRecord.screenshot_url) {
+    return { success: false, error: "Preview processing must finish before AI analysis can run" };
+  }
+
+  const screenshotResponse = await fetch(bookmarkRecord.screenshot_url, { cache: "no-store" });
+  if (!screenshotResponse.ok) {
+    return { success: false, error: `Could not fetch bookmark screenshot (${screenshotResponse.status})` };
+  }
+
+  const screenshot = Buffer.from(await screenshotResponse.arrayBuffer());
+  const contentType = screenshotResponse.headers.get("content-type") || "image/webp";
+
   const pendingPayload = {
     bookmark_id: bookmarkId,
     user_id: userId,
@@ -139,7 +151,25 @@ async function enrichBookmarkWithAIScoped({
   if (pendingError) return { success: false, error: pendingError.message };
 
   try {
-    const enriched = await enrichBookmarkDesignMetadata(bookmark as Bookmark);
+    const enriched = await enrichBookmarkDesignMetadataFromScreenshot({
+      bookmark: bookmarkRecord,
+      screenshot,
+      mimeType: contentType,
+      observed: {
+        metadata: {
+          source: "manual-refresh",
+          screenshot_url: bookmarkRecord.screenshot_url,
+          title: bookmarkRecord.title,
+          summary: bookmarkRecord.summary,
+        },
+        colors: {
+          palette: bookmarkRecord.palette,
+        },
+        typography: {
+          fonts: bookmarkRecord.fonts,
+        },
+      },
+    });
     const completedPayload = {
       bookmark_id: bookmarkId,
       user_id: userId,
@@ -202,19 +232,6 @@ async function enrichBookmarkWithAIScoped({
   }
 }
 
-function scheduleBookmarkAIEnrichment(bookmarkId: string) {
-  after(async () => {
-    try {
-      const result = await enrichBookmarkWithAI(bookmarkId);
-      if (!result.success) {
-        console.warn("[scheduleBookmarkAIEnrichment] AI enrichment skipped/failed:", result.error);
-      }
-    } catch (error) {
-      console.warn("[scheduleBookmarkAIEnrichment] Unexpected AI enrichment error:", getShortError(error));
-    }
-  });
-}
-
 async function createBookmarkForUser({
   supabase,
   userId,
@@ -262,7 +279,6 @@ async function createBookmarkForUser({
   if (!job.success) return { success: false, error: job.error };
 
   await triggerProcessorBestEffort("createBookmarkForUser");
-  scheduleBookmarkAIEnrichment(id);
 
   return { success: true, data };
 }

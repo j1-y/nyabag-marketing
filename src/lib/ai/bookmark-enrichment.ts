@@ -12,107 +12,6 @@ const MAX_COMPONENTS = 12;
 const MAX_SUGGESTED_TAGS = 15;
 const MAX_DESIGN_CONTEXT_CHARS = 240;
 
-const GENERIC_DENYLIST = new Set([
-  "website",
-  "web",
-  "business",
-  "company",
-  "brand",
-  "platform",
-  "service",
-  "services",
-  "online",
-  "digital",
-  "modern",
-  "professional",
-  "solution",
-  "solutions",
-  "product",
-  "products",
-  "customer",
-  "customers",
-  "user",
-  "users",
-  "marketing",
-  "sales",
-  "pricing",
-  "price",
-  "legal",
-  "terms",
-  "privacy",
-  "about",
-  "team",
-  "career",
-  "careers",
-  "contact",
-  "home",
-  "homepage",
-  "page",
-  "site",
-  "app",
-  "application",
-]);
-
-const DESIGN_KEEP_HINTS = [
-  "hero",
-  "section",
-  "layout",
-  "grid",
-  "card",
-  "cards",
-  "bento",
-  "dashboard",
-  "sidebar",
-  "nav",
-  "navigation",
-  "menu",
-  "command",
-  "table",
-  "form",
-  "input",
-  "search",
-  "filter",
-  "chips",
-  "modal",
-  "drawer",
-  "toast",
-  "empty",
-  "state",
-  "onboarding",
-  "pricing",
-  "comparison",
-  "checkout",
-  "profile",
-  "settings",
-  "landing",
-  "portfolio",
-  "editorial",
-  "minimal",
-  "brutalist",
-  "dark",
-  "light",
-  "gradient",
-  "monochrome",
-  "typography",
-  "type",
-  "visual",
-  "hierarchy",
-  "contrast",
-  "dense",
-  "spacing",
-  "split",
-  "tabs",
-  "accordion",
-  "carousel",
-  "feed",
-  "gallery",
-  "masonry",
-  "inspector",
-  "toolbar",
-  "canvas",
-  "workspace",
-];
-
 const PREFERRED_PAGE_TYPES = new Set([
   "saas-landing-page",
   "portfolio",
@@ -164,9 +63,24 @@ export const bookmarkAiOutputSchema = z.object({
 
 export type BookmarkAiOutput = z.infer<typeof bookmarkAiOutputSchema>;
 
+export type ObservedDesignData = {
+  metadata?: Record<string, unknown>;
+  typography?: Record<string, unknown>;
+  colors?: Record<string, unknown>;
+  layout?: Record<string, unknown>;
+  screenshot?: Record<string, unknown>;
+};
+
 export type BookmarkAiResult = BookmarkAiOutput & {
   model_name: string;
   raw_response: unknown;
+};
+
+export type ScreenshotBookmarkAiInput = {
+  bookmark: Bookmark;
+  screenshot: Buffer;
+  mimeType?: string;
+  observed?: ObservedDesignData | null;
 };
 
 const stringArraySchema = (maxItems: number): Schema => ({
@@ -224,12 +138,7 @@ function toKebabCase(value: string) {
 }
 
 function toTitleCaseFolder(value: string) {
-  const cleaned = value
-    .trim()
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .slice(0, 80);
-
+  const cleaned = value.trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ").slice(0, 80);
   if (!cleaned) return "";
 
   return cleaned
@@ -244,44 +153,15 @@ function toTitleCaseFolder(value: string) {
     .join(" ");
 }
 
-function isGenericOnly(value: string) {
-  const token = toKebabCase(value);
-  if (!token) return true;
-
-  if (GENERIC_DENYLIST.has(token)) return true;
-
-  const parts = token.split("-");
-  return parts.every((part) => GENERIC_DENYLIST.has(part));
-}
-
-function hasDesignSignal(value: string) {
-  const token = toKebabCase(value);
-  if (!token) return false;
-
-  if (PREFERRED_PAGE_TYPES.has(token)) return true;
-
-  return DESIGN_KEEP_HINTS.some((hint) => token.includes(hint));
-}
-
-function normalizeArray(values: string[], limit: number, options?: {
-  requireDesignSignal?: boolean;
-}) {
+function normalizeArray(values: string[], limit: number) {
   const seen = new Set<string>();
   const normalized: string[] = [];
 
   for (const value of values) {
     const next = toKebabCase(value);
-
     if (!next || seen.has(next)) continue;
-    if (isGenericOnly(next)) continue;
-
-    if (options?.requireDesignSignal && !hasDesignSignal(next)) {
-      continue;
-    }
-
     seen.add(next);
     normalized.push(next);
-
     if (normalized.length >= limit) break;
   }
 
@@ -290,30 +170,14 @@ function normalizeArray(values: string[], limit: number, options?: {
 
 function normalizePageType(value: string) {
   const pageType = toKebabCase(value);
-
-  if (!pageType || isGenericOnly(pageType)) return "unknown";
-
+  if (!pageType) return "unknown";
   if (PREFERRED_PAGE_TYPES.has(pageType)) return pageType;
-
-  if (hasDesignSignal(pageType)) return pageType.slice(0, 80);
-
-  return "unknown";
-}
-
-function normalizeIndustry(value: string) {
-  const industry = toKebabCase(value);
-
-  if (!industry || isGenericOnly(industry)) return "unknown";
-
-  // Keep this broad and product/design-oriented. This field should not become a business description.
-  return industry.slice(0, 80);
+  return pageType.slice(0, 80);
 }
 
 function normalizeSuggestedFolder(value: string, pageType: string, tags: string[]) {
   const folder = toTitleCaseFolder(value);
-
   if (folder && PREFERRED_FOLDERS.has(folder)) return folder;
-
   if (pageType.includes("dashboard")) return "Dashboards";
   if (pageType.includes("pricing")) return "Pricing Pages";
   if (pageType.includes("portfolio")) return "Portfolios";
@@ -323,45 +187,22 @@ function normalizeSuggestedFolder(value: string, pageType: string, tags: string[
   if (pageType.includes("ecommerce") || pageType.includes("checkout")) return "Ecommerce";
   if (pageType.includes("case-study")) return "Case Studies";
   if (pageType.includes("landing")) return "Landing Pages";
-  if (tags.some((tag) => tag.includes("form") || tag.includes("input"))) return "Forms";
-  if (tags.some((tag) => tag.includes("nav") || tag.includes("menu"))) return "Navigation";
-  if (tags.some((tag) => tag.includes("design-system"))) return "Design Systems";
-
   return folder || "UI References";
-}
-
-function cleanDesignContext(value: string) {
-  return value
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/^(this|the)\s+(website|company|platform|service)\s+/i, "This reference ")
-    .slice(0, MAX_DESIGN_CONTEXT_CHARS);
 }
 
 function normalizeOutput(output: BookmarkAiOutput): BookmarkAiOutput {
   const pageType = normalizePageType(output.page_type);
-  const visualStyle = normalizeArray(output.visual_style, MAX_VISUAL_STYLE, {
-    requireDesignSignal: false,
-  });
-  const uiPatterns = normalizeArray(output.ui_patterns, MAX_UI_PATTERNS, {
-    requireDesignSignal: true,
-  });
-  const components = normalizeArray(output.components, MAX_COMPONENTS, {
-    requireDesignSignal: true,
-  });
-  const suggestedTags = normalizeArray(output.suggested_tags, MAX_SUGGESTED_TAGS, {
-    requireDesignSignal: true,
-  });
+  const suggestedTags = normalizeArray(output.suggested_tags, MAX_SUGGESTED_TAGS);
 
   return {
     page_type: pageType,
-    industry: normalizeIndustry(output.industry),
-    visual_style: visualStyle,
-    ui_patterns: uiPatterns,
-    components,
+    industry: toKebabCase(output.industry || "unknown") || "unknown",
+    visual_style: normalizeArray(output.visual_style, MAX_VISUAL_STYLE),
+    ui_patterns: normalizeArray(output.ui_patterns, MAX_UI_PATTERNS),
+    components: normalizeArray(output.components, MAX_COMPONENTS),
     suggested_tags: suggestedTags,
     suggested_folder: normalizeSuggestedFolder(output.suggested_folder, pageType, suggestedTags),
-    design_context: cleanDesignContext(output.design_context),
+    design_context: output.design_context.trim().replace(/\s+/g, " ").slice(0, MAX_DESIGN_CONTEXT_CHARS),
     confidence: Math.min(1, Math.max(0, output.confidence)),
   };
 }
@@ -376,7 +217,7 @@ function parseJson(text: string) {
   return JSON.parse(unfenced) as unknown;
 }
 
-function buildPrompt(bookmark: Bookmark) {
+function buildPrompt(bookmark: Bookmark, observed: ObservedDesignData | null | undefined) {
   const input = {
     url: bookmark.url,
     domain: getDomain(bookmark.url),
@@ -384,107 +225,72 @@ function buildPrompt(bookmark: Bookmark) {
     summary: bookmark.summary,
     note: bookmark.note,
     existing_tags: bookmark.tags,
-    palette: bookmark.palette,
-    fonts: bookmark.fonts,
+    observed_design_data: observed ?? {
+      palette: bookmark.palette,
+      fonts: bookmark.fonts,
+      source: "bookmark-record-only",
+    },
   };
 
-  return `You are Nyabag's design-memory intelligence layer.
+  return `You are Nyabag's screenshot-grounded design memory intelligence layer.
 
-Nyabag is a personal second memory for design.
-Analyze this saved reference only from a product/UI designer's perspective.
+Analyze the attached bookmark screenshot as the visual source of truth.
+Use the provided observed DOM data for exact fonts, colors, labels, and layout signals.
+Do not identify fonts unless they appear in observed DOM font candidates.
+Do not invent colors outside the observed palette/colors.
 
-Your only job:
-Return design-specific metadata that helps a designer find, compare, and reuse this reference later.
+Return compact design metadata for a product/UI designer.
+Focus only on UI layout, visual hierarchy, typography treatment, components, patterns, and retrieval tags.
+Ignore business claims, sales copy, legal text, and company history.
 
-Focus strictly on:
-- product design
-- UI layout
-- page structure
-- visual hierarchy
-- interaction patterns
-- reusable UI components
-- navigation patterns
-- content density
-- visual style
-- design retrieval tags
+Input:
+${JSON.stringify(input)}
 
-Ignore:
-- company history
-- business model
-- pricing details
-- marketing claims
-- legal text
-- SEO copy
-- founder/team information
-- sales messaging
-- general website description
-- product features unless they affect UI/UX structure
-
-Do not describe what the company does unless it helps classify the interface pattern.
-
-Input data:
-${JSON.stringify(input, null, 2)}
-
-Return this exact compact JSON shape:
+Return this exact JSON shape:
 {
   "page_type": "saas-landing-page",
   "industry": "design-tools",
-  "visual_style": ["dark-ui", "minimal", "high-contrast"],
-  "ui_patterns": ["hero-section", "filter-bar", "card-grid"],
-  "components": ["navbar", "search-input", "filter-chips", "cards", "cta"],
-  "suggested_tags": ["design-inspiration", "card-grid", "dark-ui", "filter-ui"],
-  "suggested_folder": "UI References",
-  "design_context": "Useful for studying dark inspiration-directory layouts, filter-based browsing, and compact visual card grids.",
+  "visual_style": ["dark-ui", "minimal"],
+  "ui_patterns": ["hero-section", "card-grid"],
+  "components": ["navbar", "cta", "cards"],
+  "suggested_tags": ["saas", "hero-section", "dark-ui"],
+  "suggested_folder": "Landing Pages",
+  "design_context": "Useful for studying dark SaaS hero hierarchy, CTA placement, and card-grid structure.",
   "confidence": 0.86
 }
 
-Field rules:
-- page_type must describe the interface/page pattern, not the business.
-- industry must be a broad product/design category, not a company description.
-- visual_style must describe look and feel.
-- ui_patterns must describe layout or UX patterns.
-- components must describe visible UI components.
-- suggested_tags must be retrieval-focused design tags.
-- suggested_folder must be a simple designer-friendly folder name.
-- design_context must explain why this reference is useful for design memory.
-
-Allowed page_type examples:
-saas-landing-page, portfolio, dashboard, pricing-page, design-inspiration-directory, blog-article, documentation, ecommerce-page, mobile-app-page, checkout-flow, onboarding-flow, settings-page, profile-page, search-results-page, gallery-page, case-study-page, unknown
-
-Preferred visual_style examples:
-minimal, dark-ui, light-ui, high-contrast, editorial, playful, brutalist, monochrome, gradient-heavy, glassmorphism, dense-layout, spacious-layout, soft-ui, bold-typography, muted-colors, vibrant-colors
-
-Preferred ui_patterns examples:
-hero-section, pricing-cards, bento-grid, sidebar-nav, card-grid, dashboard-ui, split-layout, filter-bar, search-ui, onboarding-flow, empty-state, comparison-table, testimonial-section, form-layout, command-menu, data-table, mobile-nav, masonry-grid, tabbed-navigation, feature-grid, sticky-header, inspector-panel
-
-Preferred components examples:
-navbar, sidebar, cards, cta, search-input, filter-chips, tabs, table, form, modal, drawer, accordion, dropdown, command-menu, breadcrumbs, pagination, avatar, badge, tooltip, toast, chart, gallery, footer, input-field
-
-Avoid generic values:
-website, business, company, platform, service, online, digital, modern, professional, solution, product, customer, marketing, sales, pricing-details, legal, about-page, home-page
-
-Every suggested tag must answer:
-"Would a designer search this term to find this reference later?"
-
-If a value is not clearly inferable from the provided metadata, use "unknown" or an empty array instead of guessing.
-
-Style constraints:
-- Use short design vocabulary.
-- Prefer 1-3 word values.
-- Use kebab-case for all array values.
-- Keep design_context under ${MAX_DESIGN_CONTEXT_CHARS} characters.
-- Do not include markdown.
-- Do not include explanations.
-- Do not include extra keys.
-- Return compact JSON only.`;
+Rules:
+- Use kebab-case for arrays and page_type/industry.
+- Keep values short and design-specific.
+- design_context under ${MAX_DESIGN_CONTEXT_CHARS} characters.
+- If unsure, use "unknown" or an empty array.
+- Return JSON only.`;
 }
 
-export async function enrichBookmarkDesignMetadata(bookmark: Bookmark): Promise<BookmarkAiResult> {
+export async function enrichBookmarkDesignMetadataFromScreenshot({
+  bookmark,
+  screenshot,
+  mimeType = "image/webp",
+  observed,
+}: ScreenshotBookmarkAiInput): Promise<BookmarkAiResult> {
   const ai = getGeminiClient();
 
   const response = await ai.models.generateContent({
     model: GEMINI_MODEL,
-    contents: buildPrompt(bookmark),
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text: buildPrompt(bookmark, observed) },
+          {
+            inlineData: {
+              mimeType,
+              data: screenshot.toString("base64"),
+            },
+          },
+        ],
+      },
+    ],
     config: {
       responseMimeType: "application/json",
       responseSchema,
@@ -495,10 +301,7 @@ export async function enrichBookmarkDesignMetadata(bookmark: Bookmark): Promise<
   });
 
   const text = response.text;
-
-  if (!text) {
-    throw new Error("Gemini returned an empty response");
-  }
+  if (!text) throw new Error("Gemini returned an empty response");
 
   const raw = parseJson(text);
   const parsed = bookmarkAiOutputSchema.parse(raw);
@@ -507,6 +310,9 @@ export async function enrichBookmarkDesignMetadata(bookmark: Bookmark): Promise<
   return {
     ...normalized,
     model_name: response.modelVersion || GEMINI_MODEL,
-    raw_response: raw,
+    raw_response: {
+      gemini: raw,
+      observed: observed ?? null,
+    },
   };
 }
