@@ -95,6 +95,101 @@ CREATE POLICY "delete_own_bookmarks" ON bookmarks
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ============================================================
+-- Bookmark AI metadata
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS bookmark_ai_metadata (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  bookmark_id       UUID        NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
+  user_id           UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  page_type         TEXT        NOT NULL DEFAULT '',
+  industry          TEXT        NOT NULL DEFAULT '',
+  visual_style      TEXT[]      NOT NULL DEFAULT '{}',
+  ui_patterns       TEXT[]      NOT NULL DEFAULT '{}',
+  components        TEXT[]      NOT NULL DEFAULT '{}',
+  suggested_tags    TEXT[]      NOT NULL DEFAULT '{}',
+  suggested_folder  TEXT        NOT NULL DEFAULT '',
+  design_context    TEXT        NOT NULL DEFAULT '',
+  confidence        NUMERIC     NOT NULL DEFAULT 0,
+  model_name        TEXT        NOT NULL DEFAULT '',
+  raw_response      JSONB,
+  error             TEXT,
+  status            TEXT        NOT NULL DEFAULT 'pending',
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE bookmark_ai_metadata
+  ADD COLUMN IF NOT EXISTS bookmark_id UUID,
+  ADD COLUMN IF NOT EXISTS user_id UUID,
+  ADD COLUMN IF NOT EXISTS page_type TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS industry TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS visual_style TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS ui_patterns TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS components TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS suggested_tags TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS suggested_folder TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS design_context TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS confidence NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS model_name TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS raw_response JSONB,
+  ADD COLUMN IF NOT EXISTS error TEXT,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE bookmark_ai_metadata
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_bookmark_id_fkey,
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_status_check,
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_confidence_check,
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_page_type_check,
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_industry_check,
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_suggested_folder_check,
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_design_context_check,
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_model_name_check,
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_error_check,
+  DROP CONSTRAINT IF EXISTS bookmark_ai_metadata_bookmark_id_key,
+  ADD CONSTRAINT bookmark_ai_metadata_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES bookmarks(id) ON DELETE CASCADE,
+  ADD CONSTRAINT bookmark_ai_metadata_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  ADD CONSTRAINT bookmark_ai_metadata_status_check CHECK (status IN ('pending', 'completed', 'failed')),
+  ADD CONSTRAINT bookmark_ai_metadata_confidence_check CHECK (confidence >= 0 AND confidence <= 1),
+  ADD CONSTRAINT bookmark_ai_metadata_page_type_check CHECK (char_length(page_type) <= 80),
+  ADD CONSTRAINT bookmark_ai_metadata_industry_check CHECK (char_length(industry) <= 80),
+  ADD CONSTRAINT bookmark_ai_metadata_suggested_folder_check CHECK (char_length(suggested_folder) <= 80),
+  ADD CONSTRAINT bookmark_ai_metadata_design_context_check CHECK (char_length(design_context) <= 700),
+  ADD CONSTRAINT bookmark_ai_metadata_model_name_check CHECK (char_length(model_name) <= 120),
+  ADD CONSTRAINT bookmark_ai_metadata_error_check CHECK (error IS NULL OR char_length(error) <= 500),
+  ADD CONSTRAINT bookmark_ai_metadata_bookmark_id_key UNIQUE (bookmark_id);
+
+DROP TRIGGER IF EXISTS bookmark_ai_metadata_updated_at ON bookmark_ai_metadata;
+CREATE TRIGGER bookmark_ai_metadata_updated_at
+  BEFORE UPDATE ON bookmark_ai_metadata
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_bookmark_ai_metadata_user_id ON bookmark_ai_metadata(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookmark_ai_metadata_bookmark_id ON bookmark_ai_metadata(bookmark_id);
+CREATE INDEX IF NOT EXISTS idx_bookmark_ai_metadata_status ON bookmark_ai_metadata(status);
+
+ALTER TABLE bookmark_ai_metadata ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_bookmark_ai_metadata" ON bookmark_ai_metadata;
+CREATE POLICY "select_own_bookmark_ai_metadata" ON bookmark_ai_metadata
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_bookmark_ai_metadata" ON bookmark_ai_metadata;
+CREATE POLICY "insert_own_bookmark_ai_metadata" ON bookmark_ai_metadata
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "update_own_bookmark_ai_metadata" ON bookmark_ai_metadata;
+CREATE POLICY "update_own_bookmark_ai_metadata" ON bookmark_ai_metadata
+  FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_bookmark_ai_metadata" ON bookmark_ai_metadata;
+CREATE POLICY "delete_own_bookmark_ai_metadata" ON bookmark_ai_metadata
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- ============================================================
 -- Bookmark processing queue
 -- ============================================================
 

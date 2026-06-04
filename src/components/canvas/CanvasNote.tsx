@@ -134,6 +134,9 @@ export function CanvasNote({ note, viewport }: Props) {
   const noteLabel = isSocialNoteContent(note.content) ? "Social" : TYPE_LABELS[note.type];
   const isStickyNote = note.type === "text" && !isSocialNoteContent(note.content);
   const isTextFrame = note.type === "text_frame";
+  const isImageNote = note.type === "image";
+  const hasImageMedia = isImageNote && Boolean(note.media_path || note.media_url || note.media_source === "url" || note.content.startsWith("http"));
+  const isFramelessImage = isImageNote && hasImageMedia;
   const isTextEditable = isStickyNote || isTextFrame;
   const showStickyToolbar = isPrimarySelected && isStickyNote && selectedIds.length === 1;
   const showTextFrameToolbar = isPrimarySelected && isTextFrame && selectedIds.length === 1;
@@ -162,12 +165,13 @@ export function CanvasNote({ note, viewport }: Props) {
       data-note-id={note.id}
       className={`canvas-note${isStickyNote ? " canvas-note--text" : ""}${
         isTextFrame ? " canvas-note--text-frame" : ""
+      }${isFramelessImage ? " canvas-note--image" : ""
       }${isSelected ? " canvas-note--selected" : ""}`}
       style={{
         transform: `translate(${note.x}px, ${note.y}px)`,
         width: note.width,
         height: note.height,
-        background: isTextFrame ? "transparent" : note.color,
+        background: isTextFrame || isFramelessImage ? "transparent" : note.color,
         color: isTextFrame ? "#111111" : getNoteInk(note.color),
         "--sticky-note-ink": isTextFrame ? "#111111" : getNoteInk(note.color),
         zIndex: isSelected ? 9999 : note.z_index,
@@ -178,12 +182,12 @@ export function CanvasNote({ note, viewport }: Props) {
     >
       {/* Drag handle header */}
       <div
-        className={`note-header${isTextEditable ? " note-header--text" : ""}`}
+        className={`note-header${isTextEditable ? " note-header--text" : ""}${isFramelessImage ? " image-note-drag-bar" : ""}`}
         onPointerDown={handleHeaderPointerDown}
         onPointerMove={handleHeaderPointerMove}
         onPointerUp={handleHeaderPointerUp}
       >
-        {isTextEditable ? (
+        {isTextEditable || isFramelessImage ? (
           <span className="note-drag-bar" aria-hidden="true">
             <span />
             <span />
@@ -194,7 +198,7 @@ export function CanvasNote({ note, viewport }: Props) {
         ) : (
           <span className="note-type-badge">{noteLabel}</span>
         )}
-        {!isTextEditable && <NoteToolbar note={note} isVisible={isHovered || isSelected} />}
+        {!isTextEditable && !isFramelessImage && <NoteToolbar note={note} isVisible={isHovered || isSelected} />}
       </div>
 
       {/* Content area */}

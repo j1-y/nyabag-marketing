@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
 import { EditBookmarkModal } from "./EditBookmarkModal";
 import { BookmarkColorPalette } from "./BookmarkColorPalette";
+import { AIDesignRead } from "./AIDesignRead";
 
 function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
   const router = useRouter();
@@ -126,6 +127,8 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
               <p>{currentBookmark.note}</p>
             </div>
           )}
+
+          <AIDesignRead bookmarkId={currentBookmark.id} metadata={currentBookmark.ai_metadata ?? null} />
 
           <a className="detail-visit" href={currentBookmark.url} target="_blank" rel="noopener noreferrer">
             Visit website

@@ -16,6 +16,7 @@ import {
   createSocialNoteFromUrl,
   createSectionFromNotes,
   createNote,
+  createTextNoteWithRichContent,
   deleteSection as deleteSectionAction,
   deleteNote as deleteNoteAction,
   deleteNotes as deleteNotesAction,
@@ -41,6 +42,12 @@ import type {
   PendingMediaNote,
 } from "@/lib/types";
 import { useCanvasStore } from "@/features/canvas/store/useCanvasStore";
+
+const DRAFT_NOTE_PREFIX = "draft-note-";
+
+function isDraftNoteId(id: string) {
+  return id.startsWith(DRAFT_NOTE_PREFIX);
+}
 
 export const NOTE_COLORS = [
   "#12CFF3",
@@ -131,24 +138,7 @@ export function NotesProvider({
   const [pendingMediaNote, setPendingMediaNoteState] = useState<PendingMediaNote | null>(null);
   const [isCreatingMediaNote, setIsCreatingMediaNote] = useState(false);
   const [mediaPlacementError, setMediaPlacementError] = useState("");
-  const [viewport, setViewport] = useState<CanvasViewport>(() => {
-    if (typeof window === "undefined") return { x: 0, y: 0, scale: 1 };
-    try {
-      const stored = window.localStorage.getItem("nyabag:canvas-viewport");
-      if (!stored) return { x: 0, y: 0, scale: 1 };
-      const parsed = JSON.parse(stored) as Partial<CanvasViewport>;
-      if (
-        typeof parsed.x === "number" &&
-        typeof parsed.y === "number" &&
-        typeof parsed.scale === "number"
-      ) {
-        return parsed as CanvasViewport;
-      }
-    } catch {
-      // Canvas viewport is a non-sensitive UI preference; ignore corrupt storage.
-    }
-    return { x: 0, y: 0, scale: 1 };
-  });
+  const [viewport, setViewport] = useState<CanvasViewport>({ x: 0, y: 0, scale: 1 });
   const [selectedIds, setSelectedIdsState] = useState<string[]>([]);
   const colorIndexRef = useRef(0);
   const selectedId = selectedIds.length === 1 ? selectedIds[0] : null;
@@ -158,6 +148,33 @@ export function NotesProvider({
   useEffect(() => {
     initializeCanvasStore(initial, initialSections);
   }, [initial, initialSections, initializeCanvasStore]);
+
+  useEffect(() => {
+    let frame: number | null = null;
+
+    try {
+      const stored = window.localStorage.getItem("nyabag:canvas-viewport");
+      if (!stored) return undefined;
+      const parsed = JSON.parse(stored) as Partial<CanvasViewport>;
+      if (
+        typeof parsed.x === "number" &&
+        typeof parsed.y === "number" &&
+        typeof parsed.scale === "number"
+      ) {
+        const restoredViewport = parsed as CanvasViewport;
+        frame = window.requestAnimationFrame(() => {
+          setViewport(restoredViewport);
+          setStoreViewport(restoredViewport);
+        });
+      }
+    } catch {
+      // Canvas viewport is a non-sensitive UI preference; ignore corrupt storage.
+    }
+
+    return () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [setStoreViewport]);
 
   useEffect(() => {
     setStoreViewport(viewport);
@@ -203,6 +220,42 @@ export function NotesProvider({
     async (type: NoteType, canvasX: number, canvasY: number, width?: number, height?: number) => {
       const color = NOTE_COLORS[colorIndexRef.current % NOTE_COLORS.length];
       colorIndexRef.current++;
+      if (type === "text" || type === "text_frame") {
+        const draftId = `${DRAFT_NOTE_PREFIX}${crypto.randomUUID()}`;
+        const now = new Date().toISOString();
+        const draftWidth = width ?? 240;
+        const draftHeight = height ?? 180;
+
+        setNotes((prev) => {
+          const zIndex = Math.max(...prev.map((note) => note.z_index), 0) + 1;
+          const draftNote: CanvasNote = {
+            id: draftId,
+            user_id: "draft",
+            section_id: null,
+            type,
+            content: "",
+            content_json: null,
+            content_format: "plain",
+            media_source: null,
+            media_path: null,
+            media_mime: null,
+            media_name: null,
+            x: canvasX,
+            y: canvasY,
+            width: draftWidth,
+            height: draftHeight,
+            color,
+            z_index: zIndex,
+            created_at: now,
+            updated_at: now,
+          };
+          return [...prev, draftNote];
+        });
+        setSelectedId(draftId);
+        setActiveNoteToolState(null);
+        return;
+      }
+
       const result = await createNote(type, canvasX, canvasY, color, width, height);
 
       if (result.success) {
@@ -316,11 +369,14 @@ export function NotesProvider({
     async (ids: string[]) => {
       const uniqueIds = [...new Set(ids)];
       if (uniqueIds.length === 0) return;
+      const persistedIds = uniqueIds.filter((id) => !isDraftNoteId(id));
 
       setNotes((prev) => prev.filter((note) => !uniqueIds.includes(note.id)));
       setSelectedIdsState((prev) => prev.filter((selected) => !uniqueIds.includes(selected)));
 
-      const result = await deleteNotesAction(uniqueIds);
+      if (persistedIds.length === 0) return;
+
+      const result = await deleteNotesAction(persistedIds);
       if (result.success) {
         if (result.data.snapshot) {
           applyServerSnapshot(result.data.snapshot);
@@ -337,6 +393,12 @@ export function NotesProvider({
 
   const deleteNote = useCallback(
     async (id: string) => {
+      if (isDraftNoteId(id)) {
+        setNotes((prev) => prev.filter((note) => note.id !== id));
+        setSelectedIdsState((prev) => prev.filter((selected) => selected !== id));
+        return;
+      }
+
       const result = await deleteNoteAction(id);
       if (result.success) {
         if (result.data.snapshot) {
@@ -416,6 +478,43 @@ export function NotesProvider({
         } satisfies ActionResult<CanvasNote>;
       }
 
+      if (isDraftNoteId(id)) {
+        if (!plainText.trim()) {
+          return {
+            success: false,
+            error: "Draft note is empty",
+          } satisfies ActionResult<CanvasNote>;
+        }
+
+        if (previous.type !== "text" && previous.type !== "text_frame") {
+          return {
+            success: false,
+            error: "Only text notes support rich content",
+          } satisfies ActionResult<CanvasNote>;
+        }
+
+        const result = await createTextNoteWithRichContent(
+          previous.type,
+          plainText,
+          contentJson,
+          previous.x,
+          previous.y,
+          previous.color,
+          previous.width,
+          previous.height,
+          previous.z_index
+        );
+
+        if (result.success) {
+          setNotes((prev) => prev.map((note) => (note.id === id ? result.data : note)));
+          setSelectedIdsState((prev) => prev.map((selected) => (selected === id ? result.data.id : selected)));
+        } else {
+          setNotes((prev) => prev.map((note) => (note.id === id ? previous as CanvasNote : note)));
+        }
+
+        return result;
+      }
+
       const result = await updateTextNoteRichContent(id, plainText, contentJson);
       if (result.success) {
         setNotes((prev) => prev.map((note) => (note.id === id ? result.data : note)));
@@ -437,6 +536,10 @@ export function NotesProvider({
         return { ...note, color };
       })
     );
+
+    if (isDraftNoteId(id)) {
+      return { success: true, data: previous as CanvasNote } satisfies ActionResult<CanvasNote>;
+    }
 
     const result = await updateNoteColor(id, color);
     if (result.success) {
@@ -507,11 +610,13 @@ export function NotesProvider({
   }, []);
 
   const commitPosition = useCallback(async (id: string, x: number, y: number) => {
+    if (isDraftNoteId(id)) return;
     const result = await updateNotePosition(id, x, y);
     if (!result.success) console.error("Failed to update note position:", result.error);
   }, []);
 
   const commitSize = useCallback(async (id: string, width: number, height: number) => {
+    if (isDraftNoteId(id)) return;
     const result = await updateNoteSize(id, width, height);
     if (!result.success) console.error("Failed to update note size:", result.error);
   }, []);
@@ -521,6 +626,8 @@ export function NotesProvider({
       const maxZ = Math.max(...prev.map((n) => n.z_index), 0);
       return prev.map((n) => (n.id === id ? { ...n, z_index: maxZ + 1 } : n));
     });
+
+    if (isDraftNoteId(id)) return;
 
     bringNoteToFront(id).then((result) => {
       if (result.success) {
@@ -536,7 +643,7 @@ export function NotesProvider({
   const wrapSelectionInSection = useCallback(
     async (label: string): Promise<ActionResult<CanvasSection>> => {
       const noteIds = new Set(notes.map((note) => note.id));
-      const ids = selectedIds.filter((id) => noteIds.has(id));
+      const ids = selectedIds.filter((id) => noteIds.has(id) && !isDraftNoteId(id));
       const staleIds = selectedIds.filter((id) => !noteIds.has(id));
       if (staleIds.length > 0) {
         setSelectedIds(ids);

@@ -12,6 +12,7 @@ import { retryBookmarkProcessing } from "@/lib/actions";
 import { getDomain, getFaviconUrl } from "@/lib/data";
 import type { Bookmark } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { AIMetadataChip } from "./AIMetadataChip";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
 
 function BookmarkCardComponent({
@@ -49,6 +50,10 @@ function BookmarkCardComponent({
   const isPendingPreview = isQueued || isProcessing;
   const isFailed = bookmark.processing_status === "failed";
   const pendingLabel = isQueued ? "Queued for preview" : "Preparing preview...";
+  const aiPageType =
+    bookmark.ai_metadata?.status === "completed" && bookmark.ai_metadata.page_type
+      ? bookmark.ai_metadata.page_type
+      : "";
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
@@ -157,6 +162,14 @@ function BookmarkCardComponent({
               </div>
             )}
           </div>
+
+          {aiPageType && (
+            <AIMetadataChip
+              label={aiPageType}
+              showIcon
+              className="bookmark-ai-chip"
+            />
+          )}
 
           <div className="moodboard-overlay">
             <div className="moodboard-meta">

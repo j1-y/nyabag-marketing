@@ -20,6 +20,36 @@ const NOTE_DEFAULT_SIZE: Record<NoteType, { width: number; height: number }> = {
   social: { width: 280, height: 280 },
 };
 
+const IMAGE_MAX_WIDTH = 420;
+const IMAGE_MAX_HEIGHT = 320;
+const IMAGE_MIN_WIDTH = 120;
+const IMAGE_MIN_HEIGHT = 90;
+
+function fitImageNoteSize(width: number | undefined, height: number | undefined) {
+  if (!width || !height || width <= 0 || height <= 0) return NOTE_DEFAULT_SIZE.image;
+
+  const ratio = Math.min(IMAGE_MAX_WIDTH / width, IMAGE_MAX_HEIGHT / height, 1);
+  let nextWidth = Math.round(width * ratio);
+  let nextHeight = Math.round(height * ratio);
+
+  if (nextWidth < IMAGE_MIN_WIDTH) {
+    const scale = IMAGE_MIN_WIDTH / nextWidth;
+    nextWidth = IMAGE_MIN_WIDTH;
+    nextHeight = Math.round(nextHeight * scale);
+  }
+
+  if (nextHeight < IMAGE_MIN_HEIGHT) {
+    const scale = IMAGE_MIN_HEIGHT / nextHeight;
+    nextHeight = IMAGE_MIN_HEIGHT;
+    nextWidth = Math.round(nextWidth * scale);
+  }
+
+  return {
+    width: Math.min(IMAGE_MAX_WIDTH, nextWidth),
+    height: Math.min(IMAGE_MAX_HEIGHT, nextHeight),
+  };
+}
+
 export function CanvasContainer() {
   const {
     notes,
@@ -160,7 +190,10 @@ export function CanvasContainer() {
       if (!activeNoteTool || activeNoteTool === "social") return null;
       const rect = wrapperRef.current?.getBoundingClientRect();
       if (!rect) return null;
-      const size = NOTE_DEFAULT_SIZE[activeNoteTool];
+      const size =
+        activeNoteTool === "image" && pendingMediaNote?.source === "upload"
+          ? fitImageNoteSize(pendingMediaNote.width, pendingMediaNote.height)
+          : NOTE_DEFAULT_SIZE[activeNoteTool];
       const canvasX = maybeSnap((clientX - rect.left - viewport.x) / viewport.scale, shouldSnap);
       const canvasY = maybeSnap((clientY - rect.top - viewport.y) / viewport.scale, shouldSnap);
 
@@ -175,7 +208,7 @@ export function CanvasContainer() {
         screenHeight: size.height * viewport.scale,
       };
     },
-    [activeNoteTool, viewport.scale, viewport.x, viewport.y]
+    [activeNoteTool, pendingMediaNote, viewport.scale, viewport.x, viewport.y]
   );
 
   const handlePointerDownCapture = useCallback(
@@ -205,7 +238,10 @@ export function CanvasContainer() {
         e.preventDefault();
         setContextMenu(null);
         setSelectedId(null);
-        const { width, height } = NOTE_DEFAULT_SIZE[noteTool];
+        const { width, height } =
+          noteTool === "image" && pendingMediaNote?.source === "upload"
+            ? fitImageNoteSize(pendingMediaNote.width, pendingMediaNote.height)
+            : NOTE_DEFAULT_SIZE[noteTool];
         setPlacementPreview(null);
 
         if ((noteTool === "image" || noteTool === "video") && pendingMediaNote) {

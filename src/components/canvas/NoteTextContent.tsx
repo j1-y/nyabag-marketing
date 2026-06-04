@@ -123,6 +123,7 @@ export const NoteTextContent = forwardRef<
   const latestSizeRef = useRef({ width: note.width, height: note.height });
   const autoHeightFrameRef = useRef<number | null>(null);
   const autoHeightCommitRef = useRef<number | null>(null);
+  const autoSaveRef = useRef<number | null>(null);
 
   const saveEditor = useCallback(async () => {
     if (!editorRef.current) return;
@@ -138,12 +139,27 @@ export const NoteTextContent = forwardRef<
     if (result.success) {
       savedPlainRef.current = result.data.content;
       savedJsonRef.current = result.data.content_json ?? contentJson;
-    } else if (result.error === "Note not found" || result.error === "Note no longer exists") {
+    } else if (
+      result.error === "Note not found" ||
+      result.error === "Note no longer exists" ||
+      result.error === "Draft note is empty"
+    ) {
       return;
     } else {
       console.error("Failed to save rich text note:", result.error);
     }
   }, [note.id, updateRichTextContent]);
+
+  const scheduleAutoSave = useCallback(() => {
+    if (autoSaveRef.current !== null) {
+      window.clearTimeout(autoSaveRef.current);
+    }
+
+    autoSaveRef.current = window.setTimeout(() => {
+      autoSaveRef.current = null;
+      void saveEditor();
+    }, 650);
+  }, [saveEditor]);
 
   const growToFitContent = useCallback(() => {
     if (isTextFrame) return;
@@ -245,6 +261,7 @@ export const NoteTextContent = forwardRef<
     onUpdate: () => {
       growToFitContent();
       fitFrameToContent();
+      scheduleAutoSave();
     },
   });
   const editorRef = useRef(editor);
@@ -266,6 +283,9 @@ export const NoteTextContent = forwardRef<
       }
       if (autoHeightCommitRef.current !== null) {
         window.clearTimeout(autoHeightCommitRef.current);
+      }
+      if (autoSaveRef.current !== null) {
+        window.clearTimeout(autoSaveRef.current);
       }
     };
   }, []);

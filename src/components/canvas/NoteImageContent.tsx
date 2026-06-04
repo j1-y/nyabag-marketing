@@ -58,12 +58,13 @@ export function NoteImageContent({ note, isSelected }: { note: CanvasNote; isSel
   if (!hasImage) {
     return (
       <div
-        style={{ padding: "10px 12px", height: "100%", display: "flex", flexDirection: "column", gap: 8 }}
+        className="image-note-editor"
         onPointerDown={(e) => e.stopPropagation()}
       >
         <input
           autoFocus={isSelected && !note.content && !note.media_path}
           type="url"
+          className="image-note-url-input"
           placeholder="Paste image URL and press Enter"
           value={inputVal}
           onChange={(e) => setInputVal(e.target.value)}
@@ -76,29 +77,20 @@ export function NoteImageContent({ note, isSelected }: { note: CanvasNote; isSel
               setImgError(false);
             }
           }}
-          style={{
-            width: "100%",
-            padding: "6px 8px",
-            borderRadius: 10,
-            border: "1px solid var(--border2)",
-            background: "var(--bg)",
-            fontSize: 13,
-            outline: "none",
-          }}
         />
         <input
           type="file"
           accept="image/*"
           onChange={(e) => handleFileChange(e.target.files?.[0])}
-          style={{ width: "100%", fontSize: 12, color: "var(--text2)" }}
+          className="image-note-file-input"
         />
         {(imgError || status) && (
-          <p style={{ fontSize: 12, color: "var(--text3)", margin: 0 }}>{status || "Could not load image. Try another URL or upload a file."}</p>
+          <p className="image-note-status">{status || "Could not load image. Try another URL or upload a file."}</p>
         )}
         {isSelected && (note.content || note.media_path) && (
           <button
             onClick={clearMedia}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 11, textAlign: "left", padding: 0 }}
+            className="image-note-clear-inline"
           >
             Clear image
           </button>
@@ -109,52 +101,17 @@ export function NoteImageContent({ note, isSelected }: { note: CanvasNote; isSel
 
   return (
     <div
-      style={{ height: "100%", position: "relative", overflow: "hidden" }}
+      className="image-note-content"
       onPointerDown={(e) => e.stopPropagation()}
     >
       <img
+        className="image-note-media"
         src={imageUrl}
         alt={note.media_name ?? ""}
         loading="lazy"
         decoding="async"
-        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
         onError={() => setImgError(true)}
       />
-      {isSelected && (
-        <div style={{ position: "absolute", bottom: 8, right: 8, display: "flex", gap: 6 }}>
-          <button
-            onClick={() => {
-              setIsEditing(true);
-              setInputVal(note.media_source === "url" ? note.content : "");
-            }}
-            style={{
-              background: "rgba(0,0,0,0.6)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 10,
-              padding: "3px 8px",
-              fontSize: 11,
-              cursor: "pointer",
-            }}
-          >
-            Change
-          </button>
-          <button
-            onClick={clearMedia}
-            style={{
-              background: "rgba(0,0,0,0.6)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 10,
-              padding: "3px 8px",
-              fontSize: 11,
-              cursor: "pointer",
-            }}
-          >
-            Clear
-          </button>
-        </div>
-      )}
     </div>
   );
 }

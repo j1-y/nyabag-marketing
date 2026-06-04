@@ -1,16 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getDesignData } from "@/lib/data";
 import { getDomain } from "@/lib/data";
+import { enrichBookmarkDesignMetadata } from "@/lib/ai/bookmark-enrichment";
+import { GEMINI_MODEL } from "@/lib/ai/gemini";
+import { attachAiMetadataToBookmarks } from "@/lib/bookmarks/ai-metadata";
 import { removeBookmarkScreenshot } from "@/lib/bookmarks/storage";
 import { triggerBookmarkProcessor } from "@/lib/bookmarks/trigger-processor";
 import { timeAsync } from "@/lib/perf";
 import { PROFILE_AVATAR_BUCKET } from "@/lib/profile";
 import { bookmarkCreateSchema, bookmarkUpdateSchema, profileUpdateSchema } from "@/lib/validations";
 import { extractUrlsFromText } from "@/lib/url-extraction";
-import type { ActionResult, Bookmark, ImportBookmarksResult, UserProfile } from "@/lib/types";
+import type { ActionResult, Bookmark, BookmarkAiMetadata, ImportBookmarksResult, UserProfile } from "@/lib/types";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -53,6 +57,162 @@ async function triggerProcessorBestEffort(context: string) {
   if (!triggerResult.success) {
     console.error(`[${context}] Bookmark processor trigger failed:`, triggerResult.error);
   }
+}
+
+function normalizeAiTag(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function mergeBookmarkTags(existing: string[], suggested: string[]) {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+
+  for (const value of [...existing, ...suggested]) {
+    const tag = normalizeAiTag(value);
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    merged.push(tag);
+    if (merged.length >= 20) break;
+  }
+
+  return merged;
+}
+
+function getShortError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.slice(0, 500);
+}
+
+async function enrichBookmarkWithAIScoped({
+  supabase,
+  userId,
+  bookmarkId,
+  force = false,
+}: {
+  supabase: Supabase;
+  userId: string;
+  bookmarkId: string;
+  force?: boolean;
+}): Promise<ActionResult<BookmarkAiMetadata>> {
+  const { data: bookmark, error: bookmarkError } = await supabase
+    .from("bookmarks")
+    .select("*")
+    .eq("id", bookmarkId)
+    .eq("user_id", userId)
+    .single();
+
+  if (bookmarkError || !bookmark) {
+    return { success: false, error: "Bookmark not found" };
+  }
+
+  if (!force) {
+    const { data: existing, error: existingError } = await supabase
+      .from("bookmark_ai_metadata")
+      .select("*")
+      .eq("bookmark_id", bookmarkId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!existingError && existing?.status === "completed") {
+      return { success: true, data: existing as BookmarkAiMetadata };
+    }
+  }
+
+  const pendingPayload = {
+    bookmark_id: bookmarkId,
+    user_id: userId,
+    status: "pending",
+    model_name: GEMINI_MODEL,
+    error: null,
+  };
+
+  const { error: pendingError } = await supabase
+    .from("bookmark_ai_metadata")
+    .upsert(pendingPayload, { onConflict: "bookmark_id" });
+
+  if (pendingError) return { success: false, error: pendingError.message };
+
+  try {
+    const enriched = await enrichBookmarkDesignMetadata(bookmark as Bookmark);
+    const completedPayload = {
+      bookmark_id: bookmarkId,
+      user_id: userId,
+      page_type: enriched.page_type,
+      industry: enriched.industry,
+      visual_style: enriched.visual_style,
+      ui_patterns: enriched.ui_patterns,
+      components: enriched.components,
+      suggested_tags: enriched.suggested_tags,
+      suggested_folder: enriched.suggested_folder,
+      design_context: enriched.design_context,
+      confidence: enriched.confidence,
+      model_name: enriched.model_name,
+      raw_response: enriched.raw_response,
+      error: null,
+      status: "completed",
+    };
+
+    const { data: metadata, error: metadataError } = await supabase
+      .from("bookmark_ai_metadata")
+      .upsert(completedPayload, { onConflict: "bookmark_id" })
+      .select()
+      .single();
+
+    if (metadataError) return { success: false, error: metadataError.message };
+
+    const nextTags = mergeBookmarkTags((bookmark as Bookmark).tags ?? [], enriched.suggested_tags);
+    await supabase
+      .from("bookmarks")
+      .update({ tags: nextTags })
+      .eq("id", bookmarkId)
+      .eq("user_id", userId);
+
+    revalidatePath("/app");
+    revalidatePath(`/app/bookmarks/${bookmarkId}`);
+
+    return { success: true, data: metadata as BookmarkAiMetadata };
+  } catch (error) {
+    const shortError = getShortError(error);
+    const { error: failedError } = await supabase
+      .from("bookmark_ai_metadata")
+      .upsert(
+        {
+          bookmark_id: bookmarkId,
+          user_id: userId,
+          status: "failed",
+          model_name: GEMINI_MODEL,
+          error: shortError,
+        },
+        { onConflict: "bookmark_id" }
+      );
+
+    if (failedError) return { success: false, error: failedError.message };
+
+    console.warn("[enrichBookmarkWithAI] Gemini enrichment failed:", shortError);
+    revalidatePath("/app");
+    revalidatePath(`/app/bookmarks/${bookmarkId}`);
+
+    return { success: false, error: shortError };
+  }
+}
+
+function scheduleBookmarkAIEnrichment(bookmarkId: string) {
+  after(async () => {
+    try {
+      const result = await enrichBookmarkWithAI(bookmarkId);
+      if (!result.success) {
+        console.warn("[scheduleBookmarkAIEnrichment] AI enrichment skipped/failed:", result.error);
+      }
+    } catch (error) {
+      console.warn("[scheduleBookmarkAIEnrichment] Unexpected AI enrichment error:", getShortError(error));
+    }
+  });
 }
 
 async function createBookmarkForUser({
@@ -102,6 +262,7 @@ async function createBookmarkForUser({
   if (!job.success) return { success: false, error: job.error };
 
   await triggerProcessorBestEffort("createBookmarkForUser");
+  scheduleBookmarkAIEnrichment(id);
 
   return { success: true, data };
 }
@@ -138,6 +299,32 @@ export async function createBookmark(
     if (!result.success) return result;
     revalidatePath("/app");
     return result;
+  });
+}
+
+export async function enrichBookmarkWithAI(bookmarkId: string): Promise<ActionResult<BookmarkAiMetadata>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  return enrichBookmarkWithAIScoped({
+    supabase,
+    userId: user.id,
+    bookmarkId,
+    force: false,
+  });
+}
+
+export async function refreshBookmarkAI(bookmarkId: string): Promise<ActionResult<BookmarkAiMetadata>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  return enrichBookmarkWithAIScoped({
+    supabase,
+    userId: user.id,
+    bookmarkId,
+    force: true,
   });
 }
 
@@ -430,7 +617,8 @@ export async function getProcessingBookmarks(): Promise<ActionResult<Bookmark[]>
     .order("created_at", { ascending: false });
 
   if (error) return { success: false, error: error.message };
-  return { success: true, data: (data ?? []) as Bookmark[] };
+  const bookmarks = await attachAiMetadataToBookmarks(supabase, (data ?? []) as Bookmark[], user.id);
+  return { success: true, data: bookmarks };
 }
 
 export async function deleteBookmark(id: string): Promise<ActionResult> {

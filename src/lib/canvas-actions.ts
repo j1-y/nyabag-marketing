@@ -248,6 +248,56 @@ export async function createNote(
   });
 }
 
+export async function createTextNoteWithRichContent(
+  type: "text" | "text_frame",
+  content: string,
+  contentJson: unknown,
+  x: number,
+  y: number,
+  color: string,
+  width: number,
+  height: number,
+  zIndex?: number
+): Promise<ActionResult<CanvasNote>> {
+  return timeAsync("createTextNoteWithRichContent", async () => {
+    const supabase = await createClient();
+    const user = await getUser(supabase);
+    if (!user) return { success: false, error: "Not authenticated" };
+
+    const z_index = zIndex ?? await getNextNoteZIndex(supabase, user.id);
+    const parsed = noteCreateSchema.safeParse({
+      type,
+      content,
+      content_json: contentJson,
+      content_format: "rich",
+      media_source: null,
+      media_path: null,
+      media_mime: null,
+      media_name: null,
+      x,
+      y,
+      width,
+      height,
+      color,
+      z_index,
+    });
+
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
+
+    const { section_id, ...noteInput } = parsed.data;
+    const { data, error } = await supabase
+      .from("canvas_notes")
+      .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: data as unknown as CanvasNote };
+  });
+}
+
 export async function createSocialNoteFromUrl(
   url: string,
   centerX: number,

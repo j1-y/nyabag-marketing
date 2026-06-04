@@ -16,20 +16,27 @@ function getRequiredEnv() {
   const token = process.env.GITHUB_PROCESSOR_TOKEN;
   const owner = process.env.GITHUB_REPO_OWNER;
   const repo = process.env.GITHUB_REPO_NAME;
-  const workflowFile = process.env.GITHUB_PROCESSOR_WORKFLOW_FILE;
+  const workflowFile = process.env.GITHUB_PROCESSOR_WORKFLOW_FILE || "process-bookmarks.yml";
+  const missing = [
+    ["GITHUB_PROCESSOR_TOKEN", token],
+    ["GITHUB_REPO_OWNER", owner],
+    ["GITHUB_REPO_NAME", repo],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
 
-  if (!token || !owner || !repo || !workflowFile) {
+  if (missing.length > 0) {
     return {
       ok: false as const,
-      error: "GitHub processor env vars are not configured",
+      error: `GitHub processor env vars are not configured: ${missing.join(", ")}`,
     };
   }
 
   return {
     ok: true as const,
-    token,
-    owner,
-    repo,
+    token: token!,
+    owner: owner!,
+    repo: repo!,
     workflowFile,
     ref: process.env.GITHUB_PROCESSOR_REF || DEFAULT_REF,
   };

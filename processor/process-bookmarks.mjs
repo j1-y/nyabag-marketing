@@ -124,6 +124,21 @@ function inferTags(url, title, summary) {
   return Array.from(new Set(tags.filter(Boolean))).slice(0, 8);
 }
 
+function mergeTags(existingTags, inferredTags) {
+  const seen = new Set();
+  const merged = [];
+
+  for (const value of [...(existingTags ?? []), ...(inferredTags ?? [])]) {
+    const tag = normalizeTag(String(value ?? ""));
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    merged.push(tag);
+    if (merged.length >= 20) break;
+  }
+
+  return merged;
+}
+
 function isPrivateIPv4(address) {
   const parts = address.split(".").map((part) => Number.parseInt(part, 10));
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) return true;
@@ -463,12 +478,24 @@ async function capturePreview(browser, url, timeoutMs, width, height, fullPage, 
 async function markJobReady(supabase, job, screenshotPath, screenshotUrl, metadata, resolvedUrl) {
   const fallbackTitle = getDomain(job.url) || job.url;
 
+  const { data: existingBookmark, error: existingBookmarkError } = await supabase
+    .from("bookmarks")
+    .select("tags")
+    .eq("id", job.bookmark_id)
+    .eq("user_id", job.user_id)
+    .eq("url", job.url)
+    .maybeSingle();
+
+  if (existingBookmarkError) {
+    throw new Error(`Could not read bookmark tags: ${existingBookmarkError.message}`);
+  }
+
   const { data: updatedBookmark, error: bookmarkError } = await supabase
     .from("bookmarks")
     .update({
       title: metadata.title || fallbackTitle,
       summary: metadata.summary,
-      tags: metadata.tags,
+      tags: mergeTags(existingBookmark?.tags, metadata.tags),
       palette: fallbackPalette(job.url),
       fonts: metadata.fonts,
       screenshot_url: screenshotUrl,
