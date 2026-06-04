@@ -201,15 +201,77 @@ async function assertSafeUrl(rawUrl) {
   return parsed.toString();
 }
 
+function toggleWwwHostname(hostname) {
+  if (hostname.startsWith("www.")) {
+    return hostname.slice(4);
+  }
+
+  return `www.${hostname}`;
+}
+
+function getUrlCandidates(rawUrl) {
+  const candidates = [];
+
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return [rawUrl];
+  }
+
+  candidates.push(parsed.toString());
+
+  const toggled = new URL(parsed.toString());
+  toggled.hostname = toggleWwwHostname(parsed.hostname);
+  candidates.push(toggled.toString());
+
+  return Array.from(new Set(candidates));
+}
+
+async function resolveSafeUrl(rawUrl) {
+  const candidates = getUrlCandidates(rawUrl);
+  let lastError = null;
+
+  for (const candidate of candidates) {
+    try {
+      return await assertSafeUrl(candidate);
+    } catch (error) {
+      lastError = error;
+      console.log(
+        `[processor] URL candidate failed: ${candidate}`,
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
+
+  throw lastError ?? new Error("Could not resolve URL");
+}
+
 async function claimJob(supabase, workerId) {
   const { data, error } = await supabase.rpc("claim_bookmark_processing_job", {
     worker_id: workerId,
   });
 
-  if (error) throw new Error(`Could not claim job: ${error.message}`);
-  if (!data || (Array.isArray(data) && data.length === 0)) return null;
+  if (error) {
+    throw new Error(`Could not claim job: ${error.message}`);
+  }
 
-  return Array.isArray(data) ? data[0] : data;
+  const job = Array.isArray(data) ? data[0] : data;
+
+  if (
+    !job ||
+    !job.id ||
+    job.id === "null" ||
+    !job.bookmark_id ||
+    job.bookmark_id === "null" ||
+    !job.user_id ||
+    job.user_id === "null" ||
+    !job.url
+  ) {
+    return null;
+  }
+
+  return job;
 }
 
 async function updateBookmarkProcessing(supabase, job) {
@@ -336,7 +398,7 @@ async function preparePageForScreenshot(page, timeoutMs) {
 }
 
 async function capturePreview(browser, url, timeoutMs, width, height, fullPage, quality, maxWebpHeight) {
-  const safeUrl = await assertSafeUrl(url);
+  const safeUrl = await resolveSafeUrl(url);
 
   const page = await browser.newPage({
     viewport: { width, height },
@@ -392,13 +454,13 @@ async function capturePreview(browser, url, timeoutMs, width, height, fullPage, 
 
     const metadata = await extractMetadata(page, safeUrl);
 
-    return { webp, metadata };
+    return { webp, metadata, resolvedUrl: safeUrl };
   } finally {
     await page.close().catch(() => undefined);
   }
 }
 
-async function markJobReady(supabase, job, screenshotPath, screenshotUrl, metadata) {
+async function markJobReady(supabase, job, screenshotPath, screenshotUrl, metadata, resolvedUrl) {
   const fallbackTitle = getDomain(job.url) || job.url;
 
   const { data: updatedBookmark, error: bookmarkError } = await supabase
@@ -415,6 +477,7 @@ async function markJobReady(supabase, job, screenshotPath, screenshotUrl, metada
       metadata_refreshed_at: metadata.refreshedAt,
       processing_status: "ready",
       processing_error: null,
+      url: resolvedUrl,
       enrichment_finished_at: nowIso(),
     })
     .eq("id", job.bookmark_id)
@@ -510,7 +573,7 @@ async function processJob(supabase, browser, job, config) {
 
   await updateBookmarkProcessing(supabase, job);
 
-  const { webp, metadata } = await capturePreview(
+  const { webp, metadata, resolvedUrl } = await capturePreview(
     browser,
     job.url,
     config.timeoutMs,
@@ -541,7 +604,7 @@ async function processJob(supabase, browser, job, config) {
     .from(BUCKET)
     .getPublicUrl(screenshotPath).data.publicUrl;
 
-  await markJobReady(supabase, job, screenshotPath, screenshotUrl, metadata);
+  await markJobReady(supabase, job, screenshotPath, screenshotUrl, metadata, resolvedUrl);
 
   console.log(`[processor] job ready: ${job.id}`);
 }
