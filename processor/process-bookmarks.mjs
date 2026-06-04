@@ -1,4 +1,5 @@
 import dns from "node:dns/promises";
+import WebSocket from "ws";
 import net from "node:net";
 import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
@@ -568,12 +569,15 @@ async function main() {
     process.env.GITHUB_RUN_ID ||
     `local-${Date.now()}`;
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+  realtime: {
+    WebSocket,
+  },
+});
 
   console.log("[processor] config", {
     maxJobs: config.maxJobs,
