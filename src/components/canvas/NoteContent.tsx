@@ -23,6 +23,7 @@ export function NoteContent({
 
   switch (note.type) {
     case "text":
+    case "text_frame":
       return <NoteTextContent ref={textFormatRef} note={note} isSelected={isSelected} />;
     case "link":
       return <NoteLinkContent note={note} isSelected={isSelected} />;

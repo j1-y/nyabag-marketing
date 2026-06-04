@@ -247,6 +247,8 @@ CREATE TABLE IF NOT EXISTS canvas_notes (
   media_path    TEXT,
   media_mime    TEXT,
   media_name    TEXT,
+  content_json  JSONB,
+  content_format TEXT       NOT NULL DEFAULT 'plain',
   x             REAL        NOT NULL DEFAULT 100,
   y             REAL        NOT NULL DEFAULT 100,
   width         REAL        NOT NULL DEFAULT 240,
@@ -262,17 +264,23 @@ ALTER TABLE canvas_notes
   ADD COLUMN IF NOT EXISTS media_source TEXT,
   ADD COLUMN IF NOT EXISTS media_path TEXT,
   ADD COLUMN IF NOT EXISTS media_mime TEXT,
-  ADD COLUMN IF NOT EXISTS media_name TEXT;
+  ADD COLUMN IF NOT EXISTS media_name TEXT,
+  ADD COLUMN IF NOT EXISTS content_json JSONB,
+  ADD COLUMN IF NOT EXISTS content_format TEXT NOT NULL DEFAULT 'plain';
 
 ALTER TABLE canvas_notes
   DROP CONSTRAINT IF EXISTS canvas_notes_section_id_fkey,
   DROP CONSTRAINT IF EXISTS canvas_notes_type_check,
+  DROP CONSTRAINT IF EXISTS canvas_notes_content_check,
+  DROP CONSTRAINT IF EXISTS canvas_notes_content_format_check,
   DROP CONSTRAINT IF EXISTS canvas_notes_media_source_check,
   DROP CONSTRAINT IF EXISTS canvas_notes_media_path_check,
   DROP CONSTRAINT IF EXISTS canvas_notes_media_mime_check,
   DROP CONSTRAINT IF EXISTS canvas_notes_media_name_check,
   ADD CONSTRAINT canvas_notes_section_id_fkey FOREIGN KEY (section_id) REFERENCES canvas_sections(id) ON DELETE SET NULL,
-  ADD CONSTRAINT canvas_notes_type_check CHECK (type IN ('text','link','image','video','social')),
+  ADD CONSTRAINT canvas_notes_type_check CHECK (type IN ('text','text_frame','link','image','video','social')),
+  ADD CONSTRAINT canvas_notes_content_check CHECK (char_length(content) <= 12000),
+  ADD CONSTRAINT canvas_notes_content_format_check CHECK (content_format IN ('plain', 'rich')),
   ADD CONSTRAINT canvas_notes_media_source_check CHECK (media_source IS NULL OR media_source IN ('url','upload')),
   ADD CONSTRAINT canvas_notes_media_path_check CHECK (media_path IS NULL OR char_length(media_path) <= 1024),
   ADD CONSTRAINT canvas_notes_media_mime_check CHECK (media_mime IS NULL OR char_length(media_mime) <= 255),
@@ -666,6 +674,7 @@ VALUES (
                   <tr>
                     <td align="center" style="background-color:#202020;background-image:radial-gradient(circle,#3c3c3c 1.5px,transparent 1.5px);background-size:24px 24px;padding:60px 48px 0 48px;">
                       <h1 style="margin:0 0 54px 0;color:#e5e5e5;font-size:48px;line-height:1.1;font-weight:800;letter-spacing:-0.5px;">Thanks for signing up!</h1>
+                      <img src="{{nyabagUrl}}/template-mark-1-dashboard.png" width="626" alt="Nyabag dashboard preview" style="display:block;width:626px;max-width:100%;height:auto;border:0;">
                       <img src="{{nyabagUrl}}/template-mark-1-dashboard.png" width="626" alt="Nyabag dashboard preview" style="display:block;width:626px;max-width:100%;height:auto;border:0;">
                     </td>
                   </tr>

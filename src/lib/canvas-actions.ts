@@ -507,6 +507,76 @@ export async function updateNoteContent(
   return { success: true, data: data as CanvasNote };
 }
 
+export async function updateTextNoteRichContent(
+  id: string,
+  content: string,
+  contentJson: unknown
+): Promise<ActionResult<CanvasNote>> {
+  const supabase = await createClient();
+  const user = await getUser(supabase);
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const oldNote = await getOwnedNote(supabase, user.id, id);
+  if (!oldNote) return { success: false, error: "Note not found" };
+  if (oldNote.type !== "text" && oldNote.type !== "text_frame") {
+    return { success: false, error: "Only text notes support rich content" };
+  }
+
+  const parsed = noteUpdateSchema.safeParse({
+    id,
+    content,
+    content_json: contentJson,
+    content_format: "rich",
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const { data, error } = await supabase
+    .from("canvas_notes")
+    .update({
+      content: parsed.data.content,
+      content_json: parsed.data.content_json,
+      content_format: "rich",
+    })
+    .eq("id", parsed.data.id)
+    .eq("user_id", user.id)
+    .in("type", ["text", "text_frame"])
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/app/canvas");
+  return { success: true, data: data as CanvasNote };
+}
+
+export async function updateNoteColor(
+  id: string,
+  color: string
+): Promise<ActionResult<CanvasNote>> {
+  const supabase = await createClient();
+  const user = await getUser(supabase);
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const parsed = noteUpdateSchema.safeParse({ id, color });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const { data, error } = await supabase
+    .from("canvas_notes")
+    .update({ color: parsed.data.color })
+    .eq("id", parsed.data.id)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/app/canvas");
+  return { success: true, data: data as CanvasNote };
+}
+
 export async function uploadNoteMedia(
   id: string,
   formData: FormData

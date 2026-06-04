@@ -17,7 +17,8 @@ interface Props {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  text: "Markdown",
+  text: "",
+  text_frame: "",
   link: "Link",
   image: "Image",
   video: "Video",
@@ -130,24 +131,43 @@ export function CanvasNote({ note, viewport }: Props) {
   }
 
   const noteLabel = isSocialNoteContent(note.content) ? "Social" : TYPE_LABELS[note.type];
-  const isTextNote = note.type === "text" && !isSocialNoteContent(note.content);
-  const showStickyToolbar = isPrimarySelected && isTextNote && selectedIds.length === 1;
+  const isStickyNote = note.type === "text" && !isSocialNoteContent(note.content);
+  const isTextFrame = note.type === "text_frame";
+  const isTextEditable = isStickyNote || isTextFrame;
+  const showStickyToolbar = isPrimarySelected && isStickyNote && selectedIds.length === 1;
   const toolbarPlacement = viewport.y + note.y * viewport.scale > 64 ? "above" : "below";
+
+  function handleBodyPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    if (!isTextEditable) return;
+    if (toolMode === "pan" && !isSelected) return;
+    if (e.shiftKey) {
+      setSelectedIds(
+        isSelected ? selectedIds.filter((id) => id !== note.id) : [...selectedIds, note.id]
+      );
+      return;
+    }
+    if (!isSelected || selectedIds.length > 1) {
+      setSelectedId(note.id);
+    }
+    bringToFront(note.id);
+    requestAnimationFrame(() => textFormatRef.current?.focus());
+  }
 
   return (
     <div
       ref={noteRef}
       data-note-id={note.id}
-      className={`canvas-note${isTextNote ? " canvas-note--text" : ""}${
-        isSelected ? " canvas-note--selected" : ""
-      }`}
+      className={`canvas-note${isStickyNote ? " canvas-note--text" : ""}${
+        isTextFrame ? " canvas-note--text-frame" : ""
+      }${isSelected ? " canvas-note--selected" : ""}`}
       style={{
         transform: `translate(${note.x}px, ${note.y}px)`,
         width: note.width,
         height: note.height,
-        background: note.color,
-        color: getNoteInk(note.color),
-        "--sticky-note-ink": getNoteInk(note.color),
+        background: isTextFrame ? "transparent" : note.color,
+        color: isTextFrame ? "#111111" : getNoteInk(note.color),
+        "--sticky-note-ink": isTextFrame ? "#111111" : getNoteInk(note.color),
         zIndex: isSelected ? 9999 : note.z_index,
       } as React.CSSProperties}
       onPointerDown={handleNotePointerDown}
@@ -156,19 +176,29 @@ export function CanvasNote({ note, viewport }: Props) {
     >
       {/* Drag handle header */}
       <div
-        className={`note-header${isTextNote ? " note-header--text" : ""}`}
+        className={`note-header${isTextEditable ? " note-header--text" : ""}`}
         onPointerDown={handleHeaderPointerDown}
         onPointerMove={handleHeaderPointerMove}
         onPointerUp={handleHeaderPointerUp}
       >
-        <span className="note-type-badge">{noteLabel}</span>
-        {!isTextNote && <NoteToolbar note={note} isVisible={isHovered || isSelected} />}
+        {isTextEditable ? (
+          <span className="note-drag-bar" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </span>
+        ) : (
+          <span className="note-type-badge">{noteLabel}</span>
+        )}
+        {!isTextEditable && <NoteToolbar note={note} isVisible={isHovered || isSelected} />}
       </div>
 
       {/* Content area */}
       <div
         className="note-body"
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={handleBodyPointerDown}
       >
         <NoteContent note={note} isSelected={isSelected} textFormatRef={textFormatRef} />
       </div>

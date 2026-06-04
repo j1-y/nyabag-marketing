@@ -45,8 +45,9 @@ export type UserProfile = {
   updated_at: string;
 };
 
-export type NoteType = "text" | "link" | "image" | "video" | "social";
+export type NoteType = "text" | "text_frame" | "link" | "image" | "video" | "social";
 export type NoteMediaSource = "url" | "upload";
+export type NoteContentFormat = "plain" | "rich";
 export type CanvasToolMode = "select" | "pan";
 
 export type CanvasSection = {
@@ -69,6 +70,8 @@ export type CanvasNote = {
   section_id: string | null;
   type: NoteType;
   content: string;
+  content_json?: unknown | null;
+  content_format?: NoteContentFormat | string;
   media_source: NoteMediaSource | null;
   media_path: string | null;
   media_mime: string | null;

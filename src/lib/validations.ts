@@ -43,9 +43,11 @@ export const profileUpdateSchema = z.object({
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 
 export const noteCreateSchema = z.object({
-  type: z.enum(["text", "link", "image", "video", "social"]),
+  type: z.enum(["text", "text_frame", "link", "image", "video", "social"]),
   section_id: z.string().uuid().nullable().default(null),
-  content: z.string().max(4000).default(""),
+  content: z.string().max(12000).default(""),
+  content_json: z.unknown().nullable().optional(),
+  content_format: z.enum(["plain", "rich"]).default("plain"),
   media_source: z.enum(["url", "upload"]).nullable().default(null),
   media_path: z.string().max(1024).nullable().default(null),
   media_mime: z.string().max(255).nullable().default(null),

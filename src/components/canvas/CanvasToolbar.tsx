@@ -7,6 +7,7 @@ import {
   ImageIcon,
   LinkSimpleIcon,
   ShareNetworkIcon,
+  StickerIcon,
   TextTIcon,
   VideoCameraIcon,
   type Icon,
@@ -17,7 +18,8 @@ import { MediaNoteDialog } from "./MediaNoteDialog";
 import { SocialNoteDialog } from "./SocialNoteDialog";
 
 const NOTE_TYPES: { type: NoteType; icon: Icon; label: string }[] = [
-  { type: "text", icon: TextTIcon, label: "Markdown card" },
+  { type: "text", icon: StickerIcon, label: "Sticky note" },
+  { type: "text_frame", icon: TextTIcon, label: "Text frame" },
   { type: "link", icon: LinkSimpleIcon, label: "Link note" },
   { type: "image", icon: ImageIcon, label: "Image note" },
   { type: "video", icon: VideoCameraIcon, label: "Video note" },
@@ -106,7 +108,11 @@ export function CanvasToolbar() {
                 setToolMode("select");
               }}
             >
-              <Icon size={20} weight="regular" />
+              <Icon
+                size={20}
+                weight={type === "text" ? "duotone" : "regular"}
+                color={type === "text" ? "#12CFF3" : undefined}
+              />
             </button>
           );
         })}

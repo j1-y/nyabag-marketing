@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function NoteToolbar({ note, isVisible }: Props) {
-  const { deleteNote, updateContent } = useNotes();
+  const { deleteNote, updateColor } = useNotes();
 
   return (
     <div
@@ -21,7 +21,7 @@ export function NoteToolbar({ note, isVisible }: Props) {
     >
       <ColorPicker
         value={note.color}
-        onChange={(color) => updateContent(note.id, note.content, color)}
+        onChange={(color) => updateColor(note.id, color)}
       />
       <button
         className="note-toolbar-btn"

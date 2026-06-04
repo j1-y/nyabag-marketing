@@ -23,8 +23,10 @@ import {
   updateSectionPosition,
   updateSectionSize,
   updateNoteContent,
+  updateNoteColor,
   updateNotePosition,
   updateNoteSize,
+  updateTextNoteRichContent,
   uploadNoteMedia,
 } from "@/lib/canvas-actions";
 import type {
@@ -92,6 +94,12 @@ interface NotesCtx {
     color?: string,
     mediaSource?: NoteMediaSource | null
   ) => Promise<ActionResult<CanvasNote>>;
+  updateRichTextContent: (
+    id: string,
+    plainText: string,
+    contentJson: unknown
+  ) => Promise<ActionResult<CanvasNote>>;
+  updateColor: (id: string, color: string) => Promise<ActionResult<CanvasNote>>;
   uploadMedia: (id: string, file: File) => Promise<ActionResult<CanvasNote>>;
   removeMedia: (id: string) => Promise<ActionResult<CanvasNote>>;
   setNotePosition: (id: string, x: number, y: number) => void;
@@ -342,6 +350,54 @@ export function NotesProvider({
     []
   );
 
+  const updateRichTextContent = useCallback(
+    async (id: string, plainText: string, contentJson: unknown) => {
+      let previous: CanvasNote | undefined;
+      setNotes((prev) =>
+        prev.map((note) => {
+          if (note.id !== id) return note;
+          previous = note;
+          return {
+            ...note,
+            content: plainText,
+            content_json: contentJson,
+            content_format: "rich",
+          };
+        })
+      );
+
+      const result = await updateTextNoteRichContent(id, plainText, contentJson);
+      if (result.success) {
+        setNotes((prev) => prev.map((note) => (note.id === id ? result.data : note)));
+      } else if (previous) {
+        setNotes((prev) => prev.map((note) => (note.id === id ? previous as CanvasNote : note)));
+      }
+
+      return result;
+    },
+    []
+  );
+
+  const updateColor = useCallback(async (id: string, color: string) => {
+    let previous: CanvasNote | undefined;
+    setNotes((prev) =>
+      prev.map((note) => {
+        if (note.id !== id) return note;
+        previous = note;
+        return { ...note, color };
+      })
+    );
+
+    const result = await updateNoteColor(id, color);
+    if (result.success) {
+      setNotes((prev) => prev.map((note) => (note.id === id ? result.data : note)));
+    } else if (previous) {
+      setNotes((prev) => prev.map((note) => (note.id === id ? previous as CanvasNote : note)));
+    }
+
+    return result;
+  }, []);
+
   const uploadMedia = useCallback(async (id: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -544,6 +600,8 @@ export function NotesProvider({
       deleteNote,
       deleteNotes,
       updateContent,
+      updateRichTextContent,
+      updateColor,
       uploadMedia,
       removeMedia,
       setNotePosition,
@@ -581,6 +639,8 @@ export function NotesProvider({
       deleteNote,
       deleteNotes,
       updateContent,
+      updateRichTextContent,
+      updateColor,
       uploadMedia,
       removeMedia,
       setNotePosition,
