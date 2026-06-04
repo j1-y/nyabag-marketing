@@ -3107,7 +3107,7 @@
   overflow: hidden;
   background-color: var(--bg3);
   background-image: radial-gradient(circle, var(--border2) 1.2px, transparent 1.2px);
-  background-size: 24px 24px;
+  background-size: var(--canvas-grid-size, 16px) var(--canvas-grid-size, 16px);
   background-position: var(--canvas-bg-x, 0px) var(--canvas-bg-y, 0px);
   user-select: none;
 }
@@ -3580,7 +3580,12 @@
 }
 
 .rich-text-note--frame .ProseMirror {
+  display: inline-block;
   min-height: auto;
+  min-width: 1ch;
+  width: max-content;
+  max-width: 100%;
+  white-space: pre-wrap;
 }
 
 .rich-text-note .ProseMirror {
@@ -3850,6 +3855,72 @@
 
 .sticky-note-toolbar-button--strike {
   text-decoration: line-through;
+}
+
+.sticky-note-toolbar-button--delete,
+.text-frame-toolbar-button--delete {
+  color: #b91c1c;
+}
+
+.text-frame-toolbar {
+  position: absolute;
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #171717;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08);
+  transform: translateX(-50%) scale(var(--sticky-toolbar-scale, 1));
+  transform-origin: top center;
+  pointer-events: auto;
+}
+
+.text-frame-toolbar--above {
+  top: calc(-48px * var(--sticky-toolbar-scale, 1));
+}
+
+.text-frame-toolbar--below {
+  top: calc(100% + (10px * var(--sticky-toolbar-scale, 1)));
+}
+
+.text-frame-toolbar-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.text-frame-toolbar-button:hover {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.text-frame-toolbar-button--italic {
+  font-style: italic;
+}
+
+.text-frame-toolbar-button--underline {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.text-frame-toolbar-sep {
+  width: 1px;
+  height: 24px;
+  background: rgba(15, 23, 42, 0.12);
 }
 
 .note-toolbar {

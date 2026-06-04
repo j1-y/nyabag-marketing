@@ -6,6 +6,7 @@ import { ResizeHandles } from "./ResizeHandles";
 import { NoteContent } from "./NoteContent";
 import { NoteToolbar } from "./NoteToolbar";
 import { StickyNoteToolbar } from "./StickyNoteToolbar";
+import { TextFrameToolbar } from "./TextFrameToolbar";
 import { maybeSnap } from "@/lib/canvas-grid";
 import { isSocialNoteContent } from "@/lib/social-embeds";
 import type { StickyNoteTextHandle } from "./NoteTextContent";
@@ -135,6 +136,7 @@ export function CanvasNote({ note, viewport }: Props) {
   const isTextFrame = note.type === "text_frame";
   const isTextEditable = isStickyNote || isTextFrame;
   const showStickyToolbar = isPrimarySelected && isStickyNote && selectedIds.length === 1;
+  const showTextFrameToolbar = isPrimarySelected && isTextFrame && selectedIds.length === 1;
   const toolbarPlacement = viewport.y + note.y * viewport.scale > 64 ? "above" : "below";
 
   function handleBodyPointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -206,6 +208,15 @@ export function CanvasNote({ note, viewport }: Props) {
       {/* Resize handles — only when selected */}
       {showStickyToolbar && (
         <StickyNoteToolbar
+          note={note}
+          formatRef={textFormatRef}
+          viewportScale={viewport.scale}
+          placement={toolbarPlacement}
+        />
+      )}
+
+      {showTextFrameToolbar && (
+        <TextFrameToolbar
           note={note}
           formatRef={textFormatRef}
           viewportScale={viewport.scale}

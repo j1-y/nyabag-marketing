@@ -8,6 +8,7 @@ import {
   ListBulletsIcon,
   ListNumbersIcon,
   TextTIcon,
+  TrashIcon,
 } from "@phosphor-icons/react";
 import {
   useCallback,
@@ -52,7 +53,7 @@ export function StickyNoteToolbar({
   viewportScale,
   placement,
 }: StickyNoteToolbarProps) {
-  const { updateColor } = useNotes();
+  const { deleteNote, updateColor } = useNotes();
   const [colorOpen, setColorOpen] = useState(false);
   const [activeActions, setActiveActions] = useState<Set<StickyNoteFormatAction>>(() => new Set());
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -170,6 +171,22 @@ export function StickyNoteToolbar({
           </button>
         );
       })}
+
+      <div className="sticky-note-toolbar-sep" />
+
+      <button
+        type="button"
+        className="sticky-note-toolbar-button sticky-note-toolbar-button--delete"
+        title="Delete note"
+        aria-label="Delete note"
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          void deleteNote(note.id);
+        }}
+      >
+        <TrashIcon size={16} />
+      </button>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNotes } from "@/hooks/useNotes";
 import { CanvasNote } from "./CanvasNote";
 import { CanvasSection } from "./CanvasSection";
-import { maybeSnap } from "@/lib/canvas-grid";
+import { maybeSnap, SNAP_SIZE } from "@/lib/canvas-grid";
 import type { NoteType } from "@/lib/types";
 
 const MIN_SCALE = 0.1;
@@ -447,8 +447,9 @@ export function CanvasContainer() {
   }
 
   const { x, y, scale } = viewport;
-  const bgX = ((x % 24) + 24) % 24;
-  const bgY = ((y % 24) + 24) % 24;
+  const gridSize = SNAP_SIZE * scale;
+  const bgX = ((x % gridSize) + gridSize) % gridSize;
+  const bgY = ((y % gridSize) + gridSize) % gridSize;
 
   return (
     <div
@@ -458,6 +459,7 @@ export function CanvasContainer() {
         {
           "--canvas-x": `${x}px`,
           "--canvas-y": `${y}px`,
+          "--canvas-grid-size": `${gridSize}px`,
           "--canvas-bg-x": `${bgX}px`,
           "--canvas-bg-y": `${bgY}px`,
         } as React.CSSProperties

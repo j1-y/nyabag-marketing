@@ -33,6 +33,16 @@ const EMPTY_DOC: JSONContent = {
   content: [{ type: "paragraph" }],
 };
 const MAX_AUTO_HEIGHT = 900;
+const MIN_FRAME_WIDTH = 100;
+const MIN_FRAME_HEIGHT = 80;
+const MAX_FRAME_WIDTH = 1200;
+const MAX_FRAME_HEIGHT = 900;
+const FRAME_PAD_X = 8;
+const FRAME_PAD_Y = 8;
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
 function textToDoc(text: string): JSONContent {
   if (!text.trim()) return EMPTY_DOC;
@@ -160,6 +170,45 @@ export const NoteTextContent = forwardRef<
     });
   }, [commitSize, isTextFrame, note.id, setNoteSize]);
 
+  const fitFrameToContent = useCallback(() => {
+    if (!isTextFrame) return;
+    if (autoHeightFrameRef.current !== null) return;
+    autoHeightFrameRef.current = window.requestAnimationFrame(() => {
+      autoHeightFrameRef.current = null;
+      const container = containerRef.current;
+      const editorElement = container?.querySelector<HTMLElement>(".ProseMirror");
+      if (!container || !editorElement) return;
+
+      const contentRect = editorElement.getBoundingClientRect();
+      const nextWidth = clamp(
+        Math.ceil(contentRect.width + FRAME_PAD_X),
+        MIN_FRAME_WIDTH,
+        MAX_FRAME_WIDTH
+      );
+      const nextHeight = clamp(
+        Math.ceil(editorElement.scrollHeight + FRAME_PAD_Y),
+        MIN_FRAME_HEIGHT,
+        MAX_FRAME_HEIGHT
+      );
+      const current = latestSizeRef.current;
+
+      if (Math.abs(nextWidth - current.width) <= 2 && Math.abs(nextHeight - current.height) <= 2) {
+        return;
+      }
+
+      latestSizeRef.current = { width: nextWidth, height: nextHeight };
+      setNoteSize(note.id, nextWidth, nextHeight);
+
+      if (autoHeightCommitRef.current !== null) {
+        window.clearTimeout(autoHeightCommitRef.current);
+      }
+      autoHeightCommitRef.current = window.setTimeout(() => {
+        autoHeightCommitRef.current = null;
+        void commitSize(note.id, nextWidth, nextHeight);
+      }, 250);
+    });
+  }, [commitSize, isTextFrame, note.id, setNoteSize]);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -192,9 +241,11 @@ export const NoteTextContent = forwardRef<
     },
     onCreate: () => {
       growToFitContent();
+      fitFrameToContent();
     },
     onUpdate: () => {
       growToFitContent();
+      fitFrameToContent();
     },
   });
   const editorRef = useRef(editor);
@@ -206,7 +257,8 @@ export const NoteTextContent = forwardRef<
     editor?.setEditable(isSelected);
     if (!isSelected) saveEditor();
     growToFitContent();
-  }, [editor, growToFitContent, isSelected, saveEditor]);
+    fitFrameToContent();
+  }, [editor, fitFrameToContent, growToFitContent, isSelected, saveEditor]);
 
   useEffect(() => {
     return () => {
