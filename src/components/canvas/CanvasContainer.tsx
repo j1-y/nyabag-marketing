@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNotes } from "@/hooks/useNotes";
 import { CanvasNote } from "./CanvasNote";
 import { CanvasSection } from "./CanvasSection";
+import { maybeSnap } from "@/lib/canvas-grid";
 import type { NoteType } from "@/lib/types";
 
 const MIN_SCALE = 0.1;
@@ -51,6 +52,7 @@ export function CanvasContainer() {
   const panStartRef = useRef({ x: 0, y: 0 });
   const selectStartRef = useRef({ x: 0, y: 0 });
   const placeStartRef = useRef({ clientX: 0, clientY: 0, canvasX: 0, canvasY: 0 });
+  const lastPlacementAltKeyRef = useRef(false);
   const viewportRef = useRef(viewport);
   const viewportFrameRef = useRef<number | null>(null);
   const nextViewportRef = useRef(viewport);
@@ -155,7 +157,7 @@ export function CanvasContainer() {
       const target = e.target as HTMLElement;
       const isControl = Boolean(
         target.closest(
-          "button,input,textarea,a,video,iframe,.canvas-toolbar,.canvas-zoom-controls,.note-toolbar,.color-picker-popover,.resize-handle,.canvas-section-resize"
+          "button,input,textarea,a,video,iframe,.canvas-toolbar,.canvas-zoom-controls,.note-toolbar,.sticky-note-toolbar,.color-picker-popover,.resize-handle,.canvas-section-resize"
         )
       );
       const noteEl = target.closest<HTMLElement>("[data-note-id]");
@@ -170,6 +172,7 @@ export function CanvasContainer() {
         setContextMenu(null);
         setSelectedId(null);
         isPlacingNoteRef.current = true;
+        lastPlacementAltKeyRef.current = e.altKey;
         placeStartRef.current = {
           clientX: e.clientX,
           clientY: e.clientY,
@@ -234,6 +237,7 @@ export function CanvasContainer() {
       }
 
       if (isPlacingNoteRef.current) {
+        lastPlacementAltKeyRef.current = e.altKey;
         const left = Math.min(placeStartRef.current.clientX, e.clientX);
         const top = Math.min(placeStartRef.current.clientY, e.clientY);
         const width = Math.abs(e.clientX - placeStartRef.current.clientX);
@@ -253,28 +257,34 @@ export function CanvasContainer() {
     [scheduleViewport]
   );
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e?: React.PointerEvent<HTMLDivElement>) => {
     isPanningRef.current = false;
     setIsPanning(false);
     if (isPlacingNoteRef.current && activeNoteTool) {
       const defaultSize = NOTE_DEFAULT_SIZE[activeNoteTool];
       const wrapperRect = wrapperRef.current?.getBoundingClientRect();
+      const shouldSnap = !(e?.altKey ?? lastPlacementAltKeyRef.current);
       const width =
         placementRect && placementRect.width >= DRAG_CREATE_THRESHOLD
-          ? Math.max(MIN_NOTE_WIDTH, placementRect.width / viewport.scale)
+          ? Math.max(
+              MIN_NOTE_WIDTH,
+              maybeSnap(Math.max(MIN_NOTE_WIDTH, placementRect.width / viewport.scale), shouldSnap)
+            )
           : defaultSize.width;
       const height =
         placementRect && placementRect.height >= DRAG_CREATE_THRESHOLD
-          ? Math.max(MIN_NOTE_HEIGHT, placementRect.height / viewport.scale)
+          ? Math.max(
+              MIN_NOTE_HEIGHT,
+              maybeSnap(Math.max(MIN_NOTE_HEIGHT, placementRect.height / viewport.scale), shouldSnap)
+            )
           : defaultSize.height;
-      const x =
-        placementRect && placementRect.width >= DRAG_CREATE_THRESHOLD && wrapperRect
-          ? (placementRect.left - wrapperRect.left - viewport.x) / viewport.scale
-          : placeStartRef.current.canvasX;
+      const x = placementRect && placementRect.width >= DRAG_CREATE_THRESHOLD && wrapperRect
+        ? maybeSnap((placementRect.left - wrapperRect.left - viewport.x) / viewport.scale, shouldSnap)
+        : maybeSnap(placeStartRef.current.canvasX, shouldSnap);
       const y =
         placementRect && placementRect.height >= DRAG_CREATE_THRESHOLD && wrapperRect
-          ? (placementRect.top - wrapperRect.top - viewport.y) / viewport.scale
-          : placeStartRef.current.canvasY;
+          ? maybeSnap((placementRect.top - wrapperRect.top - viewport.y) / viewport.scale, shouldSnap)
+          : maybeSnap(placeStartRef.current.canvasY, shouldSnap);
 
       if ((activeNoteTool === "image" || activeNoteTool === "video") && pendingMediaNote) {
         addMediaNote(x, y, width, height);

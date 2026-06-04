@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
 import { useNotes } from "@/hooks/useNotes";
+import { maybeSnap } from "@/lib/canvas-grid";
 import type { CanvasSection as CanvasSectionType, CanvasViewport } from "@/lib/types";
 
 interface Props {
@@ -14,6 +15,10 @@ const MIN_W = 180;
 const MIN_H = 120;
 const MAX_W = 4000;
 const MAX_H = 4000;
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
 export function CanvasSection({ section, viewport }: Props) {
   const {
@@ -93,14 +98,20 @@ export function CanvasSection({ section, viewport }: Props) {
     if (!dragRef.current) return;
     const dx = (e.clientX - dragRef.current.startPX) / viewport.scale;
     const dy = (e.clientY - dragRef.current.startPY) / viewport.scale;
-    const nextX = dragRef.current.startX + dx;
-    const nextY = dragRef.current.startY + dy;
+    const nextX = maybeSnap(dragRef.current.startX + dx, !e.altKey);
+    const nextY = maybeSnap(dragRef.current.startY + dy, !e.altKey);
+    const snappedDx = nextX - dragRef.current.startX;
+    const snappedDy = nextY - dragRef.current.startY;
     dragRef.current.latestX = nextX;
     dragRef.current.latestY = nextY;
     scheduleSectionMove(
       nextX,
       nextY,
-      dragRef.current.noteStarts.map((note) => ({ id: note.id, x: note.x + dx, y: note.y + dy }))
+      dragRef.current.noteStarts.map((note) => ({
+        id: note.id,
+        x: note.x + snappedDx,
+        y: note.y + snappedDy,
+      }))
     );
   }
 
@@ -137,8 +148,16 @@ export function CanvasSection({ section, viewport }: Props) {
     if (!resizeRef.current) return;
     const dx = (e.clientX - resizeRef.current.startPX) / viewport.scale;
     const dy = (e.clientY - resizeRef.current.startPY) / viewport.scale;
-    const width = Math.min(MAX_W, Math.max(MIN_W, resizeRef.current.startW + dx));
-    const height = Math.min(MAX_H, Math.max(MIN_H, resizeRef.current.startH + dy));
+    const width = clamp(
+      maybeSnap(clamp(resizeRef.current.startW + dx, MIN_W, MAX_W), !e.altKey),
+      MIN_W,
+      MAX_W
+    );
+    const height = clamp(
+      maybeSnap(clamp(resizeRef.current.startH + dy, MIN_H, MAX_H), !e.altKey),
+      MIN_H,
+      MAX_H
+    );
     resizeRef.current.latestW = width;
     resizeRef.current.latestH = height;
     setSectionSize(section.id, width, height);

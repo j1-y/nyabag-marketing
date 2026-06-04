@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { useNotes } from "@/hooks/useNotes";
+import { maybeSnap } from "@/lib/canvas-grid";
 import type { CanvasNote, CanvasViewport } from "@/lib/types";
 
 type Direction = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
@@ -10,6 +11,10 @@ const MIN_W = 100;
 const MIN_H = 80;
 const MAX_W = 1200;
 const MAX_H = 900;
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
 interface ResizeHandlesProps {
   note: CanvasNote;
@@ -62,21 +67,26 @@ export function ResizeHandles({ note, viewport }: ResizeHandlesProps) {
     const { dir, startPX, startPY, startW, startH, startX, startY } = dragRef.current;
     const dx = (e.clientX - startPX) / viewport.scale;
     const dy = (e.clientY - startPY) / viewport.scale;
+    const shouldSnap = !e.altKey;
 
     let newW = startW;
     let newH = startH;
     let newX = startX;
     let newY = startY;
 
-    if (dir.includes("e")) newW = Math.min(MAX_W, Math.max(MIN_W, startW + dx));
+    if (dir.includes("e")) newW = clamp(maybeSnap(clamp(startW + dx, MIN_W, MAX_W), shouldSnap), MIN_W, MAX_W);
     if (dir.includes("w")) {
-      newW = Math.min(MAX_W, Math.max(MIN_W, startW - dx));
+      newW = clamp(maybeSnap(clamp(startW - dx, MIN_W, MAX_W), shouldSnap), MIN_W, MAX_W);
       newX = startX + (startW - newW);
+      newX = maybeSnap(newX, shouldSnap);
+      newW = clamp(startX + startW - newX, MIN_W, MAX_W);
     }
-    if (dir.includes("s")) newH = Math.min(MAX_H, Math.max(MIN_H, startH + dy));
+    if (dir.includes("s")) newH = clamp(maybeSnap(clamp(startH + dy, MIN_H, MAX_H), shouldSnap), MIN_H, MAX_H);
     if (dir.includes("n")) {
-      newH = Math.min(MAX_H, Math.max(MIN_H, startH - dy));
+      newH = clamp(maybeSnap(clamp(startH - dy, MIN_H, MAX_H), shouldSnap), MIN_H, MAX_H);
       newY = startY + (startH - newH);
+      newY = maybeSnap(newY, shouldSnap);
+      newH = clamp(startY + startH - newY, MIN_H, MAX_H);
     }
 
     scheduleResize(newW, newH, newX, newY, dir.includes("w") || dir.includes("n"));

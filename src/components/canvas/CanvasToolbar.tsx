@@ -17,7 +17,7 @@ import { MediaNoteDialog } from "./MediaNoteDialog";
 import { SocialNoteDialog } from "./SocialNoteDialog";
 
 const NOTE_TYPES: { type: NoteType; icon: Icon; label: string }[] = [
-  { type: "text", icon: TextTIcon, label: "Text note" },
+  { type: "text", icon: TextTIcon, label: "Markdown card" },
   { type: "link", icon: LinkSimpleIcon, label: "Link note" },
   { type: "image", icon: ImageIcon, label: "Image note" },
   { type: "video", icon: VideoCameraIcon, label: "Video note" },

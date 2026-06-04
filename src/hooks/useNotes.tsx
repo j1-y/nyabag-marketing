@@ -45,14 +45,12 @@ export type PendingMediaNote = {
 };
 
 export const NOTE_COLORS = [
-  "#FFF9C4",
-  "#C8E6C9",
-  "#BBDEFB",
-  "#F8BBD0",
-  "#E1BEE7",
-  "#FFE0B2",
-  "#F0F4C3",
-  "#CFD8DC",
+  "#12CFF3",
+  "#FFE13B",
+  "#7ED957",
+  "#EF4056",
+  "#B23ACB",
+  "#FFFFFF",
 ] as const;
 
 interface NotesCtx {
