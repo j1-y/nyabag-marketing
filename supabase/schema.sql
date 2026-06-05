@@ -190,6 +190,100 @@ CREATE POLICY "delete_own_bookmark_ai_metadata" ON bookmark_ai_metadata
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ============================================================
+-- Design DNA
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS design_dna (
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id             UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  bookmark_id         UUID        REFERENCES bookmarks(id) ON DELETE SET NULL,
+  title               TEXT        NOT NULL DEFAULT '',
+  source_url          TEXT        NOT NULL DEFAULT '',
+  source_domain       TEXT        NOT NULL DEFAULT '',
+  source_title        TEXT        NOT NULL DEFAULT '',
+  screenshot_url      TEXT,
+  typography          JSONB       NOT NULL DEFAULT '[]',
+  colors              JSONB       NOT NULL DEFAULT '[]',
+  components          TEXT[]      NOT NULL DEFAULT '{}',
+  layout_patterns     TEXT[]      NOT NULL DEFAULT '{}',
+  extraction_method   TEXT        NOT NULL DEFAULT 'html-css',
+  extraction_status   TEXT        NOT NULL DEFAULT 'pending',
+  extraction_error    TEXT,
+  raw_extraction      JSONB,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE design_dna
+  ADD COLUMN IF NOT EXISTS user_id UUID,
+  ADD COLUMN IF NOT EXISTS bookmark_id UUID,
+  ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS source_url TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS source_domain TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS source_title TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS screenshot_url TEXT,
+  ADD COLUMN IF NOT EXISTS typography JSONB NOT NULL DEFAULT '[]',
+  ADD COLUMN IF NOT EXISTS colors JSONB NOT NULL DEFAULT '[]',
+  ADD COLUMN IF NOT EXISTS components TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS layout_patterns TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS extraction_method TEXT NOT NULL DEFAULT 'html-css',
+  ADD COLUMN IF NOT EXISTS extraction_status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS extraction_error TEXT,
+  ADD COLUMN IF NOT EXISTS raw_extraction JSONB,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE design_dna
+  DROP CONSTRAINT IF EXISTS design_dna_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS design_dna_bookmark_id_fkey,
+  DROP CONSTRAINT IF EXISTS design_dna_extraction_status_check,
+  DROP CONSTRAINT IF EXISTS design_dna_extraction_method_check,
+  DROP CONSTRAINT IF EXISTS design_dna_title_check,
+  DROP CONSTRAINT IF EXISTS design_dna_source_url_check,
+  DROP CONSTRAINT IF EXISTS design_dna_source_domain_check,
+  DROP CONSTRAINT IF EXISTS design_dna_source_title_check,
+  DROP CONSTRAINT IF EXISTS design_dna_extraction_error_check,
+  DROP CONSTRAINT IF EXISTS design_dna_user_bookmark_key,
+  ADD CONSTRAINT design_dna_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  ADD CONSTRAINT design_dna_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES bookmarks(id) ON DELETE SET NULL,
+  ADD CONSTRAINT design_dna_extraction_status_check CHECK (extraction_status IN ('pending', 'completed', 'failed')),
+  ADD CONSTRAINT design_dna_extraction_method_check CHECK (extraction_method IN ('html-css', 'dom', 'dom-plus-ai', 'manual')),
+  ADD CONSTRAINT design_dna_title_check CHECK (char_length(title) <= 255),
+  ADD CONSTRAINT design_dna_source_url_check CHECK (char_length(source_url) <= 2048),
+  ADD CONSTRAINT design_dna_source_domain_check CHECK (char_length(source_domain) <= 255),
+  ADD CONSTRAINT design_dna_source_title_check CHECK (char_length(source_title) <= 255),
+  ADD CONSTRAINT design_dna_extraction_error_check CHECK (extraction_error IS NULL OR char_length(extraction_error) <= 500),
+  ADD CONSTRAINT design_dna_user_bookmark_key UNIQUE (user_id, bookmark_id);
+
+DROP TRIGGER IF EXISTS design_dna_updated_at ON design_dna;
+CREATE TRIGGER design_dna_updated_at
+  BEFORE UPDATE ON design_dna
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_design_dna_user_id ON design_dna(user_id);
+CREATE INDEX IF NOT EXISTS idx_design_dna_bookmark_id ON design_dna(bookmark_id);
+CREATE INDEX IF NOT EXISTS idx_design_dna_extraction_status ON design_dna(extraction_status);
+CREATE INDEX IF NOT EXISTS idx_design_dna_created_at ON design_dna(created_at);
+
+ALTER TABLE design_dna ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_design_dna" ON design_dna;
+CREATE POLICY "select_own_design_dna" ON design_dna
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_design_dna" ON design_dna;
+CREATE POLICY "insert_own_design_dna" ON design_dna
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "update_own_design_dna" ON design_dna;
+CREATE POLICY "update_own_design_dna" ON design_dna
+  FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_design_dna" ON design_dna;
+CREATE POLICY "delete_own_design_dna" ON design_dna
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- ============================================================
 -- Bookmark processing queue
 -- ============================================================
 

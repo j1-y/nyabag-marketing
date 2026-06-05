@@ -6,6 +6,7 @@ import {
   ArrowSquareOutIcon,
   ImageIcon,
   PencilSimpleIcon,
+  SpinnerIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { retryBookmarkProcessing } from "@/lib/actions";
@@ -120,7 +121,7 @@ function BookmarkCardComponent({
                       <div className="preview-loading-line preview-loading-line-mid" />
                     </div>
                     <div className="skeleton-preview-status">
-                      <ImageIcon />
+                      <SpinnerIcon />
                       <span>Loading preview...</span>
                     </div>
                   </div>

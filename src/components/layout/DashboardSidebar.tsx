@@ -9,6 +9,7 @@ import {
   CaretRightIcon,
   GearSixIcon,
   NoteIcon,
+  PaletteIcon,
   SignOutIcon,
   UserIcon,
   type Icon,
@@ -35,6 +36,12 @@ const primaryItems = [
     label: "Canvas",
     icon: NoteIcon,
     isActive: (pathname: string) => pathname.startsWith("/app/canvas"),
+  },
+  {
+    href: "/app/design-dna",
+    label: "Design DNA",
+    icon: PaletteIcon,
+    isActive: (pathname: string) => pathname.startsWith("/app/design-dna"),
   },
 ];
 

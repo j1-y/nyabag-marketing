@@ -23,6 +23,7 @@ import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
 import { EditBookmarkModal } from "./EditBookmarkModal";
 import { BookmarkColorPalette } from "./BookmarkColorPalette";
 import { AIDesignRead } from "./AIDesignRead";
+import { DesignDnaBookmarkPanel } from "@/components/design-dna/DesignDnaBookmarkPanel";
 
 function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
   const router = useRouter();
@@ -128,12 +129,17 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             </div>
           )}
 
-          <AIDesignRead bookmarkId={currentBookmark.id} metadata={currentBookmark.ai_metadata ?? null} />
-
           <a className="detail-visit" href={currentBookmark.url} target="_blank" rel="noopener noreferrer">
             Visit website
             <ArrowSquareOutIcon size={14} />
           </a>
+
+          <AIDesignRead bookmarkId={currentBookmark.id} metadata={currentBookmark.ai_metadata ?? null} />
+
+          <DesignDnaBookmarkPanel
+            bookmarkId={currentBookmark.id}
+            initialDesignDna={bookmark.design_dna ?? null}
+          />
 
           <div className="detail-table">
             <div>
@@ -198,7 +204,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
         </section>
 
         <section className="bookmark-detail-preview" aria-label={`${currentBookmark.title} screenshot`}>
-          <div className="browser-frame">
+          <div className="browser-frame bookmark-browser-frame">
             <div className="browser-topbar">
               <span />
               <span />
