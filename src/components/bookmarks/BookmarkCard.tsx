@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useRef, useState, useTransition } from "react";
+import { memo, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowSquareOutIcon,
@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { AIMetadataChip } from "./AIMetadataChip";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
 
-const PREVIEW_LOAD_TIMEOUT_MS = 8000;
 const EAGER_PREVIEW_COUNT = 3;
 
 function BookmarkCardComponent({
@@ -36,12 +35,14 @@ function BookmarkCardComponent({
     loaded: false,
     error: false,
   });
+  const [imageRetryKey, setImageRetryKey] = useState(0);
   const [faviconError, setFaviconError] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [retryError, setRetryError] = useState("");
   const [isRetrying, startRetryTransition] = useTransition();
   const cardRef = useRef<HTMLElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
 
   const domain = getDomain(bookmark.url);
   const favicon = getFaviconUrl(bookmark.url);
@@ -75,19 +76,25 @@ function BookmarkCardComponent({
     });
   }
 
-  useEffect(() => {
-    if (!screenshot || imageLoaded || imageError) return;
+  function handleImageRetry(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!screenshot) return;
+    setImageState({ src: screenshot, loaded: false, error: false });
+    setImageRetryKey((key) => key + 1);
+  }
 
-    const timeout = window.setTimeout(() => {
-      setImageState((current) =>
-        current.src === screenshot && !current.loaded
-          ? { src: screenshot, loaded: false, error: true }
-          : current
-      );
-    }, PREVIEW_LOAD_TIMEOUT_MS);
+  const handleImageRef = useCallback((node: HTMLImageElement | null) => {
+    imageRef.current = node;
+    if (!node || !screenshot || !node.complete) return;
 
-    return () => window.clearTimeout(timeout);
-  }, [imageError, imageLoaded, screenshot]);
+    window.queueMicrotask(() => {
+      setImageState({
+        src: screenshot,
+        loaded: node.naturalWidth > 0,
+        error: node.naturalWidth === 0,
+      });
+    });
+  }, [screenshot]);
 
   useEffect(() => {
     const node = cardRef.current;
@@ -123,7 +130,7 @@ function BookmarkCardComponent({
       >
         <div className="moodboard-shot">
           <div className="moodboard-shot-frame">
-            {screenshot && !imageError ? (
+            {screenshot ? (
               <>
                 {isImageLoading && (
                   <div className="preview-loading-skeleton" aria-hidden="true">
@@ -145,8 +152,9 @@ function BookmarkCardComponent({
                   </div>
                 )}
                 <img
+                  ref={handleImageRef}
                   className={`moodboard-img ${imageLoaded ? "is-loaded" : "is-loading"}`}
-                  key={screenshot}
+                  key={`${screenshot}-${imageRetryKey}`}
                   src={screenshot}
                   alt={`${bookmark.title} preview`}
                   loading={eagerPreview ? "eager" : "lazy"}
@@ -155,6 +163,19 @@ function BookmarkCardComponent({
                   onLoad={() => setImageState({ src: screenshot, loaded: true, error: false })}
                   onError={() => setImageState({ src: screenshot, loaded: false, error: true })}
                 />
+                {imageError && (
+                  <div className="preview-fallback">
+                    <ImageIcon />
+                    <span>{domain}</span>
+                    <button
+                      type="button"
+                      className="preview-retry-btn"
+                      onClick={handleImageRetry}
+                    >
+                      Retry preview
+                    </button>
+                  </div>
+                )}
               </>
             ) : isPendingPreview ? (
               <div className="preview-fallback">

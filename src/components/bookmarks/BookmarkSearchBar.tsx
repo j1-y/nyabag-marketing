@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { MagnifyingGlassIcon, PaperPlaneRightIcon } from "@phosphor-icons/react";
 import { useBookmarks } from "@/hooks/useBookmarks";
 
 export function BookmarkSearchBar() {
@@ -26,12 +26,35 @@ export function BookmarkSearchBar() {
     router.replace("/app");
   }, [hasOpenModal, router, searchParams]);
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (hasOpenModal) return;
+      if (event.key.toLowerCase() !== "k") return;
+      if (!event.ctrlKey && !event.metaKey) return;
+
+      event.preventDefault();
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hasOpenModal]);
+
   if (hasOpenModal) return null;
 
   return (
-    <section className="bookmark-search-bar bookmark-controls" aria-label="Bookmark search">
+    <form
+      className="bookmark-search-bar bookmark-controls"
+      aria-label="Bookmark search"
+      role="search"
+      onSubmit={(event) => {
+        event.preventDefault();
+        inputRef.current?.focus();
+      }}
+    >
       <div className="search-wrap">
-        <MagnifyingGlassIcon size={13} />
+        <MagnifyingGlassIcon size={16} weight="bold" />
         <input
           ref={inputRef}
           type="text"
@@ -41,7 +64,10 @@ export function BookmarkSearchBar() {
           onChange={(e) => setSearch(e.target.value)}
         />
         <kbd suppressHydrationWarning>{shortcutLabel}</kbd>
+        <button type="submit" className="search-submit-btn" aria-label="Submit search">
+          <PaperPlaneRightIcon size={15} weight="fill" />
+        </button>
       </div>
-    </section>
+    </form>
   );
 }

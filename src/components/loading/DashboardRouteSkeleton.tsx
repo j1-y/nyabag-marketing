@@ -15,13 +15,16 @@ function SkeletonPreviewStatus({ label }: { label: string }) {
 
 export function BookmarkGridSkeleton() {
   return (
-    <div className="dashboard-route-skeleton" role="status" aria-live="polite">
+    <div className="dashboard-route-skeleton dashboard-home" role="status" aria-live="polite">
       <section className="dashboard-skeleton-heading" aria-label="Loading bookmarks">
-        <div>
+        <div className="dashboard-skeleton-heading-copy">
           <div className="skeleton-line skeleton-line-kicker" />
           <div className="skeleton-line skeleton-line-title" />
         </div>
-        <div className="skeleton-button" />
+        <div className="dashboard-skeleton-actions">
+          <div className="skeleton-button" />
+          <div className="skeleton-button skeleton-button-secondary" />
+        </div>
       </section>
 
       <div className="bm-grid view-moodboard dashboard-skeleton-grid">

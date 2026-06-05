@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookmarksIcon, FileArrowUpIcon, PlusIcon } from "@phosphor-icons/react";
+import { BookmarksIcon, DownloadSimpleIcon, FileArrowUpIcon, PlusIcon } from "@phosphor-icons/react";
 import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
 import { BookmarkCard } from "./BookmarkCard";
 import { PendingBookmarkCard } from "./PendingBookmarkCard";
@@ -41,7 +41,7 @@ function DashboardGreeting({
   onNewBookmark: () => void;
   onImportReferences: () => void;
 }) {
-  const [prefix, setPrefix] = useState(getLocalGreetingPrefix(new Date()));
+  const [prefix, setPrefix] = useState("Design references");
   const firstName = useMemo(() => getFirstName(profileName, userEmail), [profileName, userEmail]);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ function DashboardGreeting({
           </span>
         </button>
         <button type="button" className="dashboard-import-btn" onClick={onImportReferences}>
-          <FileArrowUpIcon size={17} weight="regular" />
+          <DownloadSimpleIcon size={17} weight="bold" />
           Import references
         </button>
       </div>
@@ -94,38 +94,40 @@ function GridInner({
   return (
     <>
       <BookmarkSearchBar />
-      <DashboardGreeting
-        profileName={profileName}
-        userEmail={userEmail}
-        onNewBookmark={openAdd}
-        onImportReferences={openImport}
-      />
+      <main className="dashboard-home">
+        <DashboardGreeting
+          profileName={profileName}
+          userEmail={userEmail}
+          onNewBookmark={openAdd}
+          onImportReferences={openImport}
+        />
 
-      {/* Grid */}
-      {filtered.length === 0 && pendingBookmarks.length === 0 ? (
-        <div className="empty-state dashboard-enter dashboard-enter-delayed">
-          <div className="empty-state-icon" aria-hidden="true">
-            <BookmarksIcon  size={24} weight="duotone" />
+        {/* Grid */}
+        {filtered.length === 0 && pendingBookmarks.length === 0 ? (
+          <div className="empty-state dashboard-enter dashboard-enter-delayed">
+            <div className="empty-state-icon" aria-hidden="true">
+              <BookmarksIcon size={24} weight="duotone" />
+            </div>
+            <h2>No bookmarks yet</h2>
+            <p>Save websites, references, and ideas into a visual board.</p>
           </div>
-          <h2>No bookmarks yet</h2>
-          <p>Save websites, references, and ideas into a visual board.</p>
-        </div>
-      ) : (
-        <div className="bm-grid view-moodboard dashboard-enter dashboard-enter-delayed">
-          {pendingBookmarks.map((bookmark) => (
-            <PendingBookmarkCard key={bookmark.id} bookmark={bookmark} />
-          ))}
-          {filtered.map((b, i) => (
-            <BookmarkCard
-              key={`${b.id}-${b.screenshot_url ?? "no-shot"}`}
-              bookmark={b}
-              index={i}
-              onEdit={openEdit}
-              onDelete={deleteItem}
-            />
-          ))}
-        </div>
-      )}
+        ) : (
+          <div className="bm-grid view-moodboard dashboard-enter dashboard-enter-delayed">
+            {pendingBookmarks.map((bookmark) => (
+              <PendingBookmarkCard key={bookmark.id} bookmark={bookmark} />
+            ))}
+            {filtered.map((b, i) => (
+              <BookmarkCard
+                key={`${b.id}-${b.screenshot_url ?? "no-shot"}`}
+                bookmark={b}
+                index={i}
+                onEdit={openEdit}
+                onDelete={deleteItem}
+              />
+            ))}
+          </div>
+        )}
+      </main>
 
       {/* Modals */}
       <AddBookmarkModal />

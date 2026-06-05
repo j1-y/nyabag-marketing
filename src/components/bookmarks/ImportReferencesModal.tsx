@@ -35,9 +35,7 @@ function ResultSummary({ result }: { result: ImportBookmarksResult }) {
   return (
     <div className="import-results" aria-live="polite">
       <div className="import-result-summary">
-        <strong>Imported {result.created.length} references</strong>
-        <span>Skipped {result.skipped.length} already saved</span>
-        <span>{result.failed.length} failed</span>
+        <strong>Imported {result.created.length} references successfully</strong>
       </div>
 
       {(result.skipped.length > 0 || result.failed.length > 0) && (
@@ -138,9 +136,6 @@ export function ImportReferencesModal() {
       <DialogContent className="import-modal max-w-xl">
         <DialogHeader>
           <DialogTitle>Import references</DialogTitle>
-          <DialogDescription>
-            Paste links or drop a text file. Nyabag will turn them into enriched bookmarks.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="import-modal-body grid gap-4 px-5 py-4">
@@ -187,28 +182,6 @@ export function ImportReferencesModal() {
                   or choose a file
                 </button>
               </div>
-
-              <section className="import-detected-links" aria-live="polite">
-                <div className="import-detected-header">
-                  <h3>Detected links</h3>
-                  <span>{detectedUrls.length} links found</span>
-                </div>
-                {detectedUrls.length === 0 ? (
-                  <p>Paste links or drop a text file to begin.</p>
-                ) : (
-                  <ul>
-                    {detectedUrls.map((url) => (
-                      <li key={url}>
-                        <LinkSimpleIcon size={14} weight="regular" />
-                        <span>{url}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {detectedUrls.length >= MAX_IMPORT_URLS && (
-                  <p className="import-limit-note">Only the first 50 links will be imported.</p>
-                )}
-              </section>
             </>
           ) : (
             <ResultSummary result={result} />
