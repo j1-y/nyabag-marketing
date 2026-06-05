@@ -1,20 +1,27 @@
 "use client";
 
-import { useRef, useTransition } from "react";
-import { CheckIcon, XIcon } from "@phosphor-icons/react";
+import { useRef, useState, useTransition } from "react";
+import { CheckIcon } from "@phosphor-icons/react";
 import { updateBookmark } from "@/lib/actions";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldHint, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
 
 export function EditBookmarkModal() {
   const { editTarget, closeEdit, setBookmarks } = useBookmarks();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,49 +32,54 @@ export function EditBookmarkModal() {
       if (result.success) {
         setBookmarks((prev) => prev.map((bookmark) => bookmark.id === result.data.id ? result.data : bookmark));
         closeEdit();
+      } else {
+        setError(result.error);
       }
-      else setError(result.error);
     });
   }
 
-  if (!editTarget) return null;
-
   return (
-    <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && closeEdit()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
-        <div className="modal-header">
-          <h2 id="edit-modal-title">Edit bookmark</h2>
-          <button className="modal-close" onClick={closeEdit} aria-label="Close"><XIcon size={13} weight="bold" /></button>
-        </div>
-        <form ref={formRef} onSubmit={handleSubmit}>
-          <input type="hidden" name="id" value={editTarget.id} />
-          <div className="modal-body gap-4">
-            {error && <div className="auth-error" style={{ marginBottom: "1rem" }}>{error}</div>}
-            <div className="grid gap-2">
-              <Label htmlFor="edit-url">URL <span className="req text-destructive">*</span></Label>
-              <Input id="edit-url" name="url" type="url" defaultValue={editTarget.url} required autoComplete="off" />
+    <Dialog open={Boolean(editTarget)} onOpenChange={(open) => !open && closeEdit()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit bookmark</DialogTitle>
+          <DialogDescription>
+            Update the saved reference details without changing the original URL history.
+          </DialogDescription>
+        </DialogHeader>
+        {editTarget && (
+          <form ref={formRef} onSubmit={handleSubmit}>
+            <input type="hidden" name="id" value={editTarget.id} />
+            <div className="grid gap-4 px-5 py-4">
+              {error && <div className="auth-error">{error}</div>}
+              <Field>
+                <FieldLabel htmlFor="edit-url">URL <span className="text-destructive">*</span></FieldLabel>
+                <Input id="edit-url" name="url" type="url" defaultValue={editTarget.url} required autoComplete="off" />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="edit-title">Title</FieldLabel>
+                <Input id="edit-title" name="title" type="text" defaultValue={editTarget.title} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="edit-tags">Tags</FieldLabel>
+                <Input id="edit-tags" name="tags" type="text" defaultValue={editTarget.tags.join(", ")} />
+                <FieldHint>Comma-separated.</FieldHint>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="edit-note">Note</FieldLabel>
+                <Textarea id="edit-note" name="note" rows={2} defaultValue={editTarget.note} className="resize-none" />
+                <FieldHint>Optional.</FieldHint>
+              </Field>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-title">Title</Label>
-              <Input id="edit-title" name="title" type="text" defaultValue={editTarget.title} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-tags">Tags <span className="hint text-muted-foreground font-normal">(comma-separated)</span></Label>
-              <Input id="edit-tags" name="tags" type="text" defaultValue={editTarget.tags.join(", ")} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-note">Note <span className="hint text-muted-foreground font-normal">(optional)</span></Label>
-              <Textarea id="edit-note" name="note" rows={2} defaultValue={editTarget.note} className="resize-none" />
-            </div>
-          </div>
-          <div className="modal-footer">
-            <Button type="button" variant="outline" onClick={closeEdit}>Cancel</Button>
-            <Button type="submit" disabled={isPending}>
-              <CheckIcon /> {isPending ? "Saving…" : "Update"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeEdit}>Cancel</Button>
+              <Button type="submit" disabled={isPending}>
+                <CheckIcon /> {isPending ? "Saving..." : "Update"}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { CameraIcon, FloppyDiskIcon } from "@phosphor-icons/react";
 import { updateProfile } from "@/lib/actions";
 import type { UserProfile } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 type ProfileFormProps = {
   profile: UserProfile;
@@ -79,11 +82,13 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <div className="profile-photo-copy">
           <h2>Profile picture</h2>
           <p>JPG, PNG, WEBP, or GIF. Up to 5MB.</p>
-          <label className="btn-ghost profile-upload-button">
+          <Button variant="outline" asChild className="profile-upload-button">
+            <label>
             <CameraIcon size={14} />
             Choose image
             <input name="avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={onAvatarChange} />
-          </label>
+            </label>
+          </Button>
         </div>
       </section>
 
@@ -97,27 +102,27 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         {success && <div className="profile-message profile-message-success">{success}</div>}
 
         <div className="profile-fields">
-          <div className="field">
-            <label htmlFor="profile-name">Name</label>
-            <input id="profile-name" name="name" type="text" defaultValue={currentProfile.name} placeholder="Your name" />
-          </div>
+          <Field>
+            <FieldLabel htmlFor="profile-name">Name</FieldLabel>
+            <Input id="profile-name" name="name" type="text" defaultValue={currentProfile.name} placeholder="Your name" />
+          </Field>
 
-          <div className="field">
-            <label htmlFor="profile-email">Email</label>
-            <input id="profile-email" name="email" type="email" defaultValue={currentProfile.email} placeholder="you@example.com" />
-          </div>
+          <Field>
+            <FieldLabel htmlFor="profile-email">Email</FieldLabel>
+            <Input id="profile-email" name="email" type="email" defaultValue={currentProfile.email} placeholder="you@example.com" />
+          </Field>
 
-          <div className="field">
-            <label htmlFor="profile-phone">Phone</label>
-            <input id="profile-phone" name="phone" type="tel" defaultValue={currentProfile.phone} placeholder="+1 555 0100" />
-          </div>
+          <Field>
+            <FieldLabel htmlFor="profile-phone">Phone</FieldLabel>
+            <Input id="profile-phone" name="phone" type="tel" defaultValue={currentProfile.phone} placeholder="+1 555 0100" />
+          </Field>
         </div>
 
         <div className="profile-actions">
-          <button className="btn-primary" type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending}>
             <FloppyDiskIcon size={14} />
             {isPending ? "Saving..." : "Save profile"}
-          </button>
+          </Button>
         </div>
       </section>
     </form>

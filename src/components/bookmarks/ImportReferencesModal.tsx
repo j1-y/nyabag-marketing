@@ -1,11 +1,19 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { FileArrowUpIcon, LinkSimpleIcon, XIcon } from "@phosphor-icons/react";
+import { FileArrowUpIcon, LinkSimpleIcon } from "@phosphor-icons/react";
 import { importBookmarks } from "@/lib/actions";
 import { extractUrlsFromText, MAX_IMPORT_URLS } from "@/lib/url-extraction";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { ImportBookmarksResult } from "@/lib/types";
 
@@ -125,24 +133,17 @@ export function ImportReferencesModal() {
     });
   }
 
-  if (!importOpen) return null;
-
   return (
-    <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && handleClose()}>
-      <div className="modal import-modal" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
-        <div className="modal-header">
-          <div>
-            <h2 id="import-modal-title">Import references</h2>
-            <p className="import-modal-subtitle">
-              Paste links or drop a text file. Nyabag will turn them into enriched bookmarks.
-            </p>
-          </div>
-          <button className="modal-close" onClick={handleClose} aria-label="Close">
-            <XIcon size={13} weight="bold" />
-          </button>
-        </div>
+    <Dialog open={importOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="import-modal max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Import references</DialogTitle>
+          <DialogDescription>
+            Paste links or drop a text file. Nyabag will turn them into enriched bookmarks.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="modal-body import-modal-body">
+        <div className="import-modal-body grid gap-4 px-5 py-4">
           {error && <div className="auth-error">{error}</div>}
 
           {!result ? (
@@ -214,7 +215,7 @@ export function ImportReferencesModal() {
           )}
         </div>
 
-        <div className="modal-footer">
+        <DialogFooter>
           {result ? (
             <>
               <Button type="button" variant="outline" onClick={handleClose}>
@@ -234,8 +235,8 @@ export function ImportReferencesModal() {
               </Button>
             </>
           )}
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -11,11 +11,17 @@ import {
   TagIcon,
   TextTIcon,
   TrashIcon,
-  XIcon,
 } from "@phosphor-icons/react";
 import { getDomain, getTagColor, getScreenshotUrl } from "@/lib/data";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
 
 export function DetailModal() {
@@ -34,12 +40,11 @@ export function DetailModal() {
 
   return (
     <>
-      <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && closeDetail()}>
-        <div className="modal modal-detail" role="dialog" aria-modal="true" aria-labelledby="detail-title">
-        <div className="modal-header">
-          <h2 id="detail-title">{b.title}</h2>
-          <button className="modal-close" onClick={closeDetail} aria-label="Close"><XIcon size={13} weight="bold" /></button>
-        </div>
+      <Dialog open={Boolean(detailTarget)} onOpenChange={(open) => !open && closeDetail()}>
+        <DialogContent className="max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>{b.title}</DialogTitle>
+        </DialogHeader>
 
         <div className="relative h-[220px] bg-muted overflow-hidden border-b flex-shrink-0 group">
           <div className="absolute inset-0 overflow-y-auto">
@@ -110,7 +115,7 @@ export function DetailModal() {
           </div>
         </div>
 
-        <div className="modal-footer">
+        <DialogFooter>
           <Button variant="destructive" onClick={handleDelete}>
             <TrashIcon /> Delete
           </Button>
@@ -122,9 +127,9 @@ export function DetailModal() {
               <ArrowSquareOutIcon /> Visit site
             </a>
           </Button>
-        </div>
-        </div>
-      </div>
+        </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <DeleteBookmarkDialog
         title={b.title}
         open={deleteOpen}

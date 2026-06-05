@@ -4,15 +4,16 @@ import { ArrowLeftIcon, ArrowSquareOutIcon } from "@phosphor-icons/react/dist/ss
 import { createClient } from "@/lib/supabase/server";
 import { getDesignDnaById } from "@/lib/design-dna/data";
 import { DesignDnaExportButtons } from "@/components/design-dna/DesignDnaExportButtons";
+import type { DesignDnaTypographyItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-function formatRoleDetails(item: {
-  fontSize: string;
-  fontFamily: string;
-  fontWeight: string;
-}) {
-  return [item.fontSize, item.fontFamily, item.fontWeight].filter(Boolean).join("  ");
+function formatRoleDetails(item: DesignDnaTypographyItem) {
+  return [item.fontSize, item.fontWeight, item.letterSpacing, item.lineHeight].filter(Boolean).join(" · ");
+}
+
+function sourcePreviewTitle(title: string, sourceTitle: string, domain: string) {
+  return title || sourceTitle || domain || "Design DNA";
 }
 
 export default async function DesignDnaDetailPage({
@@ -29,39 +30,41 @@ export default async function DesignDnaDetailPage({
   if (!designDna) notFound();
 
   const primaryFont = designDna.typography[0]?.fontFamily || "Inferred typography";
+  const primaryStack = designDna.typography[0]?.fontStack || primaryFont;
+  const title = sourcePreviewTitle(designDna.title, designDna.source_title, designDna.source_domain);
 
   return (
     <main className="design-dna-detail">
       <article className="design-dna-print-surface">
+        <div className="design-dna-hero__nav">
+          <Link href="/app/design-dna">
+            <ArrowLeftIcon size={15} />
+            Back to Design DNA
+          </Link>
+          <span>{designDna.source_domain}</span>
+        </div>
+
         <header className="design-dna-hero">
-          <div className="design-dna-hero__nav">
-            <Link href="/app/design-dna">
-              <ArrowLeftIcon size={15} />
-              Back to Design DNA
-            </Link>
-            <span>{designDna.source_domain}</span>
-          </div>
-          <div className="design-dna-hero__main">
-            <div>
-              <p className="design-dna-kicker">{designDna.source_domain}</p>
-              <h1>{designDna.title || designDna.source_title || "Design DNA"}</h1>
-              <a href={designDna.source_url} target="_blank" rel="noopener noreferrer">
-                Source link
-                <ArrowSquareOutIcon size={14} />
-              </a>
-            </div>
-            <div className="design-dna-hero__actions">
-              <span className="design-dna-method-badge">HTML/CSS inferred</span>
-              <DesignDnaExportButtons designDnaId={designDna.id} />
-            </div>
+          <p className="design-dna-kicker">{designDna.source_domain}</p>
+          <h1>{title}</h1>
+          <div className="design-dna-hero-meta">
+            <span className="design-dna-method-badge">HTML/CSS inferred</span>
+            <a className="design-dna-source-link" href={designDna.source_url} target="_blank" rel="noopener noreferrer">
+              <ArrowSquareOutIcon size={14} />
+              Source link
+            </a>
+            <DesignDnaExportButtons designDnaId={designDna.id} />
           </div>
         </header>
 
         <section className="design-dna-section design-dna-typography">
-          <div className="design-dna-type-specimen">
-            <p className="design-dna-section-label">Typography</p>
-            <strong style={{ fontFamily: designDna.typography[0]?.fontStack || primaryFont }}>Aa</strong>
-            <span>{primaryFont}</span>
+          <p className="design-dna-section-label">Typography</p>
+          <div className="design-dna-type-specimen-row">
+            <strong className="design-dna-type-specimen" style={{ fontFamily: primaryStack }}>Aa</strong>
+            <div className="design-dna-type-specimen-info">
+              <span>{primaryFont}</span>
+              <small>Primary typeface · {primaryStack.toLowerCase().includes("serif") ? "serif" : "sans-serif"}</small>
+            </div>
           </div>
 
           <div className="design-dna-type-scale">
@@ -74,13 +77,12 @@ export default async function DesignDnaDetailPage({
                 <p style={{ fontFamily: item.fontStack || item.fontFamily }}>
                   {item.sample || "Manage your work with patients"}
                 </p>
-                <small>{item.lineHeight} line height · {item.confidence}</small>
               </div>
             ))}
           </div>
 
           <p className="design-dna-note">
-            Typography is inferred from source HTML/CSS. Font preview may fall back if the font is not available locally.
+            Typography inferred from source HTML/CSS. Font preview may fall back if unavailable locally.
           </p>
         </section>
 
@@ -92,44 +94,56 @@ export default async function DesignDnaDetailPage({
                 <div className="design-dna-color-swatch" style={{ backgroundColor: color.hex }} />
                 <strong>{color.name}</strong>
                 <span>{color.hex}</span>
-                <small>{color.usage}</small>
+                <small>{color.usage || color.source || "Unknown"}</small>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="design-dna-section design-dna-chip-section">
-          <div>
-            <p className="design-dna-section-label">UI Components</p>
-            <div className="design-dna-chip-list">
-              {designDna.components.length
-                ? designDna.components.map((component) => <span className="design-dna-chip" key={component}>{component}</span>)
-                : <span className="design-dna-chip">None detected</span>}
+        <section className="design-dna-section">
+          <p className="design-dna-section-label">Components &amp; patterns</p>
+          <div className="design-dna-chip-section">
+            <div className="design-dna-chip-group">
+              <span>UI components</span>
+              <div className="design-dna-chip-list">
+                {designDna.components.length
+                  ? designDna.components.map((component) => <span className="design-dna-chip" key={component}>{component}</span>)
+                  : <span className="design-dna-chip">None detected</span>}
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="design-dna-section-label">Layout Patterns</p>
-            <div className="design-dna-chip-list">
-              {designDna.layout_patterns.length
-                ? designDna.layout_patterns.map((pattern) => <span className="design-dna-chip" key={pattern}>{pattern}</span>)
-                : <span className="design-dna-chip">None detected</span>}
+            <div className="design-dna-chip-group">
+              <span>Layout patterns</span>
+              <div className="design-dna-chip-list">
+                {designDna.layout_patterns.length
+                  ? designDna.layout_patterns.map((pattern) => <span className="design-dna-chip" key={pattern}>{pattern}</span>)
+                  : <span className="design-dna-chip">None detected</span>}
+              </div>
             </div>
           </div>
         </section>
 
         <section className="design-dna-section design-dna-source-reference">
-          <div>
-            <p className="design-dna-section-label">Source Reference</p>
-            <h2>{designDna.source_title || designDna.source_domain}</h2>
-            <p>{designDna.source_url}</p>
-            <a href={designDna.source_url} target="_blank" rel="noopener noreferrer">
-              Visit website
-              <ArrowSquareOutIcon size={14} />
-            </a>
+          <p className="design-dna-section-label">Source reference</p>
+          <div className="design-dna-source-layout">
+            <div className="design-dna-source-info">
+              <h2>{designDna.source_title || designDna.source_domain}</h2>
+              <p>{designDna.source_url}</p>
+              <a href={designDna.source_url} target="_blank" rel="noopener noreferrer">
+                <ArrowSquareOutIcon size={14} />
+                Visit website
+              </a>
+            </div>
+            <div className="design-dna-source-preview">
+              {designDna.screenshot_url ? (
+                <img src={designDna.screenshot_url} alt={`${title} screenshot`} />
+              ) : (
+                <div>
+                  <span>{designDna.source_domain}</span>
+                  <strong>{title}</strong>
+                </div>
+              )}
+            </div>
           </div>
-          {designDna.screenshot_url && (
-            <img src={designDna.screenshot_url} alt={`${designDna.title} screenshot`} />
-          )}
         </section>
       </article>
     </main>

@@ -1,12 +1,20 @@
 "use client";
 
-import { useRef, useTransition, useState } from "react";
-import { FloppyDiskIcon, XIcon } from "@phosphor-icons/react";
+import { useRef, useState, useTransition } from "react";
+import { FloppyDiskIcon } from "@phosphor-icons/react";
 import { createBookmark } from "@/lib/actions";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldHint, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export function AddBookmarkModal() {
@@ -20,7 +28,7 @@ export function AddBookmarkModal() {
   } = useBookmarks();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
   const [urlInput, setUrlInput] = useState("");
 
   const domainHint = (() => {
@@ -63,43 +71,45 @@ export function AddBookmarkModal() {
     });
   }
 
-  if (!addOpen) return null;
-
   return (
-    <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && closeAdd()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="add-modal-title">
-        <div className="modal-header">
-          <h2 id="add-modal-title">New bookmark</h2>
-          <button className="modal-close" onClick={closeAdd} aria-label="Close"><XIcon size={13} weight="bold" /></button>
-        </div>
+    <Dialog open={addOpen} onOpenChange={(open) => (open ? openAdd() : closeAdd())}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New bookmark</DialogTitle>
+          <DialogDescription>
+            Save a reference and Nyabag will enrich it in the background.
+          </DialogDescription>
+        </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit}>
-          <div className="modal-body gap-4">
-            {error && <div className="auth-error" style={{ marginBottom: "1rem" }}>{error}</div>}
-            <div className="grid gap-2">
-              <Label htmlFor="add-url">URL <span className="req text-destructive">*</span></Label>
-              <Input id="add-url" name="url" type="url" placeholder="https://example.com" required autoComplete="off" value={urlInput} onChange={e => setUrlInput(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="add-title">Title</Label>
+          <div className="grid gap-4 px-5 py-4">
+            {error && <div className="auth-error">{error}</div>}
+            <Field>
+              <FieldLabel htmlFor="add-url">URL <span className="text-destructive">*</span></FieldLabel>
+              <Input id="add-url" name="url" type="url" placeholder="https://example.com" required autoComplete="off" value={urlInput} onChange={(event) => setUrlInput(event.target.value)} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="add-title">Title</FieldLabel>
               <Input id="add-title" name="title" type="text" placeholder={domainHint} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="add-tags">Tags <span className="hint text-muted-foreground font-normal">(optional)</span></Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="add-tags">Tags</FieldLabel>
               <Input id="add-tags" name="tags" type="text" placeholder="design, inspiration, dashboard" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="add-note">Note <span className="hint text-muted-foreground font-normal">(optional)</span></Label>
+              <FieldHint>Optional, comma-separated.</FieldHint>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="add-note">Note</FieldLabel>
               <Textarea id="add-note" name="note" rows={2} placeholder="Why did you save this?" className="resize-none" />
-            </div>
+              <FieldHint>Optional.</FieldHint>
+            </Field>
           </div>
-          <div className="modal-footer">
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={closeAdd}>Cancel</Button>
             <Button type="submit" disabled={isPending}>
-              <FloppyDiskIcon /> {isPending ? "Saving…" : "Save"}
+              <FloppyDiskIcon /> {isPending ? "Saving..." : "Save"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

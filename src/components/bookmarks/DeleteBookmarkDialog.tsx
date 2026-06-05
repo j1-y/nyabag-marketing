@@ -26,7 +26,7 @@ export function DeleteBookmarkDialog({
 }: DeleteBookmarkDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm rounded-[10px]">
+      <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Delete bookmark?</DialogTitle>
           <DialogDescription>

@@ -3,75 +3,134 @@
 @source "../app";
 
 @theme {
-  --color-border: hsl(var(--border-shadcn));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent-shadcn));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --radius-lg: var(--radius);
-  --radius-md: var(--radius);
-  --radius-sm: var(--radius);
+  --color-background: hsl(var(--background-token));
+  --color-foreground: hsl(var(--foreground-token));
+  --color-surface: hsl(var(--surface-token));
+  --color-surface-muted: hsl(var(--surface-muted-token));
+  --color-surface-subtle: hsl(var(--surface-subtle-token));
+  --color-surface-raised: hsl(var(--surface-raised-token));
+  --color-border: hsl(var(--border-token));
+  --color-border-subtle: hsl(var(--border-subtle-token));
+  --color-border-strong: hsl(var(--border-strong-token));
+  --color-input: hsl(var(--input-token));
+  --color-ring: hsl(var(--ring-token));
+  --color-primary: hsl(var(--primary-token));
+  --color-primary-foreground: hsl(var(--primary-foreground-token));
+  --color-secondary: hsl(var(--secondary-token));
+  --color-secondary-foreground: hsl(var(--secondary-foreground-token));
+  --color-destructive: hsl(var(--destructive-token));
+  --color-destructive-foreground: hsl(var(--destructive-foreground-token));
+  --color-destructive-soft: hsl(var(--destructive-soft-token));
+  --color-success: hsl(var(--success-token));
+  --color-success-soft: hsl(var(--success-soft-token));
+  --color-warning: hsl(var(--warning-token));
+  --color-warning-soft: hsl(var(--warning-soft-token));
+  --color-muted: hsl(var(--muted-token));
+  --color-muted-foreground: hsl(var(--muted-foreground-token));
+  --color-accent: hsl(var(--accent-token));
+  --color-accent-foreground: hsl(var(--accent-foreground-token));
+  --color-accent-soft: hsl(var(--accent-soft-token));
+  --color-popover: hsl(var(--popover-token));
+  --color-popover-foreground: hsl(var(--popover-foreground-token));
+  --color-card: hsl(var(--card-token));
+  --color-card-foreground: hsl(var(--card-foreground-token));
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
 }
 
 /* ─── CSS Custom Properties ──────────────────────────────── */
 @layer base {
 
   :root {
-    --bg: #f6f6f7;
-    --bg2: #ffffff;
-    --bg3: #f1f2f4;
-    --bg4: #ebebeb;
+    --background-token: 0 0% 98%;
+    --foreground-token: 240 8% 6%;
+    --surface-token: 0 0% 100%;
+    --surface-muted-token: 240 5% 96%;
+    --surface-subtle-token: 240 5% 94%;
+    --surface-raised-token: 0 0% 100%;
+    --text-primary-token: 240 8% 6%;
+    --text-secondary-token: 240 4% 38%;
+    --text-tertiary-token: 240 4% 55%;
+    --text-inverse-token: 0 0% 100%;
+    --border-token: 240 6% 90%;
+    --border-subtle-token: 240 6% 94%;
+    --border-strong-token: 240 5% 78%;
+    --primary-token: 240 8% 8%;
+    --primary-foreground-token: 0 0% 100%;
+    --secondary-token: 240 5% 96%;
+    --secondary-foreground-token: 240 8% 8%;
+    --accent-token: 209 100% 50%;
+    --accent-foreground-token: 0 0% 100%;
+    --accent-soft-token: 209 100% 96%;
+    --destructive-token: 8 82% 50%;
+    --destructive-foreground-token: 0 0% 100%;
+    --destructive-soft-token: 8 100% 96%;
+    --success-token: 160 100% 25%;
+    --success-soft-token: 160 60% 94%;
+    --warning-token: 38 92% 45%;
+    --warning-soft-token: 42 100% 94%;
+    --muted-token: 240 5% 96%;
+    --muted-foreground-token: 240 4% 45%;
+    --input-token: 240 6% 90%;
+    --ring-token: 209 100% 50%;
+    --popover-token: var(--surface-token);
+    --popover-foreground-token: var(--foreground-token);
+    --card-token: var(--surface-token);
+    --card-foreground-token: var(--foreground-token);
+
+    --bg: hsl(var(--background-token));
+    --bg2: hsl(var(--surface-token));
+    --bg3: hsl(var(--surface-muted-token));
+    --bg4: hsl(var(--surface-subtle-token));
     --white: #ffffff;
     --black: #0F0F10;
-    --border: #e1e3e5;
-    --border2: #c9cccf;
-    --accent: #0285ff;
-    --accent-soft: color-mix(in srgb, var(--accent) 22%, var(--white));
+    --border: hsl(var(--border-token));
+    --border2: hsl(var(--border-strong-token));
+    --accent: hsl(var(--accent-token));
+    --accent-soft: hsl(var(--accent-soft-token));
     --accent-hover: color-mix(in srgb, var(--accent) 86%, var(--black));
-    --accent-ink: var(--white);
-    --text: #0F0F10;
-    --text2: #6d7175;
-    --text3: #8c9196;
-    --success: #008060;
-    --danger: #d82c0d;
-    --danger-soft: #ffeaec;
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --accent-ink: hsl(var(--accent-foreground-token));
+    --text: hsl(var(--text-primary-token));
+    --text2: hsl(var(--text-secondary-token));
+    --text3: hsl(var(--text-tertiary-token));
+    --success: hsl(var(--success-token));
+    --danger: hsl(var(--destructive-token));
+    --danger-soft: hsl(var(--destructive-soft-token));
+    --shadow: 0 4px 14px rgba(15, 15, 16, 0.06);
+    --shadow-card: 0 1px 2px rgba(15, 15, 16, 0.04);
+    --shadow-xs: 0 1px 2px rgba(15, 15, 16, 0.04);
+    --shadow-sm: 0 4px 14px rgba(15, 15, 16, 0.06);
+    --shadow-md: 0 12px 30px rgba(15, 15, 16, 0.10);
 
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 209 100% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent-shadcn: 209 100% 50%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border-shadcn: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 209 100% 50%;
-    --radius: 10px;
+    --background: var(--background-token);
+    --foreground: var(--foreground-token);
+    --card: var(--card-token);
+    --card-foreground: var(--card-foreground-token);
+    --popover: var(--popover-token);
+    --popover-foreground: var(--popover-foreground-token);
+    --primary: var(--primary-token);
+    --primary-foreground: var(--primary-foreground-token);
+    --secondary: var(--secondary-token);
+    --secondary-foreground: var(--secondary-foreground-token);
+    --muted: var(--muted-token);
+    --muted-foreground: var(--muted-foreground-token);
+    --accent-shadcn: var(--accent-token);
+    --accent-foreground: var(--accent-foreground-token);
+    --destructive: var(--destructive-token);
+    --destructive-foreground: var(--destructive-foreground-token);
+    --border-shadcn: var(--border-token);
+    --input: var(--input-token);
+    --ring: var(--ring-token);
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-full: 999px;
+    --radius: var(--radius-md);
   }
 }
 
@@ -82,9 +141,7 @@
     --sidebar-w: var(--sidebar-expanded-w);
     --page-gutter: clamp(1rem, 3vw, 4rem);
     --dashboard-max-w: 1440px;
-    --radius: 10px;
-    --radius-lg: var(--radius);
-    --radius-xl: var(--radius);
+    --radius: var(--radius-md);
     --font: var(--font-inter, 'Inter', sans-serif);
     --font-title: var(--font);
     --font-mono: var(--font);
@@ -130,6 +187,7 @@
 }
 
 /* ─── Buttons ────────────────────────────────────────────── */
+/* Legacy utilities: migrate to src/components/ui over time */
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -200,6 +258,7 @@
 }
 
 /* ─── Form Fields ────────────────────────────────────────── */
+/* Legacy utilities: migrate to src/components/ui over time */
 .field {
   display: flex;
   flex-direction: column;
@@ -479,6 +538,7 @@
   text-align: center;
 }
 
+/* Legacy utilities: migrate to src/components/ui over time */
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -604,6 +664,7 @@
 }
 
 /* ─── Modal ──────────────────────────────────────────────── */
+/* Legacy utilities: migrate to src/components/ui over time */
 .modal-overlay {
   display: none;
   position: fixed;
@@ -4438,6 +4499,468 @@
   color: var(--text2);
   font-size: 12px;
   font-weight: 650;
+}
+
+/* Design DNA detail redesign */
+.design-dna-detail {
+  min-height: 100svh;
+  padding: 32px 28px 80px;
+  background: #fafafa;
+  color: #0d0d0d;
+}
+
+.design-dna-print-surface {
+  max-width: 780px;
+  gap: 0;
+}
+
+.design-dna-hero__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 40px;
+  color: #a8a8a8;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+
+.design-dna-hero__nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #6b6b6b;
+  font-family: var(--font);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-decoration: none;
+}
+
+.design-dna-hero__nav a:hover,
+.design-dna-source-link:hover,
+.design-dna-source-info a:hover {
+  color: #0d0d0d;
+}
+
+.design-dna-hero {
+  display: block;
+  padding-bottom: 32px;
+  margin-bottom: 40px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+.design-dna-kicker {
+  margin: 0 0 8px;
+  color: #a8a8a8;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.design-dna-hero h1 {
+  max-width: 680px;
+  margin: 0 0 14px;
+  color: #0d0d0d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.design-dna-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.design-dna-method-badge {
+  min-height: 0;
+  padding: 4px 10px;
+  color: #6b6b6b;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.design-dna-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #6b6b6b;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.design-dna-export-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.design-dna-export-actions button {
+  min-height: 32px;
+  padding: 7px 14px;
+  color: #ffffff;
+  background: #0d0d0d;
+  border: 1px solid #0d0d0d;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.design-dna-export-actions button:hover {
+  background: #222222;
+  border-color: #222222;
+}
+
+.design-dna-export-actions button + button {
+  color: #0d0d0d;
+  background: transparent;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.design-dna-export-actions button + button:hover {
+  background: #f3f3f3;
+  border-color: rgba(0, 0, 0, 0.18);
+}
+
+.design-dna-export-actions p {
+  width: 100%;
+  margin: 0;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.design-dna-section {
+  display: block;
+  margin-bottom: 44px;
+}
+
+.design-dna-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 20px;
+  color: #a8a8a8;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.design-dna-section-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.09);
+}
+
+.design-dna-typography {
+  grid-template-columns: none;
+}
+
+.design-dna-type-specimen-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 32px;
+  align-items: start;
+  margin-bottom: 32px;
+}
+
+.design-dna-type-specimen {
+  display: block;
+  color: #0d0d0d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 80px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.design-dna-type-specimen-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.design-dna-type-specimen-info span {
+  color: #0d0d0d;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.design-dna-type-specimen-info small {
+  color: #a8a8a8;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.design-dna-type-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.design-dna-type-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 16px;
+  align-items: baseline;
+  padding: 14px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+.design-dna-type-row:last-child {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+.design-dna-type-row__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.design-dna-type-row__meta strong {
+  color: #0d0d0d;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.design-dna-type-row__meta span {
+  color: #a8a8a8;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.design-dna-type-row p {
+  margin: 0;
+  color: #0d0d0d;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.design-dna-note {
+  margin: 14px 0 0;
+  color: #a8a8a8;
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.design-dna-colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+}
+
+.design-dna-color-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.design-dna-color-swatch {
+  width: 100%;
+  height: 56px;
+  max-width: none;
+  aspect-ratio: auto;
+  margin: 0;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.design-dna-color-card strong {
+  color: #0d0d0d;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.design-dna-color-card span {
+  margin: 0;
+  color: #a8a8a8;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.design-dna-color-card small {
+  margin: 0;
+  color: #a8a8a8;
+  font-size: 11px;
+}
+
+.design-dna-chip-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.design-dna-chip-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.design-dna-chip-group > span {
+  color: #0d0d0d;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.design-dna-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.design-dna-chip {
+  min-height: 0;
+  padding: 4px 12px;
+  color: #6b6b6b;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.design-dna-source-reference {
+  display: block;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.design-dna-source-layout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 28px;
+  align-items: start;
+}
+
+.design-dna-source-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.design-dna-source-info h2 {
+  margin: 0;
+  color: #0d0d0d;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.design-dna-source-info p {
+  margin: 0;
+  color: #a8a8a8;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.design-dna-source-info a {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  color: #6b6b6b;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.design-dna-source-info a:hover {
+  background: #f3f3f3;
+}
+
+.design-dna-source-preview {
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  border-radius: 10px;
+  background: #f3f3f3;
+}
+
+.design-dna-source-preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.design-dna-source-preview div {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: #ffffff;
+  background: #0a0a0a;
+  text-align: center;
+}
+
+.design-dna-source-preview span {
+  color: rgba(255, 255, 255, 0.45);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.design-dna-source-preview strong {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+@media (max-width: 720px) {
+  .design-dna-detail {
+    padding: 24px 18px 64px;
+  }
+
+  .design-dna-hero-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .design-dna-export-actions {
+    margin-left: 0;
+  }
+
+  .design-dna-type-specimen-row,
+  .design-dna-type-row,
+  .design-dna-chip-section,
+  .design-dna-source-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .design-dna-type-specimen-row {
+    gap: 12px;
+  }
 }
 
 @media print {

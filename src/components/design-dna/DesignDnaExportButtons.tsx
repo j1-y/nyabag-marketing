@@ -36,7 +36,7 @@ export function DesignDnaExportButtons({ designDnaId }: { designDnaId: string })
         <PrinterIcon />
         Export PDF
       </Button>
-      <Button type="button" onClick={downloadMarkdown} disabled={isPending}>
+      <Button type="button" variant="outline" onClick={downloadMarkdown} disabled={isPending}>
         {isPending ? <SpinnerIcon className="animate-spin" /> : <FileArrowDownIcon />}
         Export Design.md
       </Button>
