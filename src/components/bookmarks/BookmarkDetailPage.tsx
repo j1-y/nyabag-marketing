@@ -7,7 +7,6 @@ import {
   ArrowSquareOutIcon,
   NoteIcon,
   PaletteIcon,
-  PencilSimpleIcon,
   SpinnerIcon,
   ArrowsClockwiseIcon,
   TagIcon,
@@ -17,16 +16,14 @@ import {
 import { deleteBookmark, getProcessingBookmarks, refreshBookmarkScreenshot, retryBookmarkProcessing } from "@/lib/actions";
 import { getDomain } from "@/lib/data";
 import type { Bookmark } from "@/lib/types";
-import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
+import { BookmarksProvider } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
-import { EditBookmarkModal } from "./EditBookmarkModal";
 import { BookmarkColorPalette } from "./BookmarkColorPalette";
 import { DesignDnaBookmarkPanel } from "@/components/design-dna/DesignDnaBookmarkPanel";
 
 function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
   const router = useRouter();
-  const { openEdit } = useBookmarks();
   const [currentBookmark, setCurrentBookmark] = useState(bookmark);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -34,12 +31,6 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
   const [isRetrying, startRetryTransition] = useTransition();
   const [refreshError, setRefreshError] = useState("");
   const domain = getDomain(currentBookmark.url);
-  const savedDate = new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(currentBookmark.created_at));
   const aiMetadata =
     currentBookmark.ai_metadata?.status === "completed"
       ? currentBookmark.ai_metadata
@@ -238,7 +229,6 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
         </section>
       </main>
 
-      <EditBookmarkModal />
       <DeleteBookmarkDialog
         title={currentBookmark.title}
         open={deleteOpen}
