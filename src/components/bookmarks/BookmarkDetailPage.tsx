@@ -22,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
 import { EditBookmarkModal } from "./EditBookmarkModal";
 import { BookmarkColorPalette } from "./BookmarkColorPalette";
-import { AIDesignRead } from "./AIDesignRead";
 import { DesignDnaBookmarkPanel } from "@/components/design-dna/DesignDnaBookmarkPanel";
 
 function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
@@ -41,6 +40,10 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(currentBookmark.created_at));
+  const aiMetadata =
+    currentBookmark.ai_metadata?.status === "completed"
+      ? currentBookmark.ai_metadata
+      : null;
 
   function handleDelete() {
     startTransition(async () => {
@@ -111,14 +114,27 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             Back to bookmarks
           </button>
 
-          <div>
+          <div className="detail-title-block">
             <p className="detail-domain">{domain}</p>
             <h1>{currentBookmark.title}</h1>
           </div>
 
-          {currentBookmark.summary && (
-            <div className="detail-summary-card">
-              <p>{currentBookmark.summary}</p>
+          {(currentBookmark.summary || aiMetadata) && (
+            <div className="detail-summary-card detail-website-read">
+              {currentBookmark.summary && <p>{currentBookmark.summary}</p>}
+              {aiMetadata && (
+                <div className="detail-ai-overview">
+                  <span>AI Design Read</span>
+                  {aiMetadata.design_context && <p>{aiMetadata.design_context}</p>}
+                  <div className="detail-ai-overview-meta">
+                    {aiMetadata.page_type && <strong>{aiMetadata.page_type}</strong>}
+                    {aiMetadata.industry && <strong>{aiMetadata.industry}</strong>}
+                    {aiMetadata.visual_style.slice(0, 3).map((style) => (
+                      <strong key={style}>{style}</strong>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -134,31 +150,14 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             <ArrowSquareOutIcon size={14} />
           </a>
 
-          <AIDesignRead bookmarkId={currentBookmark.id} metadata={currentBookmark.ai_metadata ?? null} />
-
           <DesignDnaBookmarkPanel
             bookmarkId={currentBookmark.id}
             initialDesignDna={bookmark.design_dna ?? null}
           />
 
-          <div className="detail-table">
-            <div>
-              <span>Domain</span>
-              <strong>{domain}</strong>
-            </div>
-            <div>
-              <span>Saved</span>
-              <strong>{savedDate}</strong>
-            </div>
-            <div>
-              <span>Tags</span>
-              <strong>{currentBookmark.tags.length ? currentBookmark.tags.join(", ") : "No tags"}</strong>
-            </div>
-          </div>
-
           <div className="detail-section">
             <h2><PaletteIcon size={15} /> Extracted colors</h2>
-            <BookmarkColorPalette colors={currentBookmark.palette} />
+            <BookmarkColorPalette colors={currentBookmark.palette} designDna={bookmark.design_dna ?? null} />
           </div>
 
           <div className="detail-section">
@@ -178,27 +177,19 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
           </div>
 
           <div className="detail-actions">
-            <Button variant="destructive" onClick={() => setDeleteOpen(true)} disabled={isPending}>
+            <Button className="detail-action-btn detail-action-btn-danger" variant="destructive" onClick={() => setDeleteOpen(true)} disabled={isPending}>
               <TrashIcon /> Delete
             </Button>
-            <Button variant="outline" onClick={() => openEdit(currentBookmark)}>
-              <PencilSimpleIcon /> Edit
-            </Button>
-            <Button variant="outline" onClick={handleRefreshScreenshot} disabled={isRefreshing}>
+            <Button className="detail-action-btn" variant="outline" onClick={handleRefreshScreenshot} disabled={isRefreshing}>
               {isRefreshing ? <SpinnerIcon className="animate-spin" /> : <ArrowsClockwiseIcon />}
               {isRefreshing ? "Queueing..." : "Refresh preview"}
             </Button>
             {currentBookmark.processing_status === "failed" && (
-              <Button variant="outline" onClick={handleRetryProcessing} disabled={isRetrying}>
+              <Button className="detail-action-btn" variant="outline" onClick={handleRetryProcessing} disabled={isRetrying}>
                 {isRetrying ? <SpinnerIcon className="animate-spin" /> : <ArrowsClockwiseIcon />}
                 {isRetrying ? "Retrying..." : "Retry preview"}
               </Button>
             )}
-            <Button asChild>
-              <a href={currentBookmark.url} target="_blank" rel="noopener noreferrer">
-                <ArrowSquareOutIcon /> Visit site
-              </a>
-            </Button>
           </div>
           {refreshError && <p className="detail-refresh-error" role="alert">{refreshError}</p>}
         </section>
