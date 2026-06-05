@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { useNotes } from "@/hooks/useNotes";
-import { getScreenshotUrl, getDomain } from "@/lib/data";
+import { getDomain, getFaviconUrl } from "@/lib/data";
 import type { CanvasNote } from "@/lib/types";
 
 export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSelected: boolean }) {
@@ -11,6 +11,8 @@ export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSele
   const [inputVal, setInputVal] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const hasUrl = note.content.startsWith("http");
+  const domain = getDomain(note.content);
+  const favicon = getFaviconUrl(note.content);
 
   function commitUrl(raw: string) {
     const url = raw.trim();
@@ -55,12 +57,24 @@ export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSele
       style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <img
-        src={getScreenshotUrl(note.content)}
-        alt="Link preview"
-        style={{ width: "100%", flex: 1, objectFit: "cover", display: "block", minHeight: 0 }}
-        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-      />
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "grid",
+          placeItems: "center",
+          background: "linear-gradient(135deg, var(--bg2), var(--bg3))",
+        }}
+      >
+        {favicon ? (
+          <img
+            src={favicon}
+            alt=""
+            style={{ width: 36, height: 36, objectFit: "contain", borderRadius: 10 }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : null}
+      </div>
       <div
         style={{
           display: "flex",
@@ -73,7 +87,7 @@ export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSele
         }}
       >
         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {getDomain(note.content)}
+          {domain}
         </span>
         <a
           href={note.content}

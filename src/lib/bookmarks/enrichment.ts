@@ -2,7 +2,7 @@ import "server-only";
 
 import sharp from "sharp";
 import { revalidatePath } from "next/cache";
-import { getDesignData, getMicrolinkPreviewData } from "@/lib/data";
+import { getDesignData } from "@/lib/data";
 import { mergeTags, scrapeBookmarkMetadata } from "@/lib/metadata";
 import { createClient } from "@/lib/supabase/server";
 import { timeAsync } from "@/lib/perf";
@@ -46,20 +46,6 @@ export async function optimizeBookmarkScreenshot(bytes: ArrayBuffer) {
     .toBuffer();
 }
 
-export async function getMicrolinkPreviewDataWithRetry(url: string) {
-  return timeAsync("getMicrolinkPreviewData", async () => {
-    for (let attempt = 0; attempt <= SCREENSHOT_RETRY_DELAYS_MS.length; attempt += 1) {
-      const previewData = await getMicrolinkPreviewData(url);
-      if (previewData?.screenshotUrl) return previewData;
-
-      const delay = SCREENSHOT_RETRY_DELAYS_MS[attempt];
-      if (delay) await wait(delay);
-    }
-
-    return null;
-  });
-}
-
 export async function fetchScreenshotWithRetry(screenshotUrl: string) {
   for (let attempt = 0; attempt <= SCREENSHOT_RETRY_DELAYS_MS.length; attempt += 1) {
     const response = await fetch(screenshotUrl, { cache: "no-store" });
@@ -83,46 +69,11 @@ export async function cacheBookmarkScreenshot(
   url: string
 ): Promise<CachedScreenshot | null> {
   return timeAsync("cacheBookmarkScreenshot", async () => {
-    const previewData = await getMicrolinkPreviewDataWithRetry(url);
-    if (!previewData?.screenshotUrl) return null;
-
-    const response = await fetchScreenshotWithRetry(previewData.screenshotUrl);
-    if (!response) return null;
-
-    const originalBytes = await response.arrayBuffer();
-
-    let optimizedBytes: Buffer;
-    try {
-      optimizedBytes = await timeAsync("optimizeBookmarkScreenshot", () =>
-        optimizeBookmarkScreenshot(originalBytes)
-      );
-    } catch (error) {
-      console.error("[cacheBookmarkScreenshot] Image optimization failed:", error);
-      return null;
-    }
-
-    const screenshotPath = `${userId}/${bookmarkId}/screenshot-${Date.now()}.webp`;
-
-    const { error: uploadError } = await supabase.storage
-      .from(BOOKMARK_SCREENSHOT_BUCKET)
-      .upload(screenshotPath, optimizedBytes, {
-        cacheControl: "31536000",
-        contentType: "image/webp",
-        upsert: true,
-      });
-
-    if (uploadError) return null;
-
-    const screenshotUrl = supabase.storage
-      .from(BOOKMARK_SCREENSHOT_BUCKET)
-      .getPublicUrl(screenshotPath).data.publicUrl;
-
-    return {
-      palette: previewData.palette,
-      screenshotUrl,
-      screenshotPath,
-      refreshedAt: previewData.refreshedAt,
-    };
+    void supabase;
+    void userId;
+    void bookmarkId;
+    void url;
+    return null;
   });
 }
 

@@ -7,10 +7,10 @@ const cspHeader = `
   script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""} https://platform.twitter.com https://connect.facebook.net;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' data: blob: https://www.google.com https://api.microlink.io https://*.microlink.io https://*.supabase.co https://*.ytimg.com https://i.vimeocdn.com https://*.twimg.com https://*.fbcdn.net https://*.licdn.com;
+  img-src 'self' data: blob: https://*.supabase.co https://*.ytimg.com https://i.vimeocdn.com https://*.twimg.com https://*.fbcdn.net https://*.licdn.com;
   media-src 'self' blob: https://*.supabase.co;
   frame-src https://www.youtube.com https://player.vimeo.com https://platform.twitter.com https://syndication.twitter.com https://www.facebook.com https://web.facebook.com https://www.linkedin.com;
-  connect-src 'self' https://*.supabase.co https://api.microlink.io https://publish.twitter.com https://platform.twitter.com https://syndication.twitter.com https://cdn.syndication.twimg.com;
+  connect-src 'self' https://*.supabase.co https://publish.twitter.com https://platform.twitter.com https://syndication.twitter.com https://cdn.syndication.twimg.com;
   frame-ancestors 'none';
   form-action 'self';
   base-uri 'self';

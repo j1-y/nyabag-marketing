@@ -16,6 +16,9 @@ import { Button } from "@/components/ui/button";
 import { AIMetadataChip } from "./AIMetadataChip";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
 
+const PREVIEW_LOAD_TIMEOUT_MS = 8000;
+const EAGER_PREVIEW_COUNT = 3;
+
 function BookmarkCardComponent({
   bookmark,
   index,
@@ -43,6 +46,7 @@ function BookmarkCardComponent({
   const domain = getDomain(bookmark.url);
   const favicon = getFaviconUrl(bookmark.url);
   const screenshot = bookmark.screenshot_url;
+  const eagerPreview = index < EAGER_PREVIEW_COUNT;
   const imageLoaded = imageState.src === screenshot && imageState.loaded;
   const imageError = imageState.src === screenshot && imageState.error;
   const isImageLoading = Boolean(screenshot && !imageError && !imageLoaded);
@@ -70,6 +74,20 @@ function BookmarkCardComponent({
       else setRetryError(result.error);
     });
   }
+
+  useEffect(() => {
+    if (!screenshot || imageLoaded || imageError) return;
+
+    const timeout = window.setTimeout(() => {
+      setImageState((current) =>
+        current.src === screenshot && !current.loaded
+          ? { src: screenshot, loaded: false, error: true }
+          : current
+      );
+    }, PREVIEW_LOAD_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [imageError, imageLoaded, screenshot]);
 
   useEffect(() => {
     const node = cardRef.current;
@@ -131,7 +149,8 @@ function BookmarkCardComponent({
                   key={screenshot}
                   src={screenshot}
                   alt={`${bookmark.title} preview`}
-                  loading="lazy"
+                  loading={eagerPreview ? "eager" : "lazy"}
+                  fetchPriority={eagerPreview ? "high" : "auto"}
                   decoding="async"
                   onLoad={() => setImageState({ src: screenshot, loaded: true, error: false })}
                   onError={() => setImageState({ src: screenshot, loaded: false, error: true })}

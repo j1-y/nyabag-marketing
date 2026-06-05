@@ -73,54 +73,6 @@ export function getDesignData(url: string): { palette: string[]; fonts: string[]
   };
 }
 
-export type MicrolinkPreviewData = {
-  palette: string[] | null;
-  screenshotUrl: string | null;
-  refreshedAt: string;
-};
-
-function normalizePalette(palette: unknown): string[] | null {
-  if (!Array.isArray(palette)) return null;
-
-  const colors = palette
-    .filter((color): color is string => /^#[0-9A-Fa-f]{6}$/.test(color))
-    .map((color) => color.toUpperCase());
-
-  const unique = Array.from(new Set(colors)).slice(0, 8);
-  return unique.length ? unique : null;
-}
-
-export async function getMicrolinkPreviewData(url: string): Promise<MicrolinkPreviewData | null> {
-  try {
-    const endpoint = new URL("https://api.microlink.io/");
-    endpoint.searchParams.set("url", url);
-    endpoint.searchParams.set("screenshot", "true");
-    endpoint.searchParams.set("fullPage", "true");
-    endpoint.searchParams.set("palette", "true");
-    endpoint.searchParams.set("filter", "screenshot");
-
-    const response = await fetch(endpoint.toString(), {
-      cache: "no-store",
-    });
-    if (!response.ok) return null;
-
-    const json = await response.json();
-    const screenshotUrl = json?.data?.screenshot?.url;
-
-    return {
-      palette: normalizePalette(json?.data?.screenshot?.palette),
-      screenshotUrl: typeof screenshotUrl === "string" ? screenshotUrl : null,
-      refreshedAt: new Date().toISOString(),
-    };
-  } catch {
-    return null;
-  }
-}
-
-export async function getScreenshotPalette(url: string): Promise<string[] | null> {
-  return (await getMicrolinkPreviewData(url))?.palette ?? null;
-}
-
 export function isScreenshotStale(refreshedAt: string | null | undefined): boolean {
   if (!refreshedAt) return true;
   const refreshedTime = new Date(refreshedAt).getTime();
@@ -135,13 +87,8 @@ export function getTagColor(tag: string): string {
 
 export function getFaviconUrl(url: string): string | null {
   try {
-    const domain = getDomain(url);
-    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+    return `/api/favicon?url=${encodeURIComponent(url)}`;
   } catch { return null; }
-}
-
-export function getScreenshotUrl(url: string): string {
-  return `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&fullPage=true&meta=false&embed=screenshot.url`;
 }
 
 export function formatDate(dateStr: string): string {

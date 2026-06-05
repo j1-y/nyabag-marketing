@@ -86,36 +86,44 @@ export function BookmarksProvider({
     }
   }, []);
 
+  const hasActiveProcessing = bookmarks.some((bookmark) =>
+    bookmark.processing_status === "queued" || bookmark.processing_status === "processing"
+  );
+
   useEffect(() => {
-    const hasActiveProcessing = bookmarks.some((bookmark) =>
-      bookmark.processing_status === "queued" || bookmark.processing_status === "processing"
-    );
     if (!hasActiveProcessing) return;
 
     let attempts = 0;
     let cancelled = false;
+    let timeout: number | null = null;
     const maxAttempts = 60;
 
-    const interval = window.setInterval(async () => {
+    async function refreshProcessingBookmarks() {
       attempts += 1;
       const result = await getProcessingBookmarks();
       if (cancelled) return;
+
+      let stillProcessing = true;
       if (result.success) {
         setBookmarks(result.data);
-        if (!result.data.some((bookmark) =>
+        stillProcessing = result.data.some((bookmark) =>
           bookmark.processing_status === "queued" || bookmark.processing_status === "processing"
-        )) {
-          window.clearInterval(interval);
-        }
+        );
       }
-      if (attempts >= maxAttempts) window.clearInterval(interval);
-    }, 10_000);
+
+      if (!stillProcessing || attempts >= maxAttempts) return;
+
+      const nextDelay = attempts < 5 ? 3_000 : 10_000;
+      timeout = window.setTimeout(refreshProcessingBookmarks, nextDelay);
+    }
+
+    void refreshProcessingBookmarks();
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      if (timeout) window.clearTimeout(timeout);
     };
-  }, [bookmarks]);
+  }, [hasActiveProcessing]);
 
   const deleteItem = useCallback(async (id: string) => {
     // Keep reference to previous state for rollback

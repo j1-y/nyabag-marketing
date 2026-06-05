@@ -12,7 +12,7 @@ import {
   TextTIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { getDomain, getTagColor, getScreenshotUrl } from "@/lib/data";
+import { getDomain, getTagColor } from "@/lib/data";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,12 +49,19 @@ export function DetailModal() {
         <div className="relative h-[220px] bg-muted overflow-hidden border-b flex-shrink-0 group">
           <div className="absolute inset-0 overflow-y-auto">
             {!imgError ? (
-              <img
-                className="w-full h-auto block"
-                src={getScreenshotUrl(b.url)}
-                alt="Site screenshot"
-                onError={() => setImgError(true)}
-              />
+              b.screenshot_url ? (
+                <img
+                  className="w-full h-auto block"
+                  src={b.screenshot_url}
+                  alt="Site screenshot"
+                  onError={() => setImgError(true)}
+                />
+              ) : (
+                <div className="preview-fallback" style={{ position: "absolute", inset: 0, display: "flex" }}>
+                  <ImageIcon size={36} weight="light" />
+                  <span style={{ fontSize: 12, color: "var(--text3)" }}>{domain}</span>
+                </div>
+              )
             ) : (
               <div className="preview-fallback" style={{ position: "absolute", inset: 0, display: "flex" }}>
                 <ImageIcon size={36} weight="light" />
@@ -64,7 +71,7 @@ export function DetailModal() {
           </div>
           <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button size="sm" variant="secondary" className="h-7 px-3 text-xs shadow-md" asChild>
-              <a href={getScreenshotUrl(b.url)} target="_blank" rel="noopener noreferrer">
+              <a href={b.screenshot_url ?? b.url} target="_blank" rel="noopener noreferrer">
                 <CornersOutIcon className="mr-1.5 h-3 w-3" /> Expand
               </a>
             </Button>

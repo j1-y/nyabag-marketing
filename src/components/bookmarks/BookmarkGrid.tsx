@@ -9,8 +9,8 @@ import { PendingBookmarkCard } from "./PendingBookmarkCard";
 import { AddBookmarkModal } from "./AddBookmarkModal";
 import { EditBookmarkModal } from "./EditBookmarkModal";
 import { ImportReferencesModal } from "./ImportReferencesModal";
+import { BookmarkSearchBar } from "./BookmarkSearchBar";
 import type { Bookmark } from "@/lib/types";
-import { Topbar } from "../layout/Topbar";
 
 function getFirstName(profileName: string, userEmail: string) {
   const source = profileName.trim() || userEmail.split("@")[0]?.trim() || "";
@@ -93,7 +93,7 @@ function GridInner({
 
   return (
     <>
-      <Topbar />
+      <BookmarkSearchBar />
       <DashboardGreeting
         profileName={profileName}
         userEmail={userEmail}
@@ -116,7 +116,13 @@ function GridInner({
             <PendingBookmarkCard key={bookmark.id} bookmark={bookmark} />
           ))}
           {filtered.map((b, i) => (
-            <BookmarkCard key={b.id} bookmark={b} index={i} onEdit={openEdit} onDelete={deleteItem} />
+            <BookmarkCard
+              key={`${b.id}-${b.screenshot_url ?? "no-shot"}`}
+              bookmark={b}
+              index={i}
+              onEdit={openEdit}
+              onDelete={deleteItem}
+            />
           ))}
         </div>
       )}
