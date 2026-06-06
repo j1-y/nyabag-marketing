@@ -28,3 +28,11 @@ export function getTelegramBotUrl() {
 export function isTelegramConfigured() {
   return Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_WEBHOOK_SECRET);
 }
+
+export function isTelegramWebhookReady() {
+  return Boolean(
+    process.env.TELEGRAM_BOT_TOKEN &&
+    process.env.TELEGRAM_WEBHOOK_SECRET &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}

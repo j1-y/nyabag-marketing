@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminServiceClient } from "@/lib/admin/service";
 import { createQueuedBookmarkForUser } from "@/lib/bookmarks/create-queued-bookmark-for-user";
-import { isTelegramConfigured, getTelegramWebhookSecret } from "@/lib/telegram/config";
+import { isTelegramConfigured, getTelegramWebhookSecret, isTelegramWebhookReady } from "@/lib/telegram/config";
 import { telegramMessages } from "@/lib/telegram/messages";
 import { sendTelegramMessage } from "@/lib/telegram/send-message";
 import { extractUrlsFromText } from "@/lib/telegram/url-extractor";
@@ -242,7 +242,12 @@ async function handleVerification({
 }
 
 export async function GET() {
-  return NextResponse.json({ ok: true, configured: isTelegramConfigured() });
+  return NextResponse.json({
+    ok: true,
+    configured: isTelegramConfigured(),
+    ready: isTelegramWebhookReady(),
+    serviceRoleConfigured: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+  });
 }
 
 export async function POST(request: Request) {
@@ -276,7 +281,14 @@ export async function POST(request: Request) {
   const firstName = message.from?.first_name ?? null;
   const lastName = message.from?.last_name ?? null;
 
-  const supabase = createAdminServiceClient();
+  let supabase: ReturnType<typeof createAdminServiceClient>;
+  try {
+    supabase = createAdminServiceClient();
+  } catch (error) {
+    console.error("[telegram] service role client unavailable:", error instanceof Error ? error.message : error);
+    await safeReply(chatId, telegramMessages.genericFailure);
+    return ok();
+  }
   const logId = await insertInboundLog({
     supabase,
     update,

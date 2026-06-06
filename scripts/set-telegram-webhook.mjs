@@ -15,7 +15,10 @@ function fail(message) {
 }
 
 function normalizeBaseUrl(value) {
-  return value?.trim().replace(/\/+$/, "");
+  return value
+    ?.trim()
+    .replace(/\/api\/telegram\/webhook\/?$/i, "")
+    .replace(/\/+$/, "");
 }
 
 const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
