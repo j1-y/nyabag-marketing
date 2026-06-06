@@ -1243,7 +1243,7 @@
   width: 100%;
   flex: 1;
   padding: 26px 20px 32px;
-  margin-top: 80px;
+  margin-top: 40px;
   min-width: 0;
 }
 
@@ -1505,23 +1505,6 @@
   margin: 0;
   padding-left: 16px;
   line-height: 1.8;
-}
-
-.mobile-capture-home-bar {
-  width: 100%;
-  height: 30px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 8px;
-  background: #f5f4f1;
-}
-
-.mobile-capture-home-pill {
-  width: 110px;
-  height: 4px;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.18);
 }
 
 /* Dashboard sidebar */
