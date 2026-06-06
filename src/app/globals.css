@@ -1529,7 +1529,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 14px 10px 12px;
+  padding: 10px 10px 12px;
   position: fixed;
   top: 0;
   left: 0;
@@ -7561,6 +7561,81 @@
 }
 
 /* ─── Detail Modal ───────────────────────────────────────── */
+.telegram-capture-panel {
+  margin-top: 14px;
+}
+
+.telegram-capture-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.telegram-capture-state {
+  display: grid;
+  gap: 10px;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.telegram-capture-state p {
+  margin: 0;
+}
+
+.telegram-capture-detail {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  color: var(--text);
+}
+
+.telegram-capture-detail svg {
+  margin-top: 1px;
+  color: var(--success);
+}
+
+.telegram-capture-detail strong,
+.telegram-capture-detail span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.telegram-capture-detail strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.telegram-capture-detail span,
+.telegram-expiry {
+  color: var(--text3);
+  font-size: 12px;
+}
+
+.telegram-code {
+  width: fit-content;
+  max-width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg3);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.telegram-capture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 1.25rem;
+}
+
 .modal-detail {
   width: 520px;
 }

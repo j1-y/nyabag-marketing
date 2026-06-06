@@ -509,6 +509,171 @@ END;
 $$;
 
 -- ============================================================
+-- Telegram capture
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS telegram_connections (
+  id                           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                      UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  telegram_user_id             TEXT,
+  telegram_chat_id             TEXT,
+  telegram_username            TEXT,
+  first_name                   TEXT,
+  last_name                    TEXT,
+  status                       TEXT        NOT NULL DEFAULT 'pending',
+  verification_code_hash       TEXT,
+  verification_code_expires_at TIMESTAMPTZ,
+  connected_at                 TIMESTAMPTZ,
+  disconnected_at              TIMESTAMPTZ,
+  created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE telegram_connections
+  ADD COLUMN IF NOT EXISTS user_id UUID,
+  ADD COLUMN IF NOT EXISTS telegram_user_id TEXT,
+  ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT,
+  ADD COLUMN IF NOT EXISTS telegram_username TEXT,
+  ADD COLUMN IF NOT EXISTS first_name TEXT,
+  ADD COLUMN IF NOT EXISTS last_name TEXT,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS verification_code_hash TEXT,
+  ADD COLUMN IF NOT EXISTS verification_code_expires_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS connected_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS disconnected_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE telegram_connections
+  DROP CONSTRAINT IF EXISTS telegram_connections_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS telegram_connections_status_check,
+  DROP CONSTRAINT IF EXISTS telegram_connections_telegram_user_id_check,
+  DROP CONSTRAINT IF EXISTS telegram_connections_telegram_chat_id_check,
+  DROP CONSTRAINT IF EXISTS telegram_connections_telegram_username_check,
+  DROP CONSTRAINT IF EXISTS telegram_connections_first_name_check,
+  DROP CONSTRAINT IF EXISTS telegram_connections_last_name_check,
+  DROP CONSTRAINT IF EXISTS telegram_connections_verification_code_hash_check,
+  ADD CONSTRAINT telegram_connections_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  ADD CONSTRAINT telegram_connections_status_check CHECK (status IN ('pending', 'connected', 'disabled')),
+  ADD CONSTRAINT telegram_connections_telegram_user_id_check CHECK (telegram_user_id IS NULL OR char_length(telegram_user_id) <= 80),
+  ADD CONSTRAINT telegram_connections_telegram_chat_id_check CHECK (telegram_chat_id IS NULL OR char_length(telegram_chat_id) <= 80),
+  ADD CONSTRAINT telegram_connections_telegram_username_check CHECK (telegram_username IS NULL OR char_length(telegram_username) <= 120),
+  ADD CONSTRAINT telegram_connections_first_name_check CHECK (first_name IS NULL OR char_length(first_name) <= 120),
+  ADD CONSTRAINT telegram_connections_last_name_check CHECK (last_name IS NULL OR char_length(last_name) <= 120),
+  ADD CONSTRAINT telegram_connections_verification_code_hash_check CHECK (verification_code_hash IS NULL OR char_length(verification_code_hash) <= 128);
+
+ALTER TABLE telegram_connections
+  ALTER COLUMN user_id SET NOT NULL,
+  ALTER COLUMN status SET NOT NULL,
+  ALTER COLUMN created_at SET NOT NULL,
+  ALTER COLUMN updated_at SET NOT NULL;
+
+DROP TRIGGER IF EXISTS telegram_connections_updated_at ON telegram_connections;
+CREATE TRIGGER telegram_connections_updated_at
+  BEFORE UPDATE ON telegram_connections
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE UNIQUE INDEX IF NOT EXISTS telegram_connections_user_id_key
+  ON telegram_connections(user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS telegram_connections_telegram_user_id_key
+  ON telegram_connections(telegram_user_id)
+  WHERE telegram_user_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS telegram_connections_telegram_chat_id_key
+  ON telegram_connections(telegram_chat_id)
+  WHERE telegram_chat_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_telegram_connections_user_id ON telegram_connections(user_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_connections_telegram_user_id ON telegram_connections(telegram_user_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_connections_telegram_chat_id ON telegram_connections(telegram_chat_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_connections_status ON telegram_connections(status);
+
+ALTER TABLE telegram_connections ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_telegram_connections" ON telegram_connections;
+CREATE POLICY "select_own_telegram_connections" ON telegram_connections
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_telegram_connections" ON telegram_connections;
+CREATE POLICY "insert_own_telegram_connections" ON telegram_connections
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "update_own_telegram_connections" ON telegram_connections;
+CREATE POLICY "update_own_telegram_connections" ON telegram_connections
+  FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_telegram_connections" ON telegram_connections;
+CREATE POLICY "delete_own_telegram_connections" ON telegram_connections
+  FOR DELETE USING (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS telegram_inbound_messages (
+  id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_message_id  TEXT,
+  telegram_update_id   TEXT,
+  telegram_user_id     TEXT,
+  telegram_chat_id     TEXT,
+  user_id              UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
+  message_text         TEXT        NOT NULL DEFAULT '',
+  extracted_urls       TEXT[]      NOT NULL DEFAULT '{}',
+  status               TEXT        NOT NULL DEFAULT 'received',
+  error                TEXT,
+  raw_payload          JSONB,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at         TIMESTAMPTZ
+);
+
+ALTER TABLE telegram_inbound_messages
+  ADD COLUMN IF NOT EXISTS provider_message_id TEXT,
+  ADD COLUMN IF NOT EXISTS telegram_update_id TEXT,
+  ADD COLUMN IF NOT EXISTS telegram_user_id TEXT,
+  ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT,
+  ADD COLUMN IF NOT EXISTS user_id UUID,
+  ADD COLUMN IF NOT EXISTS message_text TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS extracted_urls TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'received',
+  ADD COLUMN IF NOT EXISTS error TEXT,
+  ADD COLUMN IF NOT EXISTS raw_payload JSONB,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ;
+
+ALTER TABLE telegram_inbound_messages
+  DROP CONSTRAINT IF EXISTS telegram_inbound_messages_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS telegram_inbound_messages_status_check,
+  DROP CONSTRAINT IF EXISTS telegram_inbound_messages_provider_message_id_check,
+  DROP CONSTRAINT IF EXISTS telegram_inbound_messages_telegram_update_id_check,
+  DROP CONSTRAINT IF EXISTS telegram_inbound_messages_telegram_user_id_check,
+  DROP CONSTRAINT IF EXISTS telegram_inbound_messages_telegram_chat_id_check,
+  DROP CONSTRAINT IF EXISTS telegram_inbound_messages_message_text_check,
+  DROP CONSTRAINT IF EXISTS telegram_inbound_messages_error_check,
+  ADD CONSTRAINT telegram_inbound_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD CONSTRAINT telegram_inbound_messages_status_check CHECK (status IN ('received', 'processed', 'failed', 'ignored', 'verification')),
+  ADD CONSTRAINT telegram_inbound_messages_provider_message_id_check CHECK (provider_message_id IS NULL OR char_length(provider_message_id) <= 80),
+  ADD CONSTRAINT telegram_inbound_messages_telegram_update_id_check CHECK (telegram_update_id IS NULL OR char_length(telegram_update_id) <= 80),
+  ADD CONSTRAINT telegram_inbound_messages_telegram_user_id_check CHECK (telegram_user_id IS NULL OR char_length(telegram_user_id) <= 80),
+  ADD CONSTRAINT telegram_inbound_messages_telegram_chat_id_check CHECK (telegram_chat_id IS NULL OR char_length(telegram_chat_id) <= 80),
+  ADD CONSTRAINT telegram_inbound_messages_message_text_check CHECK (char_length(message_text) <= 12000),
+  ADD CONSTRAINT telegram_inbound_messages_error_check CHECK (error IS NULL OR char_length(error) <= 1000);
+
+ALTER TABLE telegram_inbound_messages
+  ALTER COLUMN message_text SET NOT NULL,
+  ALTER COLUMN extracted_urls SET NOT NULL,
+  ALTER COLUMN status SET NOT NULL,
+  ALTER COLUMN created_at SET NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_telegram_inbound_messages_user_id ON telegram_inbound_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_inbound_messages_chat_id ON telegram_inbound_messages(telegram_chat_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_inbound_messages_update_id ON telegram_inbound_messages(telegram_update_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_inbound_messages_status ON telegram_inbound_messages(status);
+CREATE INDEX IF NOT EXISTS idx_telegram_inbound_messages_created_at ON telegram_inbound_messages(created_at);
+
+ALTER TABLE telegram_inbound_messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_telegram_inbound_messages" ON telegram_inbound_messages;
+CREATE POLICY "select_own_telegram_inbound_messages" ON telegram_inbound_messages
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- ============================================================
 -- Early access signups
 -- ============================================================
 

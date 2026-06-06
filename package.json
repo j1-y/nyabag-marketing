@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:bookmark-processor": "node scripts/check-bookmark-processor.mjs"
+    "check:bookmark-processor": "node scripts/check-bookmark-processor.mjs",
+    "telegram:set-webhook": "node scripts/set-telegram-webhook.mjs",
+    "telegram:check-webhook": "node scripts/check-telegram-webhook.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",

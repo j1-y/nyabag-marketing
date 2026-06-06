@@ -14,9 +14,11 @@ import { exportDesignDnaToMarkdown, getDesignDnaExportFilename } from "@/lib/des
 import { getDesignDnaById } from "@/lib/design-dna/data";
 import { timeAsync } from "@/lib/perf";
 import { PROFILE_AVATAR_BUCKET } from "@/lib/profile";
+import { getTelegramBotUrl, isTelegramConfigured } from "@/lib/telegram/config";
+import { generateVerificationCode, hashVerificationCode } from "@/lib/telegram/verify";
 import { bookmarkCreateSchema, bookmarkUpdateSchema, profileUpdateSchema } from "@/lib/validations";
 import { extractUrlsFromText } from "@/lib/url-extraction";
-import type { ActionResult, Bookmark, BookmarkAiMetadata, DesignDna, ImportBookmarksResult, UserProfile } from "@/lib/types";
+import type { ActionResult, Bookmark, BookmarkAiMetadata, DesignDna, ImportBookmarksResult, TelegramConnection, UserProfile } from "@/lib/types";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -1033,6 +1035,91 @@ export async function updateProfile(
       avatar_url: avatarUrl,
     },
   };
+}
+
+const TELEGRAM_CONNECTION_SELECT =
+  "id,user_id,telegram_user_id,telegram_chat_id,telegram_username,first_name,last_name,status,verification_code_expires_at,connected_at,disconnected_at,created_at,updated_at";
+
+export async function getTelegramConnection(): Promise<
+  ActionResult<{ configured: boolean; connection: TelegramConnection | null; botUrl?: string }>
+> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const { data, error } = await supabase
+    .from("telegram_connections")
+    .select(TELEGRAM_CONNECTION_SELECT)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) return { success: false, error: error.message };
+
+  return {
+    success: true,
+    data: {
+      configured: isTelegramConfigured(),
+      connection: data ? (data as TelegramConnection) : null,
+      botUrl: getTelegramBotUrl(),
+    },
+  };
+}
+
+export async function createTelegramConnectionCode(): Promise<
+  ActionResult<{ code: string; expiresAt: string; botUrl?: string }>
+> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+  if (!isTelegramConfigured()) return { success: false, error: "Telegram integration is not configured" };
+
+  const code = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+  const { error } = await supabase
+    .from("telegram_connections")
+    .upsert(
+      {
+        user_id: user.id,
+        status: "pending",
+        verification_code_hash: hashVerificationCode(code),
+        verification_code_expires_at: expiresAt,
+        telegram_user_id: null,
+        telegram_chat_id: null,
+        telegram_username: null,
+        first_name: null,
+        last_name: null,
+        connected_at: null,
+        disconnected_at: null,
+      },
+      { onConflict: "user_id" }
+    );
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/app/profile");
+  return { success: true, data: { code, expiresAt, botUrl: getTelegramBotUrl() } };
+}
+
+export async function disconnectTelegram(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("telegram_connections")
+    .update({
+      status: "disabled",
+      verification_code_hash: null,
+      verification_code_expires_at: null,
+      disconnected_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/app/profile");
+  return { success: true, data: undefined };
 }
 
 export async function signOut(): Promise<void> {

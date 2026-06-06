@@ -172,15 +172,6 @@ export function MobileBookmarkCapture({
                 <strong>{displayName}</strong>
                 <span>{userEmail || "Personal"}</span>
               </div>
-              <Link
-                href="/app/profile"
-                className="mobile-capture-profile-item"
-                role="menuitem"
-                onClick={() => setProfileOpen(false)}
-              >
-                <UserIcon size={16} />
-                Edit profile
-              </Link>
               <div className="mobile-capture-profile-separator" />
               <form action={signOut}>
                 <button type="submit" className="mobile-capture-profile-item mobile-capture-profile-danger" role="menuitem">

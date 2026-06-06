@@ -22,6 +22,31 @@ export type Bookmark = {
   design_dna?: DesignDna | null;
 };
 
+export type TelegramConnectionStatus = "pending" | "connected" | "disabled";
+
+export type TelegramConnection = {
+  id: string;
+  user_id: string;
+  telegram_user_id: string | null;
+  telegram_chat_id: string | null;
+  telegram_username: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  status: TelegramConnectionStatus;
+  verification_code_expires_at: string | null;
+  connected_at: string | null;
+  disconnected_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TelegramInboundMessageStatus =
+  | "received"
+  | "processed"
+  | "failed"
+  | "ignored"
+  | "verification";
+
 export type BookmarkAiStatus = "pending" | "completed" | "failed";
 
 export type BookmarkAiMetadata = {

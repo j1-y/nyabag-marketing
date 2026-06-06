@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUserProfile } from "@/lib/profile";
 import { ProfileForm } from "@/components/profile/ProfileForm";
+import { TelegramCapturePanel } from "@/components/profile/TelegramCapturePanel";
+import { getTelegramConnection } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +14,14 @@ export default async function ProfilePage() {
 
   if (!user) return null;
 
-  const profile = await getUserProfile(supabase, user);
+  const [profile, telegramResult] = await Promise.all([
+    getUserProfile(supabase, user),
+    getTelegramConnection(),
+  ]);
+
+  const telegramState = telegramResult.success
+    ? telegramResult.data
+    : { configured: false, connection: null };
 
   return (
     <main className="profile-page">
@@ -24,6 +33,7 @@ export default async function ProfilePage() {
         </header>
 
         <ProfileForm profile={profile} />
+        <TelegramCapturePanel initial={telegramState} />
       </div>
     </main>
   );
