@@ -865,7 +865,7 @@ export async function retryBookmarkProcessing(id: string): Promise<ActionResult<
   return { success: true, data };
 }
 
-export async function getProcessingBookmarks(): Promise<ActionResult<Bookmark[]>> {
+export async function getBookmarks(): Promise<ActionResult<Bookmark[]>> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
@@ -879,6 +879,10 @@ export async function getProcessingBookmarks(): Promise<ActionResult<Bookmark[]>
   if (error) return { success: false, error: error.message };
   const bookmarks = await attachAiMetadataToBookmarks(supabase, (data ?? []) as Bookmark[], user.id);
   return { success: true, data: bookmarks };
+}
+
+export async function getProcessingBookmarks(): Promise<ActionResult<Bookmark[]>> {
+  return getBookmarks();
 }
 
 export async function deleteBookmark(id: string): Promise<ActionResult> {

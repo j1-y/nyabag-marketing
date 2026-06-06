@@ -6,13 +6,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
 } from "react";
 import type { Bookmark } from "@/lib/types";
-import { deleteBookmark, getProcessingBookmarks } from "@/lib/actions";
+import { deleteBookmark, getBookmarks, getProcessingBookmarks } from "@/lib/actions";
 
 export type PendingBookmark = {
   id: string;
@@ -52,6 +53,21 @@ interface BookmarksCtx {
 
 const Ctx = createContext<BookmarksCtx | null>(null);
 
+const DASHBOARD_REFRESH_INTERVAL_MS = 15_000;
+const DASHBOARD_FOCUS_REFRESH_MIN_MS = 5_000;
+
+function getBookmarkSnapshot(bookmarks: Bookmark[]) {
+  return bookmarks
+    .map((bookmark) => [
+      bookmark.id,
+      bookmark.updated_at,
+      bookmark.processing_status,
+      bookmark.screenshot_url ?? "",
+      bookmark.ai_metadata?.updated_at ?? "",
+    ].join(":"))
+    .join("|");
+}
+
 export function BookmarksProvider({
   children,
   initial,
@@ -76,6 +92,8 @@ export function BookmarksProvider({
   const [importOpen, setImportOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Bookmark | null>(null);
   const [detailTarget, setDetailTarget] = useState<Bookmark | null>(null);
+  const refreshInFlightRef = useRef(false);
+  const lastRefreshAtRef = useRef(0);
 
   const setPersistentActiveFilter = useCallback((filter: "all" | "recent") => {
     setActiveFilter(filter);
@@ -89,6 +107,48 @@ export function BookmarksProvider({
   const hasActiveProcessing = bookmarks.some((bookmark) =>
     bookmark.processing_status === "queued" || bookmark.processing_status === "processing"
   );
+
+  const refreshBookmarks = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+
+    refreshInFlightRef.current = true;
+    lastRefreshAtRef.current = Date.now();
+
+    try {
+      const result = await getBookmarks();
+      if (!result.success) return;
+
+      setBookmarks((current) => {
+        const currentSnapshot = getBookmarkSnapshot(current);
+        const nextSnapshot = getBookmarkSnapshot(result.data);
+        if (currentSnapshot === nextSnapshot) return current;
+        return result.data;
+      });
+    } finally {
+      refreshInFlightRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void refreshBookmarks();
+    }, DASHBOARD_REFRESH_INTERVAL_MS);
+
+    function refreshOnFocus() {
+      if (Date.now() - lastRefreshAtRef.current < DASHBOARD_FOCUS_REFRESH_MIN_MS) return;
+      void refreshBookmarks();
+    }
+
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshOnFocus);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshOnFocus);
+    };
+  }, [refreshBookmarks]);
 
   useEffect(() => {
     if (!hasActiveProcessing) return;

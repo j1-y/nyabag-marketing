@@ -1,22 +1,72 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { CheckCircleIcon, SpinnerIcon, ArrowSquareOutIcon } from "@phosphor-icons/react";
-import { createBookmark } from "@/lib/actions";
+import Link from "next/link";
+import Image from "next/image";
+import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  ArrowUpRightIcon,
+  CaretRightIcon,
+  CheckCircleIcon,
+  FileArrowUpIcon,
+  LinkSimpleIcon,
+  SignOutIcon,
+  SpinnerIcon,
+  UserIcon,
+  XIcon,
+} from "@phosphor-icons/react";
+import { createBookmark, signOut } from "@/lib/actions";
 
 type MobileBookmarkCaptureProps = {
   profileName: string;
   userEmail: string;
+  profileAvatarUrl: string | null;
 };
 
-export function MobileBookmarkCapture({ profileName, userEmail }: MobileBookmarkCaptureProps) {
+function initials(name: string, email: string) {
+  const source = name.trim() || email.trim();
+  if (!source) return "N";
+  return source
+    .split(/[.@\s_-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "N";
+}
+
+export function MobileBookmarkCapture({
+  profileName,
+  userEmail,
+  profileAvatarUrl,
+}: MobileBookmarkCaptureProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
   const [urls, setUrls] = useState("");
   const [urlCount, setUrlCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const [savedCount, setSavedCount] = useState(0);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const displayName = profileName.trim() || userEmail;
+  const displayName = profileName.trim() || userEmail || "Profile";
+  const avatarInitials = initials(profileName, userEmail);
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      if (!profileRef.current?.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setProfileOpen(false);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   function parseUrls(raw: string): string[] {
     return raw
@@ -28,8 +78,7 @@ export function MobileBookmarkCapture({ profileName, userEmail }: MobileBookmark
   function handleTextChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const val = e.target.value;
     setUrls(val);
-    const count = parseUrls(val).length;
-    setUrlCount(count);
+    setUrlCount(parseUrls(val).length);
     setErrors([]);
     setSavedCount(0);
   }
@@ -49,6 +98,8 @@ export function MobileBookmarkCapture({ profileName, userEmail }: MobileBookmark
         : extracted.join("\n");
       setUrls(appended);
       setUrlCount(parseUrls(appended).length);
+      setErrors([]);
+      setSavedCount(0);
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -102,19 +153,74 @@ export function MobileBookmarkCapture({ profileName, userEmail }: MobileBookmark
 
   return (
     <main className="mobile-capture-page">
-      <section className="mobile-capture-card" aria-labelledby="mobile-capture-title">
-        <div className="mobile-capture-logo" aria-hidden="true" />
+      <nav className="mobile-capture-navbar" aria-label="Mobile capture navigation">
+        <Link href="/app" className="mobile-capture-brand" aria-label="Nyabag home">
+          <Image
+            src="/assets/logo.svg"
+            alt="Nyabag"
+            width={120}
+            height={80}
+            className="mobile-capture-brand-logo"
+            priority
+          />
+        </Link>
 
-        <p className="mobile-capture-kicker">Signed in as {displayName}</p>
+        <div className="mobile-capture-profile" ref={profileRef}>
+          {profileOpen && (
+            <div className="mobile-capture-profile-menu" role="menu">
+              <div className="mobile-capture-profile-summary">
+                <strong>{displayName}</strong>
+                <span>{userEmail || "Personal"}</span>
+              </div>
+              <Link
+                href="/app/profile"
+                className="mobile-capture-profile-item"
+                role="menuitem"
+                onClick={() => setProfileOpen(false)}
+              >
+                <UserIcon size={16} />
+                Edit profile
+              </Link>
+              <div className="mobile-capture-profile-separator" />
+              <form action={signOut}>
+                <button type="submit" className="mobile-capture-profile-item mobile-capture-profile-danger" role="menuitem">
+                  <SignOutIcon size={16} />
+                  Sign out
+                </button>
+              </form>
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="mobile-capture-avatar"
+            aria-label="Profile menu"
+            aria-haspopup="menu"
+            aria-expanded={profileOpen}
+            onClick={() => setProfileOpen((open) => !open)}
+          >
+            {profileAvatarUrl ? (
+              <span className="mobile-capture-avatar-image" style={{ backgroundImage: `url(${profileAvatarUrl})` }} />
+            ) : (
+              avatarInitials
+            )}
+          </button>
+        </div>
+      </nav>
+
+      <section className="mobile-capture-body" aria-labelledby="mobile-capture-title">
         <h1 id="mobile-capture-title" className="mobile-capture-heading">
           Drop your links.
         </h1>
         <p className="mobile-capture-description">
-          Paste URLs below or import a file — they&apos;ll be waiting on your desktop.
+          Paste URLs or import a file - ready on your desktop.
         </p>
 
         <div className="mobile-capture-textarea-wrap">
-          <div className="mobile-capture-textarea-label">URLs</div>
+          <div className="mobile-capture-textarea-label">
+            <LinkSimpleIcon size={12} aria-hidden="true" />
+            <span>URLs</span>
+          </div>
           <textarea
             className="mobile-capture-textarea"
             value={urls}
@@ -146,20 +252,13 @@ export function MobileBookmarkCapture({ profileName, userEmail }: MobileBookmark
           type="button"
         >
           <span className="mobile-capture-file-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="12" y1="18" x2="12" y2="12"/>
-              <line x1="9" y1="15" x2="15" y2="15"/>
-            </svg>
+            <FileArrowUpIcon size={18} aria-hidden="true" />
           </span>
           <span className="mobile-capture-file-copy">
             <span className="mobile-capture-file-title">Upload a file</span>
             <span className="mobile-capture-file-hint">TXT, CSV or Markdown</span>
           </span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
+          <CaretRightIcon className="mobile-capture-file-chevron" size={18} aria-hidden="true" />
         </button>
 
         <input
@@ -180,9 +279,9 @@ export function MobileBookmarkCapture({ profileName, userEmail }: MobileBookmark
             {isPending ? (
               <SpinnerIcon size={16} style={{ animation: "spin 1s linear infinite" }} />
             ) : (
-              <ArrowSquareOutIcon size={16} />
+              <ArrowUpRightIcon size={17} />
             )}
-            {isPending ? "Saving…" : "Save to bookmarks"}
+            {isPending ? "Saving..." : "Save to bookmarks"}
           </button>
           <button
             className="mobile-capture-clear-btn"
@@ -191,17 +290,14 @@ export function MobileBookmarkCapture({ profileName, userEmail }: MobileBookmark
             type="button"
             aria-label="Clear"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
+            <XIcon size={19} aria-hidden="true" />
           </button>
         </div>
 
         {savedCount > 0 && (
           <div className="mobile-capture-success" role="status">
             <CheckCircleIcon size={16} weight="fill" />
-            {savedCount} bookmark{savedCount === 1 ? "" : "s"} saved — ready on your desktop.
+            {savedCount} bookmark{savedCount === 1 ? "" : "s"} saved - ready on your desktop.
           </div>
         )}
 
@@ -216,6 +312,10 @@ export function MobileBookmarkCapture({ profileName, userEmail }: MobileBookmark
           </div>
         )}
       </section>
+
+      <div className="mobile-capture-home-bar" aria-hidden="true">
+        <div className="mobile-capture-home-pill" />
+      </div>
     </main>
   );
 }

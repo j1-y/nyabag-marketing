@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import { DashboardNav } from "./DashboardNav";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { MobileBookmarkCapture } from "./MobileBookmarkCapture";
@@ -66,6 +67,7 @@ export function DashboardShell({
   profileName,
   profileAvatarUrl,
 }: DashboardShellProps) {
+  const pathname = usePathname();
   const collapsed = useSyncExternalStore(
     subscribeToSidebarState,
     getStoredSidebarState,
@@ -89,8 +91,12 @@ export function DashboardShell({
     window.dispatchEvent(new Event(SIDEBAR_EVENT));
   }, []);
 
-  return isMobile ? (
-    <MobileBookmarkCapture profileName={profileName} userEmail={userEmail} />
+  return isMobile && pathname === "/app" ? (
+    <MobileBookmarkCapture
+      profileName={profileName}
+      userEmail={userEmail}
+      profileAvatarUrl={profileAvatarUrl}
+    />
   ) : (
     <div className={`app-layout ${effectiveCollapsed ? "sidebar-collapsed" : ""}`}>
       <DashboardSidebar
