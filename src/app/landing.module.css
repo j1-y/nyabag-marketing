@@ -6,18 +6,18 @@
 
 /* ── Tokens ── */
 .root {
-  --lp-bg: #0a0a0a;
-  --lp-bg-1: #111111;
-  --lp-bg-2: #181818;
-  --lp-bg-3: #222222;
-  --lp-bg-4: #2a2a2a;
-  --lp-border: #242424;
-  --lp-border-light: #333333;
-  --lp-text: #f0f0f0;
-  --lp-text-muted: #888888;
-  --lp-text-dim: #555555;
-  --lp-white: #ffffff;
-  --lp-accent: #e8e8e8;
+  --lp-bg: var(--text);
+  --lp-bg-1: var(--text);
+  --lp-bg-2: var(--surface-inverse-muted);
+  --lp-bg-3: var(--surface-inverse-muted);
+  --lp-bg-4: var(--surface-inverse-muted);
+  --lp-border: var(--surface-inverse-muted);
+  --lp-border-light: var(--surface-inverse-muted);
+  --lp-text: var(--text-inverse);
+  --lp-text-muted: var(--text3);
+  --lp-text-dim: var(--muted-foreground);
+  --lp-white: var(--white);
+  --lp-accent: var(--text-inverse);
 
   --lp-radius-sm: 6px;
   --lp-radius-md: 10px;
@@ -43,10 +43,10 @@
   justify-content: space-between;
   padding: 0 48px;
   height: 64px;
-  background: rgba(10, 10, 10, 0.85);
+  background: hsl(var(--surface-inverse-token) / 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid hsl(var(--text-inverse-token) / 0.06);
 }
 
 .navLogo {
@@ -80,7 +80,7 @@
 
 .navCta {
   background: var(--lp-white);
-  color: #0a0a0a;
+  color: var(--text);
   padding: 8px 20px;
   border-radius: var(--lp-radius-sm);
   font-size: 13.5px;
@@ -110,10 +110,10 @@
   position: absolute;
   inset: 0;
   background-image: linear-gradient(
-      rgba(255, 255, 255, 0.025) 1px,
+      hsl(var(--text-inverse-token) / 0.025) 1px,
       transparent 1px
     ),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(90deg, hsl(var(--text-inverse-token) / 0.025) 1px, transparent 1px);
   background-size: 60px 60px;
   mask-image: radial-gradient(
     ellipse 80% 80% at 50% 0%,
@@ -134,7 +134,7 @@
   gap: 8px;
   padding: 6px 14px;
   border-radius: 100px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid hsl(var(--text-inverse-token) / 0.1);
   font-size: 12.5px;
   color: var(--lp-text-muted);
   margin-bottom: 40px;
@@ -145,7 +145,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #4ade80;
+  background: var(--success);
   display: inline-block;
   flex-shrink: 0;
 }
@@ -218,7 +218,7 @@
   height: 48px;
   border: 1px solid var(--lp-border-light);
   border-radius: var(--lp-radius-sm);
-  background: rgba(255, 255, 255, 0.04);
+  background: hsl(var(--text-inverse-token) / 0.04);
   color: var(--lp-text);
   font: inherit;
   font-size: 14px;
@@ -228,8 +228,8 @@
 }
 
 .earlyAccessLabel input:focus {
-  border-color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.07);
+  border-color: hsl(var(--text-inverse-token) / 0.55);
+  background: hsl(var(--text-inverse-token) / 0.07);
 }
 
 .earlyAccessLabel input::placeholder {
@@ -243,7 +243,7 @@
   border: none;
   border-radius: var(--lp-radius-sm);
   background: var(--lp-white);
-  color: #0a0a0a;
+  color: var(--text);
   cursor: pointer;
   font: inherit;
   font-size: 14px;
@@ -267,7 +267,7 @@
 }
 
 .earlyAccessError {
-  color: #ff8a80;
+  color: var(--danger);
   font-size: 13px;
   margin-top: 2px;
   text-align: center;
@@ -275,7 +275,7 @@
 
 .btnPrimary {
   background: var(--lp-white);
-  color: #0a0a0a;
+  color: var(--text);
   padding: 13px 28px;
   border-radius: var(--lp-radius-sm);
   font-size: 14.5px;
@@ -305,7 +305,7 @@
 
 .btnGhost:hover {
   color: var(--lp-text);
-  border-color: #444;
+  border-color: var(--surface-inverse-muted);
 }
 
 .heroTrust {
@@ -337,9 +337,9 @@
   border-radius: 50%;
 }
 
-.previewDotRed { background: #3a3a3a; }
-.previewDotYellow { background: #333; }
-.previewDotGreen { background: #2e2e2e; }
+.previewDotRed { background: var(--surface-inverse-muted); }
+.previewDotYellow { background: var(--surface-inverse-muted); }
+.previewDotGreen { background: var(--surface-inverse-muted); }
 
 .previewUrl {
   flex: 1;
@@ -736,7 +736,7 @@
   inset: 0;
   background-image: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.04) 1px,
+    hsl(var(--text-inverse-token) / 0.04) 1px,
     transparent 1px
   );
   background-size: 24px 24px;
@@ -795,7 +795,7 @@
 
 .canvasSectionBlock {
   position: absolute;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border: 1px dashed hsl(var(--text-inverse-token) / 0.1);
   border-radius: var(--lp-radius-md);
   padding: 10px;
   display: flex;
@@ -885,7 +885,7 @@
   height: 600px;
   background: radial-gradient(
     ellipse,
-    rgba(255, 255, 255, 0.03) 0%,
+    hsl(var(--text-inverse-token) / 0.03) 0%,
     transparent 70%
   );
   pointer-events: none;
@@ -979,7 +979,7 @@
   padding: 0 18px;
   border-radius: var(--lp-radius-sm);
   background: var(--lp-white);
-  color: #0a0a0a;
+  color: var(--text);
   font-size: 14px;
   font-weight: 650;
   text-decoration: none;

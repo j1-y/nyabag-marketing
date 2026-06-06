@@ -13,17 +13,17 @@ function EmptyState({ icon, title, description, action, className, ...props }: E
   return (
     <div
       className={cn(
-        "flex min-h-64 flex-col items-center justify-center gap-3 px-6 py-12 text-center",
+        "flex min-h-64 flex-col items-center justify-center gap-4 px-6 py-12 text-center",
         className
       )}
       {...props}
     >
       {icon && (
-        <div className="grid h-11 w-11 place-items-center rounded-md border border-border bg-surface text-muted-foreground">
+        <div className="grid h-12 w-12 place-items-center rounded-[10px] border border-border bg-surface text-muted-foreground">
           {icon}
         </div>
       )}
-      <div className="grid gap-1">
+      <div className="grid gap-2">
         <h2 className="text-base font-semibold text-foreground">{title}</h2>
         {description && (
           <p className="max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>

@@ -12,6 +12,7 @@ import {
   TagIcon,
   TextTIcon,
   TrashIcon,
+  TelegramLogoIcon,
 } from "@phosphor-icons/react";
 import { deleteBookmark, getProcessingBookmarks, refreshBookmarkScreenshot, retryBookmarkProcessing } from "@/lib/actions";
 import { getDomain } from "@/lib/data";
@@ -131,7 +132,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
 
           {currentBookmark.note && (
             <div className="detail-note-card">
-              <NoteIcon size={15} />
+              <TelegramLogoIcon size={16} />
               <p>{currentBookmark.note}</p>
             </div>
           )}

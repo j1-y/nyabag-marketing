@@ -20,6 +20,7 @@ import {
   type RefObject,
 } from "react";
 import { NOTE_COLORS, useNotes } from "@/hooks/useNotes";
+import { IconButton } from "@/components/ui/icon-button";
 import type { StickyNoteFormatAction, StickyNoteTextHandle } from "./NoteTextContent";
 import type { CanvasNote } from "@/lib/types";
 
@@ -174,8 +175,10 @@ export function StickyNoteToolbar({
 
       <div className="sticky-note-toolbar-sep" />
 
-      <button
+      <IconButton
         type="button"
+        variant="ghost"
+        size="icon-sm"
         className="sticky-note-toolbar-button sticky-note-toolbar-button--delete"
         title="Delete note"
         aria-label="Delete note"
@@ -186,7 +189,7 @@ export function StickyNoteToolbar({
         }}
       >
         <TrashIcon size={16} />
-      </button>
+      </IconButton>
     </div>
   );
 }

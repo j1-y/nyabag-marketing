@@ -2,6 +2,7 @@
 
 import { ArrowsOutSimpleIcon, MinusIcon, PlusIcon } from "@phosphor-icons/react";
 import { useNotes } from "@/hooks/useNotes";
+import { IconButton } from "@/components/ui/icon-button";
 
 export function CanvasStatusBar() {
   const { viewport, setViewport } = useNotes();
@@ -18,15 +19,15 @@ export function CanvasStatusBar() {
 
   return (
     <div className="canvas-zoom-controls">
-      <button type="button" title="Zoom out" aria-label="Zoom out" onClick={() => zoom(-0.1)}>
+      <IconButton type="button" variant="ghost" size="icon-sm" title="Zoom out" aria-label="Zoom out" onClick={() => zoom(-0.1)}>
         <MinusIcon size={18} weight="regular" />
-      </button>
-      <button type="button" title="Reset zoom" aria-label={`Reset zoom, current ${pct}%`} onClick={resetView}>
+      </IconButton>
+      <IconButton type="button" variant="ghost" size="icon-sm" title="Reset zoom" aria-label={`Reset zoom, current ${pct}%`} onClick={resetView}>
         <ArrowsOutSimpleIcon size={17} weight="regular" />
-      </button>
-      <button type="button" title="Zoom in" aria-label="Zoom in" onClick={() => zoom(0.1)}>
+      </IconButton>
+      <IconButton type="button" variant="ghost" size="icon-sm" title="Zoom in" aria-label="Zoom in" onClick={() => zoom(0.1)}>
         <PlusIcon size={18} weight="regular" />
-      </button>
+      </IconButton>
     </div>
   );
 }

@@ -1,10 +1,13 @@
-export type SocialProvider = "x" | "facebook" | "linkedin";
+export type SocialProvider = "x" | "facebook" | "linkedin" | "instagram" | "tiktok" | "pinterest";
 export const SOCIAL_NOTE_PREFIX = "nyabag-social:";
 
 export type SocialEmbed =
   | { provider: "x"; url: string; statusId: string }
   | { provider: "facebook"; url: string; iframeSrc: string }
-  | { provider: "linkedin"; url: string; iframeSrc: string | null };
+  | { provider: "linkedin"; url: string; iframeSrc: string | null }
+  | { provider: "instagram"; url: string }
+  | { provider: "tiktok"; url: string; videoId: string | null }
+  | { provider: "pinterest"; url: string; widget: "pin" | "board" | "profile" };
 
 export type SocialEmbedSize = {
   width: number;
@@ -14,7 +17,10 @@ export type SocialEmbedSize = {
 export const SOCIAL_EMBED_SIZE: Record<SocialProvider, SocialEmbedSize> = {
   x: { width: 550, height: 640 },
   facebook: { width: 500, height: 650 },
-  linkedin: { width: 504, height: 620 },
+  linkedin: { width: 504, height: 780 },
+  instagram: { width: 540, height: 720 },
+  tiktok: { width: 605, height: 760 },
+  pinterest: { width: 420, height: 660 },
 };
 
 function normalizedUrl(raw: string): URL | null {
@@ -95,6 +101,40 @@ export function parseSocialEmbed(raw: string): SocialEmbed | null {
     return { provider: "linkedin", url: href, iframeSrc };
   }
 
+  if (hostname === "instagram.com" || hostname.endsWith(".instagram.com")) {
+    const path = url.pathname.toLowerCase();
+    const isPost =
+      path.startsWith("/p/") ||
+      path.startsWith("/reel/") ||
+      path.startsWith("/tv/");
+    if (!isPost) return null;
+
+    return { provider: "instagram", url: href };
+  }
+
+  if (hostname === "tiktok.com" || hostname.endsWith(".tiktok.com")) {
+    const videoId = url.pathname.match(/\/video\/(\d+)/)?.[1] ?? null;
+    const isVideo = Boolean(videoId);
+    if (!isVideo) return null;
+
+    return { provider: "tiktok", url: href, videoId };
+  }
+
+  if (hostname === "pinterest.com" || hostname.endsWith(".pinterest.com") || hostname === "pin.it") {
+    const path = url.pathname.toLowerCase();
+    if (hostname === "pin.it" || path.startsWith("/pin/")) {
+      return { provider: "pinterest", url: href, widget: "pin" };
+    }
+
+    const parts = path.split("/").filter(Boolean);
+    if (parts.length >= 2) {
+      return { provider: "pinterest", url: href, widget: "board" };
+    }
+    if (parts.length === 1) {
+      return { provider: "pinterest", url: href, widget: "profile" };
+    }
+  }
+
   return null;
 }
 
@@ -106,6 +146,12 @@ export function socialProviderLabel(provider: SocialProvider): string {
       return "Facebook";
     case "linkedin":
       return "LinkedIn";
+    case "instagram":
+      return "Instagram";
+    case "tiktok":
+      return "TikTok";
+    case "pinterest":
+      return "Pinterest";
   }
 }
 

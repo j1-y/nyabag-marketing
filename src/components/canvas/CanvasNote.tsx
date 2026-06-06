@@ -6,8 +6,10 @@ import { ResizeHandles } from "./ResizeHandles";
 import { NoteContent } from "./NoteContent";
 import { NoteToolbar } from "./NoteToolbar";
 import { StickyNoteToolbar } from "./StickyNoteToolbar";
+import { SocialNoteToolbar } from "./SocialNoteToolbar";
 import { TextFrameToolbar } from "./TextFrameToolbar";
 import { maybeSnap } from "@/lib/canvas-grid";
+import { NOTE_COLORS_REQUIRING_LIGHT_TEXT } from "@/lib/content-colors";
 import { isSocialNoteContent } from "@/lib/social-embeds";
 import type { StickyNoteTextHandle } from "./NoteTextContent";
 import type { CanvasNote as CanvasNoteType, CanvasViewport } from "@/lib/types";
@@ -26,10 +28,10 @@ const TYPE_LABELS: Record<string, string> = {
   social: "Social",
 };
 
-const LIGHT_TEXT_COLORS = new Set(["#EF4056", "#B23ACB"]);
+const LIGHT_TEXT_COLORS = new Set<string>(NOTE_COLORS_REQUIRING_LIGHT_TEXT);
 
 function getNoteInk(color: string) {
-  return LIGHT_TEXT_COLORS.has(color.toUpperCase()) ? "#FFFFFF" : "#111111";
+  return LIGHT_TEXT_COLORS.has(color.toUpperCase()) ? "var(--text-inverse)" : "var(--text)";
 }
 
 export function CanvasNote({ note, viewport }: Props) {
@@ -131,7 +133,8 @@ export function CanvasNote({ note, viewport }: Props) {
     bringToFront(note.id);
   }
 
-  const noteLabel = isSocialNoteContent(note.content) ? "Social" : TYPE_LABELS[note.type];
+  const isSocialNote = note.type === "social" || isSocialNoteContent(note.content);
+  const noteLabel = isSocialNote ? "Social" : TYPE_LABELS[note.type];
   const isStickyNote = note.type === "text" && !isSocialNoteContent(note.content);
   const isTextFrame = note.type === "text_frame";
   const isImageNote = note.type === "image";
@@ -140,6 +143,7 @@ export function CanvasNote({ note, viewport }: Props) {
   const isTextEditable = isStickyNote || isTextFrame;
   const showStickyToolbar = isPrimarySelected && isStickyNote && selectedIds.length === 1;
   const showTextFrameToolbar = isPrimarySelected && isTextFrame && selectedIds.length === 1;
+  const showSocialToolbar = isPrimarySelected && isSocialNote && selectedIds.length === 1;
   const toolbarPlacement = viewport.y + note.y * viewport.scale > 64 ? "above" : "below";
 
   function handleBodyPointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -166,14 +170,15 @@ export function CanvasNote({ note, viewport }: Props) {
       className={`canvas-note${isStickyNote ? " canvas-note--text" : ""}${
         isTextFrame ? " canvas-note--text-frame" : ""
       }${isFramelessImage ? " canvas-note--image" : ""
+      }${isSocialNote ? " canvas-note--social" : ""
       }${isSelected ? " canvas-note--selected" : ""}`}
       style={{
         transform: `translate(${note.x}px, ${note.y}px)`,
         width: note.width,
         height: note.height,
-        background: isTextFrame || isFramelessImage ? "transparent" : note.color,
-        color: isTextFrame ? "#111111" : getNoteInk(note.color),
-        "--sticky-note-ink": isTextFrame ? "#111111" : getNoteInk(note.color),
+        background: isTextFrame || isFramelessImage || isSocialNote ? "transparent" : note.color,
+        color: isTextFrame ? "var(--text)" : getNoteInk(note.color),
+        "--sticky-note-ink": isTextFrame ? "var(--text)" : getNoteInk(note.color),
         zIndex: isSelected ? 9999 : note.z_index,
       } as React.CSSProperties}
       onPointerDown={handleNotePointerDown}
@@ -182,12 +187,12 @@ export function CanvasNote({ note, viewport }: Props) {
     >
       {/* Drag handle header */}
       <div
-        className={`note-header${isTextEditable ? " note-header--text" : ""}${isFramelessImage ? " image-note-drag-bar" : ""}`}
+        className={`note-header${isTextEditable ? " note-header--text" : ""}${isFramelessImage ? " image-note-drag-bar" : ""}${isSocialNote ? " social-note-drag-bar" : ""}`}
         onPointerDown={handleHeaderPointerDown}
         onPointerMove={handleHeaderPointerMove}
         onPointerUp={handleHeaderPointerUp}
       >
-        {isTextEditable || isFramelessImage ? (
+        {isTextEditable || isFramelessImage || isSocialNote ? (
           <span className="note-drag-bar" aria-hidden="true">
             <span />
             <span />
@@ -198,7 +203,7 @@ export function CanvasNote({ note, viewport }: Props) {
         ) : (
           <span className="note-type-badge">{noteLabel}</span>
         )}
-        {!isTextEditable && !isFramelessImage && <NoteToolbar note={note} isVisible={isHovered || isSelected} />}
+        {!isTextEditable && !isFramelessImage && !isSocialNote && <NoteToolbar note={note} isVisible={isHovered || isSelected} />}
       </div>
 
       {/* Content area */}
@@ -223,6 +228,14 @@ export function CanvasNote({ note, viewport }: Props) {
         <TextFrameToolbar
           note={note}
           formatRef={textFormatRef}
+          viewportScale={viewport.scale}
+          placement={toolbarPlacement}
+        />
+      )}
+
+      {showSocialToolbar && (
+        <SocialNoteToolbar
+          note={note}
           viewportScale={viewport.scale}
           placement={toolbarPlacement}
         />

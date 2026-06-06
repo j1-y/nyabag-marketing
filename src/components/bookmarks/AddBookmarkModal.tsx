@@ -81,7 +81,7 @@ export function AddBookmarkModal() {
           </DialogDescription>
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit}>
-          <div className="grid gap-4 px-5 py-4">
+          <div className="grid gap-4 px-4 py-4">
             {error && <div className="auth-error">{error}</div>}
             <Field>
               <FieldLabel htmlFor="add-url">URL <span className="text-destructive">*</span></FieldLabel>

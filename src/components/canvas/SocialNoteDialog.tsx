@@ -1,14 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ShareNetworkIcon, XIcon } from "@phosphor-icons/react";
+import { useState } from "react";
+import { ShareNetworkIcon } from "@phosphor-icons/react";
 import { parseSocialEmbed, socialProviderLabel } from "@/lib/social-embeds";
 import type { ActionResult } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldError, FieldHint, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 export function SocialNoteDialog({
   initialUrl = "",
   title = "Embed social post",
-  description = "Paste a public Facebook, LinkedIn, or X post link.",
+  description = "Paste a public X/Twitter, Facebook, LinkedIn, Instagram, TikTok, or Pinterest post link.",
   confirmLabel = "Create note",
   onClose,
   onConfirm,
@@ -25,19 +36,10 @@ export function SocialNoteDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const parsed = parseSocialEmbed(url);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
   async function confirm() {
     setError("");
     if (!parsed) {
-      setError("Paste a public Facebook, LinkedIn, or X post URL.");
+      setError("Paste a public X/Twitter, Facebook, LinkedIn, Instagram, TikTok, or Pinterest post URL.");
       return;
     }
 
@@ -49,60 +51,49 @@ export function SocialNoteDialog({
   }
 
   return (
-    <div className="social-note-dialog-backdrop" onPointerDown={onClose}>
-      <div
-        className="social-note-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="social-note-dialog-title"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <div className="social-note-dialog-header">
-          <div className="social-note-dialog-icon" aria-hidden="true">
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4">
+          <div className="grid h-10 w-10 place-items-center rounded-[10px] border border-border bg-surface-muted text-muted-foreground" aria-hidden="true">
             <ShareNetworkIcon size={18} />
           </div>
-          <div>
-            <h2 id="social-note-dialog-title">{title}</h2>
-            <p>{description}</p>
+          <div className="grid gap-2">
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
           </div>
-          <button type="button" aria-label="Close" onClick={onClose}>
-            <XIcon size={14} weight="bold" />
-          </button>
+        </DialogHeader>
+
+        <div className="grid gap-4 px-4 py-4">
+          <Field>
+            <FieldLabel htmlFor="social-note-url">Post link</FieldLabel>
+            <Input
+              id="social-note-url"
+              autoFocus
+              type="url"
+              placeholder="https://..."
+              value={url}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                setError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") confirm();
+              }}
+            />
+            {parsed && <FieldHint>Detected {socialProviderLabel(parsed.provider)}</FieldHint>}
+          </Field>
+          {error && <FieldError>{error}</FieldError>}
         </div>
 
-        <label className="social-note-url-field">
-          <span>Post link</span>
-          <input
-            autoFocus
-            type="url"
-            placeholder="https://..."
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              setError("");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") confirm();
-            }}
-          />
-        </label>
-
-        {parsed && (
-          <p className="social-note-detected">
-            Detected {socialProviderLabel(parsed.provider)}
-          </p>
-        )}
-        {error && <p className="social-note-dialog-error">{error}</p>}
-
-        <div className="social-note-dialog-actions">
-          <button type="button" onClick={onClose}>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button type="button" onClick={confirm} disabled={isSubmitting}>
+          </Button>
+          <Button type="button" onClick={confirm} disabled={isSubmitting}>
             {isSubmitting ? "Creating..." : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

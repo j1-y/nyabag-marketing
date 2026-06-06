@@ -72,7 +72,7 @@ export function NoteVideoContent({ note, isSelected }: { note: CanvasNote; isSel
   if (!hasVideo) {
     return (
       <div
-        style={{ padding: "10px 12px", height: "100%", display: "flex", flexDirection: "column", gap: 8 }}
+        style={{ padding: "8px 16px", height: "100%", display: "flex", flexDirection: "column", gap: 8 }}
         onPointerDown={(e) => e.stopPropagation()}
       >
         <input
@@ -91,7 +91,7 @@ export function NoteVideoContent({ note, isSelected }: { note: CanvasNote; isSel
           }}
           style={{
             width: "100%",
-            padding: "6px 8px",
+            padding: "8px 8px",
             borderRadius: 10,
             border: "1px solid var(--border2)",
             background: "var(--bg)",
@@ -124,7 +124,7 @@ export function NoteVideoContent({ note, isSelected }: { note: CanvasNote; isSel
 
   return (
     <div
-      style={{ height: "100%", position: "relative", background: "#000" }}
+      style={{ height: "100%", position: "relative", background: "var(--black)" }}
       onPointerDown={(e) => e.stopPropagation()}
     >
       {uploadedVideoUrl ? (
@@ -144,18 +144,18 @@ export function NoteVideoContent({ note, isSelected }: { note: CanvasNote; isSel
         />
       )}
       {isSelected && (
-        <div style={{ position: "absolute", bottom: 8, right: 8, display: "flex", gap: 6 }}>
+        <div style={{ position: "absolute", bottom: 8, right: 8, display: "flex", gap: 8 }}>
           <button
             onClick={() => {
               setIsEditing(true);
               setInputVal(note.media_source === "url" ? note.content : "");
             }}
             style={{
-              background: "rgba(0,0,0,0.6)",
-              color: "#fff",
+              background: "hsl(var(--surface-inverse-token) / 0.6)",
+              color: "var(--text-inverse)",
               border: "none",
               borderRadius: 10,
-              padding: "3px 8px",
+              padding: "8px 8px",
               fontSize: 11,
               cursor: "pointer",
             }}
@@ -165,11 +165,11 @@ export function NoteVideoContent({ note, isSelected }: { note: CanvasNote; isSel
           <button
             onClick={clearMedia}
             style={{
-              background: "rgba(0,0,0,0.6)",
-              color: "#fff",
+              background: "hsl(var(--surface-inverse-token) / 0.6)",
+              color: "var(--text-inverse)",
               border: "none",
               borderRadius: 10,
-              padding: "3px 8px",
+              padding: "8px 8px",
               fontSize: 11,
               cursor: "pointer",
             }}

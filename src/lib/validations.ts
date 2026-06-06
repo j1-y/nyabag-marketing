@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_NOTE_COLOR } from "./content-colors";
 
 const urlSchema = z
   .string()
@@ -56,7 +57,7 @@ export const noteCreateSchema = z.object({
   y: z.coerce.number().finite(),
   width: z.coerce.number().min(100).max(1200),
   height: z.coerce.number().min(80).max(900),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#FFF9C4"),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default(DEFAULT_NOTE_COLOR),
   z_index: z.coerce.number().int().min(1),
 });
 

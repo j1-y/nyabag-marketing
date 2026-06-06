@@ -50,7 +50,7 @@ export function EditBookmarkModal() {
         {editTarget && (
           <form ref={formRef} onSubmit={handleSubmit}>
             <input type="hidden" name="id" value={editTarget.id} />
-            <div className="grid gap-4 px-5 py-4">
+            <div className="grid gap-4 px-4 py-4">
               {error && <div className="auth-error">{error}</div>}
               <Field>
                 <FieldLabel htmlFor="edit-url">URL <span className="text-destructive">*</span></FieldLabel>

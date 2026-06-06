@@ -49,7 +49,7 @@ export function Sidebar() {
       <nav className="nav-section">
         <p className="nav-label">{SECTION_TAGS}</p>
         {tags.length === 0 ? (
-          <p style={{ fontSize: 12, color: "var(--text3)", padding: "0 0.5rem" }}>
+          <p style={{ fontSize: 12, color: "var(--text3)", padding: "0 8px" }}>
             {TEXT_NO_TAGS}
           </p>
         ) : (

@@ -25,7 +25,7 @@ export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSele
   if (!hasUrl || isEditing) {
     return (
       <div
-        style={{ padding: "10px 12px", height: "100%", display: "flex", flexDirection: "column", gap: 6 }}
+        style={{ padding: "8px 16px", height: "100%", display: "flex", flexDirection: "column", gap: 8 }}
         onPointerDown={(e) => e.stopPropagation()}
       >
         <input
@@ -40,7 +40,7 @@ export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSele
           }}
           style={{
             width: "100%",
-            padding: "6px 8px",
+            padding: "8px 8px",
             borderRadius: 10,
             border: "1px solid var(--border2)",
             background: "var(--bg)",
@@ -70,7 +70,7 @@ export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSele
           <img
             src={favicon}
             alt=""
-            style={{ width: 36, height: 36, objectFit: "contain", borderRadius: 10 }}
+            style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 10 }}
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
         ) : null}
@@ -79,8 +79,8 @@ export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSele
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 6,
-          padding: "6px 10px",
+            gap: 8,
+            padding: "8px 16px",
           borderTop: "1px solid var(--border2)",
           fontSize: 12,
           color: "var(--text2)",

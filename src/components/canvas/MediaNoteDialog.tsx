@@ -1,8 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { FileArrowUpIcon, LinkSimpleIcon, XIcon } from "@phosphor-icons/react";
+import { useRef, useState } from "react";
+import { FileArrowUpIcon, LinkSimpleIcon } from "@phosphor-icons/react";
 import type { PendingMediaNote } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldError, FieldHint, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type MediaType = "image" | "video";
 type MediaSource = "upload" | "url";
@@ -73,15 +85,6 @@ export function MediaNoteDialog({
     });
   }
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
   async function selectFile(nextFile: File | undefined) {
     setError("");
     if (!nextFile) return;
@@ -141,107 +144,95 @@ export function MediaNoteDialog({
   }
 
   return (
-    <div className="media-note-dialog-backdrop" onPointerDown={onClose}>
-      <div
-        className="media-note-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="media-note-dialog-title"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <div className="media-note-dialog-header">
-          <div>
-            <h2 id="media-note-dialog-title">{title}</h2>
-            <p>Choose media first, then place it anywhere on the canvas.</p>
-          </div>
-          <button type="button" aria-label="Close" onClick={onClose}>
-            <XIcon size={16} weight="bold" />
-          </button>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            Choose media first, then place it anywhere on the canvas.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 px-4 py-4">
+          <Tabs value={source} onValueChange={(value) => {
+            setSource(value as MediaSource);
+            setError("");
+          }}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="upload" className="gap-2">
+                <FileArrowUpIcon size={16} weight="regular" />
+                Upload
+              </TabsTrigger>
+              <TabsTrigger value="url" className="gap-2">
+                <LinkSimpleIcon size={16} weight="regular" />
+                Link
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="upload" className="mt-4">
+              <div
+                className={`media-note-dropzone${isDragging ? " dragging" : ""}${file ? " has-file" : ""}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  void selectFile(e.dataTransfer.files[0]);
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={accept}
+                  onChange={(e) => void selectFile(e.target.files?.[0])}
+                />
+                <FileArrowUpIcon size={28} weight="regular" />
+                <strong>{file ? file.name : `Drop a ${type} file here`}</strong>
+                <span>
+                  {file
+                    ? `${file.name} · ${formatBytes(file.size)}${fileDimensions ? ` · ${fileDimensions.width}x${fileDimensions.height}` : ""}`
+                    : `or choose a file, up to ${formatLimit(type)}`}
+                </span>
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  Choose file
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="url" className="mt-4">
+              <Field>
+                <FieldLabel htmlFor="media-note-url">Media URL</FieldLabel>
+                <Input
+                  id="media-note-url"
+                  autoFocus
+                  type="url"
+                  placeholder={urlPlaceholder}
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") confirm();
+                  }}
+                />
+                <FieldHint>Paste a direct media URL or supported video link.</FieldHint>
+              </Field>
+            </TabsContent>
+          </Tabs>
+
+          {error && <FieldError>{error}</FieldError>}
         </div>
 
-        <div className="media-note-source-switch" aria-label="Media source">
-          <button
-            type="button"
-            className={source === "upload" ? "active" : ""}
-            onClick={() => {
-              setSource("upload");
-              setError("");
-            }}
-          >
-            <FileArrowUpIcon size={16} weight="regular" />
-            Upload
-          </button>
-          <button
-            type="button"
-            className={source === "url" ? "active" : ""}
-            onClick={() => {
-              setSource("url");
-              setError("");
-            }}
-          >
-            <LinkSimpleIcon size={16} weight="regular" />
-            Link
-          </button>
-        </div>
-
-        {source === "upload" ? (
-          <div
-            className={`media-note-dropzone${isDragging ? " dragging" : ""}${file ? " has-file" : ""}`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setIsDragging(false);
-              void selectFile(e.dataTransfer.files[0]);
-            }}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={accept}
-              onChange={(e) => void selectFile(e.target.files?.[0])}
-            />
-            <FileArrowUpIcon size={28} weight="regular" />
-            <strong>{file ? file.name : `Drop a ${type} file here`}</strong>
-            <span>
-              {file
-                ? `${file.name} · ${formatBytes(file.size)}${fileDimensions ? ` · ${fileDimensions.width}x${fileDimensions.height}` : ""}`
-                : `or choose a file, up to ${formatLimit(type)}`}
-            </span>
-            <button type="button" onClick={() => fileInputRef.current?.click()}>
-              Choose file
-            </button>
-          </div>
-        ) : (
-          <label className="media-note-url-field">
-            <span>Media URL</span>
-            <input
-              autoFocus
-              type="url"
-              placeholder={urlPlaceholder}
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") confirm();
-              }}
-            />
-          </label>
-        )}
-
-        {error && <p className="media-note-dialog-error">{error}</p>}
-
-        <div className="media-note-dialog-actions">
-          <button type="button" onClick={onClose}>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button type="button" onClick={confirm}>
+          </Button>
+          <Button type="button" onClick={confirm}>
             Place on canvas
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

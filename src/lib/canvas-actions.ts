@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_SECTION_COLOR } from "@/lib/content-colors";
 import { CANVAS_NOTE_COLUMNS, CANVAS_SECTION_COLUMNS } from "@/lib/canvas-data";
 import { isPerfEnabled, timeAsync } from "@/lib/perf";
 import {
@@ -40,7 +41,7 @@ const SECTION_PAD_X = 32;
 const SECTION_PAD_TOP = 56;
 const SECTION_PAD_BOTTOM = 32;
 const NOTE_CHROME_WIDTH = 22;
-const NOTE_CHROME_HEIGHT = 74;
+const NOTE_CHROME_HEIGHT = 22;
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -310,7 +311,7 @@ export async function createSocialNoteFromUrl(
 
   const embed = parseSocialEmbed(url);
   if (!embed) {
-    return { success: false, error: "Paste a public Facebook, LinkedIn, or X post URL" };
+    return { success: false, error: "Paste a public X/Twitter, Facebook, LinkedIn, Instagram, TikTok, or Pinterest post URL" };
   }
 
   let embedSize = getSocialEmbedFallbackSize(embed.provider);
@@ -527,7 +528,7 @@ export async function updateNoteContent(
     return { success: false, error: "Must be a valid URL" };
   }
   if (isSocialNote && socialUrl && !parseSocialEmbed(socialUrl)) {
-    return { success: false, error: "Paste a public Facebook, LinkedIn, or X post URL" };
+    return { success: false, error: "Paste a public X/Twitter, Facebook, LinkedIn, Instagram, TikTok, or Pinterest post URL" };
   }
 
   const parsed = noteUpdateSchema.safeParse({
@@ -893,7 +894,7 @@ export async function createSectionFromNotes(
     y: minY - SECTION_PAD_TOP,
     width: maxX - minX + SECTION_PAD_X * 2,
     height: maxY - minY + SECTION_PAD_TOP + SECTION_PAD_BOTTOM,
-    color: "#FFFFFF",
+    color: DEFAULT_SECTION_COLOR,
     z_index: (maxRow?.z_index ?? 0) + 1,
   };
 

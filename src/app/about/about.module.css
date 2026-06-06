@@ -1,14 +1,14 @@
 .root {
-  --about-bg: #0a0a0a;
-  --about-bg-1: #111111;
-  --about-bg-2: #171717;
-  --about-bg-3: #202020;
-  --about-border: #242424;
-  --about-border-2: #363636;
-  --about-text: #eeeeee;
-  --about-muted: #a0a0a0;
-  --about-dim: #686868;
-  --about-white: #ffffff;
+  --about-bg: var(--text);
+  --about-bg-1: var(--text);
+  --about-bg-2: var(--text);
+  --about-bg-3: var(--surface-inverse-muted);
+  --about-border: var(--surface-inverse-muted);
+  --about-border-2: var(--surface-inverse-muted);
+  --about-text: var(--text-inverse);
+  --about-muted: var(--text3);
+  --about-dim: var(--text2);
+  --about-white: var(--white);
   --about-radius-sm: 6px;
   --about-radius-md: 10px;
   --about-radius-lg: 16px;
@@ -32,8 +32,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(hsl(var(--text-inverse-token) / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--text-inverse-token) / 0.025) 1px, transparent 1px);
   background-size: 62px 62px;
   mask-image: radial-gradient(ellipse 78% 82% at 50% 0%, black 38%, transparent 100%);
   pointer-events: none;
@@ -47,7 +47,7 @@
   width: min(720px, 84vw);
   height: 320px;
   transform: translateX(-50%);
-  background: radial-gradient(ellipse, rgba(106, 169, 255, 0.12), transparent 66%);
+  background: radial-gradient(ellipse, hsl(var(--accent-token) / 0.12), transparent 66%);
   opacity: 0.6;
   pointer-events: none;
 }
@@ -121,13 +121,13 @@
 
 .primaryCta {
   background: var(--about-white);
-  color: #08090a;
+  color: var(--text);
 }
 
 .secondaryCta {
   border: 1px solid var(--about-border-2);
   color: var(--about-text);
-  background: rgba(255, 255, 255, 0.03);
+  background: hsl(var(--text-inverse-token) / 0.03);
 }
 
 .primaryCta:hover,
@@ -137,7 +137,7 @@
 }
 
 .secondaryCta:hover {
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: hsl(var(--text-inverse-token) / 0.28);
 }
 
 .section,
@@ -148,7 +148,7 @@
 
 .sectionAlt {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 42%),
+    linear-gradient(180deg, hsl(var(--text-inverse-token) / 0.018), transparent 42%),
     var(--about-bg-1);
 }
 
@@ -211,7 +211,7 @@
   border: 1px solid var(--about-border-2);
   border-radius: var(--about-radius-lg);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    linear-gradient(135deg, hsl(var(--text-inverse-token) / 0.055), hsl(var(--text-inverse-token) / 0.012)),
     var(--about-bg-2);
 }
 
@@ -357,7 +357,7 @@
 .tagGrid span {
   border: 1px solid var(--about-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.025);
+  background: hsl(var(--text-inverse-token) / 0.025);
   color: var(--about-muted);
   font-size: 13px;
   padding: 8px 12px;
@@ -395,7 +395,7 @@
   padding: 92px 48px;
   border-bottom: 1px solid var(--about-border);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 60%),
+    linear-gradient(180deg, hsl(var(--text-inverse-token) / 0.025), transparent 60%),
     var(--about-bg);
 }
 
@@ -406,7 +406,7 @@
   border: 1px solid var(--about-border-2);
   border-radius: var(--about-radius-xl);
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(106, 169, 255, 0.14), transparent 58%),
+    radial-gradient(ellipse at 50% 0%, hsl(var(--accent-token) / 0.14), transparent 58%),
     var(--about-bg-1);
   text-align: center;
 }

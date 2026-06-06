@@ -8,6 +8,7 @@ import {
 } from "@phosphor-icons/react";
 import type { CSSProperties, RefObject } from "react";
 import { useNotes } from "@/hooks/useNotes";
+import { IconButton } from "@/components/ui/icon-button";
 import type { CanvasNote } from "@/lib/types";
 import type { StickyNoteFormatAction, StickyNoteTextHandle } from "./NoteTextContent";
 
@@ -69,8 +70,10 @@ export function TextFrameToolbar({
 
       <div className="text-frame-toolbar-sep" />
 
-      <button
+      <IconButton
         type="button"
+        variant="ghost"
+        size="icon-sm"
         className="text-frame-toolbar-button text-frame-toolbar-button--delete"
         title="Delete text frame"
         aria-label="Delete text frame"
@@ -81,7 +84,7 @@ export function TextFrameToolbar({
         }}
       >
         <TrashIcon size={16} />
-      </button>
+      </IconButton>
     </div>
   );
 }

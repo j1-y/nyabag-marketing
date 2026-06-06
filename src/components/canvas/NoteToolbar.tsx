@@ -2,6 +2,7 @@
 
 import { TrashIcon } from "@phosphor-icons/react";
 import { useNotes } from "@/hooks/useNotes";
+import { IconButton } from "@/components/ui/icon-button";
 import { ColorPicker } from "./ColorPicker";
 import type { CanvasNote } from "@/lib/types";
 
@@ -23,13 +24,16 @@ export function NoteToolbar({ note, isVisible }: Props) {
         value={note.color}
         onChange={(color) => updateColor(note.id, color)}
       />
-      <button
+      <IconButton
+        type="button"
+        variant="ghost"
+        size="icon-sm"
         className="note-toolbar-btn"
         title="Delete note"
         onPointerDown={(e) => { e.stopPropagation(); deleteNote(note.id); }}
       >
         <TrashIcon size={12} />
-      </button>
+      </IconButton>
     </div>
   );
 }

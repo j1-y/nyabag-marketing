@@ -5,6 +5,17 @@ import { useNotes } from "@/hooks/useNotes";
 import { CanvasNote } from "./CanvasNote";
 import { CanvasSection } from "./CanvasSection";
 import { maybeSnap, SNAP_SIZE } from "@/lib/canvas-grid";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import type { NoteType } from "@/lib/types";
 
 const MIN_SCALE = 0.1;
@@ -216,7 +227,7 @@ export function CanvasContainer() {
       const target = e.target as HTMLElement;
       const isControl = Boolean(
         target.closest(
-          "button,input,textarea,a,video,iframe,.canvas-toolbar,.canvas-zoom-controls,.note-toolbar,.sticky-note-toolbar,.color-picker-popover,.resize-handle,.canvas-section-resize"
+          "button,input,textarea,a,video,iframe,.canvas-toolbar,.canvas-zoom-controls,.note-toolbar,.sticky-note-toolbar,.text-frame-toolbar,.social-note-toolbar,.color-picker-popover,.resize-handle,.canvas-section-resize"
         )
       );
       const noteEl = target.closest<HTMLElement>("[data-note-id]");
@@ -309,7 +320,7 @@ export function CanvasContainer() {
         const target = e.target as HTMLElement;
         const isControl = Boolean(
           target.closest(
-            "button,input,textarea,a,video,iframe,.canvas-toolbar,.canvas-zoom-controls,.note-toolbar,.sticky-note-toolbar,.color-picker-popover,.resize-handle,.canvas-section-resize"
+            "button,input,textarea,a,video,iframe,.canvas-toolbar,.canvas-zoom-controls,.note-toolbar,.sticky-note-toolbar,.text-frame-toolbar,.social-note-toolbar,.color-picker-popover,.resize-handle,.canvas-section-resize"
           )
         );
         const isBlockedSurface = Boolean(
@@ -582,30 +593,36 @@ export function CanvasContainer() {
           </button>
         </div>
       )}
-      {isSectionDialogOpen && (
-        <div className="section-dialog-backdrop" onPointerDown={() => setIsSectionDialogOpen(false)}>
-          <form
-            className="section-dialog"
-            onSubmit={submitSection}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <label htmlFor="section-label">Section label</label>
-            <input
-              id="section-label"
-              value={sectionLabel}
-              autoFocus
-              onChange={(e) => setSectionLabel(e.target.value)}
-              placeholder="Section"
-            />
-            <div className="section-dialog-actions">
-              <button type="button" onClick={() => setIsSectionDialogOpen(false)}>
-                Cancel
-              </button>
-              <button type="submit">Create section</button>
+      <Dialog open={isSectionDialogOpen} onOpenChange={setIsSectionDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create section</DialogTitle>
+            <DialogDescription>
+              Group the selected notes into a named canvas section.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitSection}>
+            <div className="grid gap-4 px-4 py-4">
+              <Field>
+                <FieldLabel htmlFor="section-label">Section label</FieldLabel>
+                <Input
+                  id="section-label"
+                  value={sectionLabel}
+                  autoFocus
+                  onChange={(e) => setSectionLabel(e.target.value)}
+                  placeholder="Section"
+                />
+              </Field>
             </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsSectionDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Create section</Button>
+            </DialogFooter>
           </form>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

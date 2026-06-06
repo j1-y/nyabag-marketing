@@ -10,7 +10,7 @@ function getReadableTextColor(hex: string) {
   const g = parseInt(value.slice(2, 4), 16);
   const b = parseInt(value.slice(4, 6), 16);
   const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-  return luminance > 0.58 ? "#0a0a0a" : "#ffffff";
+  return luminance > 0.58 ? "var(--text)" : "var(--text-inverse)";
 }
 
 export function BookmarkColorPalette({

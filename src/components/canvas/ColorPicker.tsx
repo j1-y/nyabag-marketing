@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { PaletteIcon } from "@phosphor-icons/react";
 import { NOTE_COLORS } from "@/hooks/useNotes";
+import { IconButton } from "@/components/ui/icon-button";
 
 interface ColorPickerProps {
   value: string;
@@ -24,13 +25,16 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <button
+      <IconButton
+        type="button"
+        variant="ghost"
+        size="icon-sm"
         className="note-toolbar-btn"
         title="Change color"
         onPointerDown={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
       >
         <PaletteIcon size={12} />
-      </button>
+      </IconButton>
       {open && (
         <div className="color-picker-popover" onPointerDown={(e) => e.stopPropagation()}>
           {NOTE_COLORS.map((c) => (

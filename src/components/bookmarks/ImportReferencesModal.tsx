@@ -138,7 +138,7 @@ export function ImportReferencesModal() {
           <DialogTitle>Import references</DialogTitle>
         </DialogHeader>
 
-        <div className="import-modal-body grid gap-4 px-5 py-4">
+        <div className="import-modal-body grid gap-4 px-4 py-4">
           {error && <div className="auth-error">{error}</div>}
 
           {!result ? (

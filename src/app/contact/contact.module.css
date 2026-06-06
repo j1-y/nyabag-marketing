@@ -1,13 +1,13 @@
 .root {
-  --contact-bg: #0a0a0a;
-  --contact-bg-1: #111111;
-  --contact-bg-2: #171717;
-  --contact-border: #242424;
-  --contact-border-2: #363636;
-  --contact-text: #eeeeee;
-  --contact-muted: #a0a0a0;
-  --contact-dim: #686868;
-  --contact-white: #ffffff;
+  --contact-bg: var(--text);
+  --contact-bg-1: var(--text);
+  --contact-bg-2: var(--text);
+  --contact-border: var(--surface-inverse-muted);
+  --contact-border-2: var(--surface-inverse-muted);
+  --contact-text: var(--text-inverse);
+  --contact-muted: var(--text3);
+  --contact-dim: var(--text2);
+  --contact-white: var(--white);
   --contact-radius-sm: 6px;
   --contact-radius-md: 10px;
   --contact-radius-lg: 16px;
@@ -31,8 +31,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(hsl(var(--text-inverse-token) / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--text-inverse-token) / 0.025) 1px, transparent 1px);
   background-size: 62px 62px;
   mask-image: radial-gradient(ellipse 78% 82% at 50% 0%, black 38%, transparent 100%);
   pointer-events: none;
@@ -46,7 +46,7 @@
   width: min(720px, 84vw);
   height: 320px;
   transform: translateX(-50%);
-  background: radial-gradient(ellipse, rgba(106, 169, 255, 0.12), transparent 66%);
+  background: radial-gradient(ellipse, hsl(var(--accent-token) / 0.12), transparent 66%);
   opacity: 0.58;
   pointer-events: none;
 }
@@ -123,14 +123,14 @@
 
 .primaryCta {
   background: var(--contact-white);
-  color: #08090a;
+  color: var(--text);
 }
 
 .secondaryCta,
 .cardLink {
   border: 1px solid var(--contact-border-2);
   color: var(--contact-text);
-  background: rgba(255, 255, 255, 0.03);
+  background: hsl(var(--text-inverse-token) / 0.03);
 }
 
 .primaryCta:hover,
@@ -148,7 +148,7 @@
 
 .sectionAlt {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 42%),
+    linear-gradient(180deg, hsl(var(--text-inverse-token) / 0.018), transparent 42%),
     var(--contact-bg-1);
 }
 
@@ -231,7 +231,7 @@
 .quickLinks a {
   border: 1px solid var(--contact-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.025);
+  background: hsl(var(--text-inverse-token) / 0.025);
   color: var(--contact-muted);
   font-size: 13px;
   padding: 8px 12px;

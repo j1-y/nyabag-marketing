@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -16,13 +16,13 @@ const buttonVariants = cva(
         subtle: "bg-surface-muted text-foreground hover:bg-surface-subtle",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        link: "h-auto rounded-none px-0 text-accent underline-offset-4 hover:underline",
+        link: "h-auto rounded-[0px] px-0 text-accent underline-offset-4 hover:underline",
       },
       size: {
-        sm: "h-8 px-3 text-xs",
-        md: "h-9 px-4 text-sm",
-        lg: "h-10 px-5 text-sm",
-        icon: "h-9 w-9 px-0",
+        sm: "h-8 px-4 text-xs",
+        md: "h-10 px-4 text-sm",
+        lg: "h-10 px-4 text-sm",
+        icon: "h-10 w-10 px-0",
         "icon-sm": "h-8 w-8 px-0",
       },
     },

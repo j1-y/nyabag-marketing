@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
 import { useNotes } from "@/hooks/useNotes";
 import { maybeSnap } from "@/lib/canvas-grid";
+import { IconButton } from "@/components/ui/icon-button";
 import type { CanvasSection as CanvasSectionType, CanvasViewport } from "@/lib/types";
 
 interface Props {
@@ -211,12 +212,12 @@ export function CanvasSection({ section, viewport }: Props) {
           <span>{section.label}</span>
         )}
         <div className="canvas-section-actions" onPointerDown={(e) => e.stopPropagation()}>
-          <button title="Rename section" onClick={() => setIsEditing(true)}>
+          <IconButton variant="ghost" size="icon-sm" title="Rename section" onClick={() => setIsEditing(true)}>
             <PencilSimpleIcon size={12} />
-          </button>
-          <button title="Delete section" onClick={() => deleteSection(section.id)}>
+          </IconButton>
+          <IconButton variant="ghost" size="icon-sm" title="Delete section" onClick={() => deleteSection(section.id)}>
             <TrashIcon size={12} />
-          </button>
+          </IconButton>
         </div>
       </div>
       <div

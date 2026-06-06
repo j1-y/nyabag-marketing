@@ -70,14 +70,14 @@ export function DetailModal() {
             )}
           </div>
           <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="sm" variant="secondary" className="h-7 px-3 text-xs shadow-md" asChild>
+            <Button size="sm" variant="secondary" className="h-8 px-4 text-xs shadow-md" asChild>
               <a href={b.screenshot_url ?? b.url} target="_blank" rel="noopener noreferrer">
-                <CornersOutIcon className="mr-1.5 h-3 w-3" /> Expand
+                <CornersOutIcon className="mr-2 h-3 w-3" /> Expand
               </a>
             </Button>
-            <Button size="sm" variant="default" className="h-7 px-3 text-xs shadow-md" asChild>
+            <Button size="sm" variant="default" className="h-8 px-4 text-xs shadow-md" asChild>
               <a href={b.url} target="_blank" rel="noopener noreferrer">
-                <ArrowSquareOutIcon className="mr-1.5 h-3 w-3" /> Open site
+                <ArrowSquareOutIcon className="mr-2 h-3 w-3" /> Open site
               </a>
             </Button>
           </div>
