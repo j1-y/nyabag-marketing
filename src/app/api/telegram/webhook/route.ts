@@ -7,6 +7,7 @@ import { sendTelegramMessage } from "@/lib/telegram/send-message";
 import { extractUrlsFromText } from "@/lib/telegram/url-extractor";
 import { normalizeVerificationCode, verifyCode } from "@/lib/telegram/verify";
 import type { TelegramConnection } from "@/lib/types";
+import { checkRateLimit, telegramLimitKey } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -256,11 +257,13 @@ export async function POST(request: Request) {
   }
 
   const receivedSecret = request.headers.get("x-telegram-bot-api-secret-token");
+
   if (receivedSecret !== getTelegramWebhookSecret()) {
     return new Response("Unauthorized", { status: 401 });
   }
 
   let update: TelegramUpdate;
+
   try {
     update = (await request.json()) as TelegramUpdate;
   } catch {
@@ -268,6 +271,7 @@ export async function POST(request: Request) {
   }
 
   const message = update.message;
+
   if (!message) return ok();
 
   const text = message.text ?? "";
@@ -281,14 +285,36 @@ export async function POST(request: Request) {
   const firstName = message.from?.first_name ?? null;
   const lastName = message.from?.last_name ?? null;
 
+  const rate = await checkRateLimit({
+    scope: "telegram-inbound",
+    identifier: telegramLimitKey(telegramUserId, telegramChatId),
+    limit: 30,
+    windowSeconds: 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    await safeReply(
+      chatId,
+      "You are sending messages too quickly. Please try again later."
+    );
+
+    return ok();
+  }
+
   let supabase: ReturnType<typeof createAdminServiceClient>;
+
   try {
     supabase = createAdminServiceClient();
   } catch (error) {
-    console.error("[telegram] service role client unavailable:", error instanceof Error ? error.message : error);
+    console.error(
+      "[telegram] service role client unavailable:",
+      error instanceof Error ? error.message : error
+    );
+
     await safeReply(chatId, telegramMessages.genericFailure);
     return ok();
   }
+
   const logId = await insertInboundLog({
     supabase,
     update,
@@ -300,44 +326,110 @@ export async function POST(request: Request) {
   });
 
   if (!text) {
-    await updateInboundLog({ supabase, id: logId, status: "ignored" });
+    await updateInboundLog({
+      supabase,
+      id: logId,
+      status: "ignored",
+    });
+
     return ok();
   }
 
   if (chatType !== "private") {
     await safeReply(chatId, telegramMessages.privateOnly);
-    await updateInboundLog({ supabase, id: logId, status: "ignored" });
+
+    await updateInboundLog({
+      supabase,
+      id: logId,
+      status: "ignored",
+    });
+
     return ok();
   }
 
   const command = getCommand(text);
 
   if (command === "/start") {
-    const connection = await findConnectedConnection(supabase, telegramUserId, telegramChatId);
-    await safeReply(chatId, connection ? telegramMessages.connected : telegramMessages.startNotConnected);
-    await updateInboundLog({ supabase, id: logId, status: "processed", userId: connection?.user_id ?? null });
+    const connection = await findConnectedConnection(
+      supabase,
+      telegramUserId,
+      telegramChatId
+    );
+
+    await safeReply(
+      chatId,
+      connection ? telegramMessages.connected : telegramMessages.startNotConnected
+    );
+
+    await updateInboundLog({
+      supabase,
+      id: logId,
+      status: "processed",
+      userId: connection?.user_id ?? null,
+    });
+
     return ok();
   }
 
   if (command === "/help") {
-    const connection = await findConnectedConnection(supabase, telegramUserId, telegramChatId);
+    const connection = await findConnectedConnection(
+      supabase,
+      telegramUserId,
+      telegramChatId
+    );
+
     await safeReply(chatId, telegramMessages.help);
-    await updateInboundLog({ supabase, id: logId, status: "processed", userId: connection?.user_id ?? null });
+
+    await updateInboundLog({
+      supabase,
+      id: logId,
+      status: "processed",
+      userId: connection?.user_id ?? null,
+    });
+
     return ok();
   }
 
   if (command === "/status") {
-    const connection = await findConnectedConnection(supabase, telegramUserId, telegramChatId);
-    await safeReply(chatId, connection ? telegramMessages.statusConnected : telegramMessages.statusNotConnected);
-    await updateInboundLog({ supabase, id: logId, status: "processed", userId: connection?.user_id ?? null });
+    const connection = await findConnectedConnection(
+      supabase,
+      telegramUserId,
+      telegramChatId
+    );
+
+    await safeReply(
+      chatId,
+      connection
+        ? telegramMessages.statusConnected
+        : telegramMessages.statusNotConnected
+    );
+
+    await updateInboundLog({
+      supabase,
+      id: logId,
+      status: "processed",
+      userId: connection?.user_id ?? null,
+    });
+
     return ok();
   }
 
   if (command === "/unlink") {
-    const connection = await findConnectedConnection(supabase, telegramUserId, telegramChatId);
+    const connection = await findConnectedConnection(
+      supabase,
+      telegramUserId,
+      telegramChatId
+    );
+
     if (!connection) {
       await safeReply(chatId, telegramMessages.statusNotConnected);
-      await updateInboundLog({ supabase, id: logId, status: "processed" });
+
+      await updateInboundLog({
+        supabase,
+        id: logId,
+        status: "processed",
+      });
+
       return ok();
     }
 
@@ -354,13 +446,29 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("[telegram] unlink failed:", error.message);
+
       await safeReply(chatId, telegramMessages.genericFailure);
-      await updateInboundLog({ supabase, id: logId, status: "failed", userId: connection.user_id, error: error.message });
+
+      await updateInboundLog({
+        supabase,
+        id: logId,
+        status: "failed",
+        userId: connection.user_id,
+        error: error.message,
+      });
+
       return ok();
     }
 
     await safeReply(chatId, telegramMessages.unlinked);
-    await updateInboundLog({ supabase, id: logId, status: "processed", userId: connection.user_id });
+
+    await updateInboundLog({
+      supabase,
+      id: logId,
+      status: "processed",
+      userId: connection.user_id,
+    });
+
     return ok();
   }
 
@@ -376,47 +484,104 @@ export async function POST(request: Request) {
 
   if (!verification.matched && verification.error && isVerificationCodeText(text)) {
     await safeReply(chatId, telegramMessages.genericFailure);
+
     await updateInboundLog({
       supabase,
       id: logId,
       status: "failed",
       error: verification.error,
     });
+
     return ok();
   }
 
   if (verification.matched) {
     if (verification.connected) {
       await safeReply(chatId, telegramMessages.connected);
-      await updateInboundLog({ supabase, id: logId, status: "verification", userId: verification.userId });
+
+      await updateInboundLog({
+        supabase,
+        id: logId,
+        status: "verification",
+        userId: verification.userId,
+      });
+
       return ok();
     }
 
     await safeReply(
       chatId,
-      verification.alreadyConnected ? telegramMessages.alreadyConnected : telegramMessages.genericFailure
+      verification.alreadyConnected
+        ? telegramMessages.alreadyConnected
+        : telegramMessages.genericFailure
     );
+
     await updateInboundLog({
       supabase,
       id: logId,
       status: "failed",
       userId: verification.userId,
-      error: verification.error ?? (verification.alreadyConnected ? "Telegram user already connected" : "Verification failed"),
+      error:
+        verification.error ??
+        (verification.alreadyConnected
+          ? "Telegram user already connected"
+          : "Verification failed"),
     });
+
     return ok();
   }
 
-  const connection = await findConnectedConnection(supabase, telegramUserId, telegramChatId);
+  const connection = await findConnectedConnection(
+    supabase,
+    telegramUserId,
+    telegramChatId
+  );
+
   if (!connection) {
-    await safeReply(chatId, isVerificationCodeText(text) ? telegramMessages.codeExpired : telegramMessages.notConnected);
-    await updateInboundLog({ supabase, id: logId, status: "ignored" });
+    await safeReply(
+      chatId,
+      isVerificationCodeText(text)
+        ? telegramMessages.codeExpired
+        : telegramMessages.notConnected
+    );
+
+    await updateInboundLog({
+      supabase,
+      id: logId,
+      status: "ignored",
+    });
+
     return ok();
   }
 
   const urls = extractUrlsFromText(text);
+
   if (urls.length === 0) {
     await safeReply(chatId, telegramMessages.noUrls);
-    await updateInboundLog({ supabase, id: logId, status: "ignored", userId: connection.user_id, extractedUrls: [] });
+
+    await updateInboundLog({
+      supabase,
+      id: logId,
+      status: "ignored",
+      userId: connection.user_id,
+      extractedUrls: [],
+    });
+
+    return ok();
+  }
+
+  if (urls.length > 10) {
+    await safeReply(chatId, "Please send up to 10 URLs at a time.");
+
+    await updateInboundLog({
+      supabase,
+      id: logId,
+      status: "failed",
+      userId: connection.user_id,
+      extractedUrls: urls.slice(0, 10),
+      error: "Too many URLs in one message",
+    });
+
     return ok();
   }
 
@@ -446,7 +611,10 @@ export async function POST(request: Request) {
   } else if (successCount > 0 && failedCount === 0) {
     await safeReply(chatId, telegramMessages.queuedMultiple(successCount));
   } else if (successCount > 0) {
-    await safeReply(chatId, telegramMessages.partialFailure(successCount, failedCount));
+    await safeReply(
+      chatId,
+      telegramMessages.partialFailure(successCount, failedCount)
+    );
   } else {
     await safeReply(chatId, telegramMessages.genericFailure);
   }

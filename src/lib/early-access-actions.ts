@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 import type { EarlyAccessFormState } from "@/lib/early-access-state";
 import type { ActionResult } from "@/lib/types";
+import { checkRateLimit, getClientIp, ipLimitKey } from "@/lib/rate-limit";
 
 type EarlyAccessResult = {
   duplicate: boolean;
@@ -76,7 +77,26 @@ export async function submitEarlyAccessSignup(
   });
 
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message };
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid signup details",
+    };
+  }
+
+  const ip = await getClientIp();
+
+  const rate = await checkRateLimit({
+    scope: "early-access-signup",
+    identifier: ipLimitKey(ip),
+    limit: 5,
+    windowSeconds: 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "Too many signup attempts. Please try again later.",
+    };
   }
 
   const supabase = await createEarlyAccessClient();
@@ -91,7 +111,12 @@ export async function submitEarlyAccessSignup(
 
   if (error) {
     if (isUniqueViolation(error)) {
-      return { success: true, data: { duplicate: true } };
+      return {
+        success: true,
+        data: {
+          duplicate: true,
+        },
+      };
     }
 
     console.error("[early-access] Signup insert failed:", {
@@ -107,15 +132,28 @@ export async function submitEarlyAccessSignup(
     );
 
     if (notified) {
-      return { success: true, data: { duplicate: false } };
+      return {
+        success: true,
+        data: {
+          duplicate: false,
+        },
+      };
     }
 
-    return { success: false, error: "Could not join early access. Please email hello@nyabag.com." };
+    return {
+      success: false,
+      error: "Could not join early access. Please email hello@nyabag.com.",
+    };
   }
 
   await sendEarlyAccessNotification(email, source);
 
-  return { success: true, data: { duplicate: false } };
+  return {
+    success: true,
+    data: {
+      duplicate: false,
+    },
+  };
 }
 
 export async function submitEarlyAccessSignupForm(

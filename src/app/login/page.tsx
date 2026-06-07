@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SpinnerIcon } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { timeAsync } from "@/lib/perf";
+import { getSafeInternalPath } from "@/lib/security/redirect-safety";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = getSafeInternalPath(searchParams.get("next"), "/app");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -28,18 +31,27 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await timeAsync("login submit client flow", async () => {
-        const supabase = createClient();
-        const { error: authError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (authError) {
-          setError(authError.message);
-          setLoading(false);
-        } else {
-          router.replace("/app");
-        }
-      });
+  console.time("login: create supabase client");
+  const supabase = createClient();
+  console.timeEnd("login: create supabase client");
+
+  console.time("login: signInWithPassword");
+  const { error: authError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  console.timeEnd("login: signInWithPassword");
+
+  if (authError) {
+    setError(authError.message);
+    setLoading(false);
+    return;
+  }
+
+  console.time("login: router replace");
+  router.replace(nextPath);
+  console.timeEnd("login: router replace");
+});
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Authentication failed");
       setLoading(false);

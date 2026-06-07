@@ -9,15 +9,27 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   return timeAsync("initial /app dashboard data loading", async () => {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = await timeAsync("dashboard: create supabase client", async () => {
+      return createClient();
+    });
+
+    const {
+      data: { user },
+    } = await timeAsync("dashboard: get auth user", async () => {
+      return supabase.auth.getUser();
+    });
 
     const [bookmarksResult, profile] = await Promise.all([
-      supabase
-        .from("bookmarks")
-        .select("*")
-        .order("created_at", { ascending: false }),
-      user ? getUserProfile(supabase, user) : Promise.resolve(null),
+      timeAsync("dashboard: load bookmarks", async () => {
+        return supabase
+          .from("bookmarks")
+          .select("*")
+          .order("created_at", { ascending: false });
+      }),
+
+      timeAsync("dashboard: load profile", async () => {
+        return user ? getUserProfile(supabase, user) : Promise.resolve(null);
+      }),
     ]);
 
     const { data: bookmarks, error } = bookmarksResult;
@@ -31,8 +43,14 @@ export default async function DashboardPage() {
     }
 
     const initialBookmarks = user
-      ? await attachAiMetadataToBookmarks(supabase, (bookmarks ?? []) as Bookmark[], user.id)
-      : (bookmarks ?? []) as Bookmark[];
+      ? await timeAsync("dashboard: attach AI metadata", async () => {
+          return attachAiMetadataToBookmarks(
+            supabase,
+            (bookmarks ?? []) as Bookmark[],
+            user.id
+          );
+        })
+      : ((bookmarks ?? []) as Bookmark[]);
 
     return (
       <BookmarkGrid

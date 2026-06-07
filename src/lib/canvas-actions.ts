@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_SECTION_COLOR } from "@/lib/content-colors";
 import { CANVAS_NOTE_COLUMNS, CANVAS_SECTION_COLUMNS } from "@/lib/canvas-data";
 import { isPerfEnabled, timeAsync } from "@/lib/perf";
+import { checkRateLimit, userLimitKey } from "@/lib/rate-limit";
 import {
   noteCreateSchema,
   noteDeleteSchema,
@@ -211,12 +212,33 @@ export async function createNote(
   return timeAsync("createNote", async () => {
     const supabase = await createClient();
     const user = await getUser(supabase);
-    if (!user) return { success: false, error: "Not authenticated" };
+
+    if (!user) {
+      return {
+        success: false,
+        error: "Not authenticated",
+      };
+    }
+
+    const rate = await checkRateLimit({
+      scope: "canvas-note-create",
+      identifier: userLimitKey(user.id),
+      limit: 120,
+      windowSeconds: 60 * 60,
+    });
+
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: "You are creating notes too quickly. Please slow down.",
+      };
+    }
 
     const z_index = await getNextNoteZIndex(supabase, user.id);
     const isSocial = type === "social";
     const noteWidth = width ?? 240;
     const noteHeight = height ?? 180;
+
     const parsed = noteCreateSchema.safeParse({
       type,
       content: isSocial ? SOCIAL_NOTE_PREFIX : "",
@@ -233,19 +255,35 @@ export async function createNote(
     });
 
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0].message };
+      return {
+        success: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid note",
+      };
     }
 
     const { section_id, ...noteInput } = parsed.data;
+
     const { data, error } = await supabase
       .from("canvas_notes")
-      .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
+      .insert({
+        user_id: user.id,
+        ...noteInput,
+        ...(section_id ? { section_id } : {}),
+      })
       .select()
       .single();
 
-    if (error) return { success: false, error: error.message };
-    // The client inserts this into local state immediately; route revalidation would rebuild the canvas.
-    return { success: true, data: data as unknown as CanvasNote };
+    if (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    return {
+      success: true,
+      data: data as unknown as CanvasNote,
+    };
   });
 }
 
@@ -263,9 +301,30 @@ export async function createTextNoteWithRichContent(
   return timeAsync("createTextNoteWithRichContent", async () => {
     const supabase = await createClient();
     const user = await getUser(supabase);
-    if (!user) return { success: false, error: "Not authenticated" };
 
-    const z_index = zIndex ?? await getNextNoteZIndex(supabase, user.id);
+    if (!user) {
+      return {
+        success: false,
+        error: "Not authenticated",
+      };
+    }
+
+    const rate = await checkRateLimit({
+      scope: "canvas-note-create",
+      identifier: userLimitKey(user.id),
+      limit: 120,
+      windowSeconds: 60 * 60,
+    });
+
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: "You are creating notes too quickly. Please slow down.",
+      };
+    }
+
+    const z_index = zIndex ?? (await getNextNoteZIndex(supabase, user.id));
+
     const parsed = noteCreateSchema.safeParse({
       type,
       content,
@@ -284,18 +343,35 @@ export async function createTextNoteWithRichContent(
     });
 
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0].message };
+      return {
+        success: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid rich text note",
+      };
     }
 
     const { section_id, ...noteInput } = parsed.data;
+
     const { data, error } = await supabase
       .from("canvas_notes")
-      .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
+      .insert({
+        user_id: user.id,
+        ...noteInput,
+        ...(section_id ? { section_id } : {}),
+      })
       .select()
       .single();
 
-    if (error) return { success: false, error: error.message };
-    return { success: true, data: data as unknown as CanvasNote };
+    if (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    return {
+      success: true,
+      data: data as unknown as CanvasNote,
+    };
   });
 }
 
@@ -307,23 +383,60 @@ export async function createSocialNoteFromUrl(
 ): Promise<ActionResult<CanvasNote>> {
   const supabase = await createClient();
   const user = await getUser(supabase);
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "canvas-social-note-create",
+    identifier: userLimitKey(user.id),
+    limit: 30,
+    windowSeconds: 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "Social embed limit reached. Please try again later.",
+    };
+  }
 
   const embed = parseSocialEmbed(url);
+
   if (!embed) {
-    return { success: false, error: "Paste a public X/Twitter, Facebook, LinkedIn, Instagram, TikTok, or Pinterest post URL" };
+    return {
+      success: false,
+      error:
+        "Paste a public X/Twitter, Facebook, LinkedIn, Instagram, TikTok, or Pinterest post URL",
+    };
   }
 
   let embedSize = getSocialEmbedFallbackSize(embed.provider);
+
   if (embed.provider === "x") {
     const metadata = await getXPostEmbedMetadata(embed.url);
-    if (!metadata.success) return { success: false, error: metadata.error };
-    embedSize = { width: metadata.data.width, height: metadata.data.height };
+
+    if (!metadata.success) {
+      return {
+        success: false,
+        error: metadata.error,
+      };
+    }
+
+    embedSize = {
+      width: metadata.data.width,
+      height: metadata.data.height,
+    };
   }
 
   const width = clampNoteWidth(embedSize.width + NOTE_CHROME_WIDTH);
   const height = clampNoteHeight(embedSize.height + NOTE_CHROME_HEIGHT);
   const z_index = await getNextNoteZIndex(supabase, user.id);
+
   const parsed = noteCreateSchema.safeParse({
     type: "social",
     content: toSocialNoteContent(embed.url),
@@ -340,19 +453,35 @@ export async function createSocialNoteFromUrl(
   });
 
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message };
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid social note",
+    };
   }
 
   const { section_id, ...noteInput } = parsed.data;
+
   const { data, error } = await supabase
     .from("canvas_notes")
-    .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
+    .insert({
+      user_id: user.id,
+      ...noteInput,
+      ...(section_id ? { section_id } : {}),
+    })
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
-  // Color changes are local-authoritative and should not rebuild the canvas route.
-  return { success: true, data: data as unknown as CanvasNote };
+  if (error) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+
+  return {
+    success: true,
+    data: data as unknown as CanvasNote,
+  };
 }
 
 export async function createMediaNoteFromUrl(
@@ -366,15 +495,46 @@ export async function createMediaNoteFromUrl(
 ): Promise<ActionResult<CanvasNote>> {
   const supabase = await createClient();
   const user = await getUser(supabase);
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "canvas-media-url-note-create",
+    identifier: userLimitKey(user.id),
+    limit: 60,
+    windowSeconds: 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "Media URL note limit reached. Please try again later.",
+    };
+  }
+
   if (!isMediaNoteType(type)) {
-    return { success: false, error: "Only image and video notes support media URLs" };
+    return {
+      success: false,
+      error: "Only image and video notes support media URLs",
+    };
   }
 
   const normalizedUrl = normalizeUrl(url);
-  if (!normalizedUrl) return { success: false, error: "Must be a valid URL" };
+
+  if (!normalizedUrl) {
+    return {
+      success: false,
+      error: "Must be a valid URL",
+    };
+  }
 
   const z_index = await getNextNoteZIndex(supabase, user.id);
+
   const parsed = noteCreateSchema.safeParse({
     type,
     content: normalizedUrl,
@@ -391,19 +551,37 @@ export async function createMediaNoteFromUrl(
   });
 
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message };
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid media note",
+    };
   }
 
   const { section_id, ...noteInput } = parsed.data;
+
   const { data, error } = await supabase
     .from("canvas_notes")
-    .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
+    .insert({
+      user_id: user.id,
+      ...noteInput,
+      ...(section_id ? { section_id } : {}),
+    })
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+
   revalidatePath("/app/canvas");
-  return { success: true, data: data as unknown as CanvasNote };
+
+  return {
+    success: true,
+    data: data as unknown as CanvasNote,
+  };
 }
 
 export async function createMediaNoteWithUpload(
@@ -416,27 +594,66 @@ export async function createMediaNoteWithUpload(
   height?: number
 ): Promise<ActionResult<CanvasNote>> {
   const supabase = await createClient();
+
   const user = await getUser(supabase);
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "canvas-media-upload",
+    identifier: userLimitKey(user.id),
+    limit: 20,
+    windowSeconds: 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "Upload limit reached. Please try again later.",
+    };
+  }
+
   if (!isMediaNoteType(type)) {
-    return { success: false, error: "Only image and video notes support uploads" };
+    return {
+      success: false,
+      error: "Only image and video notes support uploads",
+    };
   }
 
   const file = formData.get("file");
+
   if (!(file instanceof File)) {
-    return { success: false, error: "No file was selected" };
+    return {
+      success: false,
+      error: "No file was selected",
+    };
   }
+
   if (!isAllowedMediaFile(type, file)) {
-    return { success: false, error: `Please upload a ${type} file` };
+    return {
+      success: false,
+      error: `Please upload a ${type} file`,
+    };
   }
 
   const maxBytes = type === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
+
   if (file.size > maxBytes) {
     const mb = Math.floor(maxBytes / 1024 / 1024);
-    return { success: false, error: `File must be ${mb}MB or smaller` };
+
+    return {
+      success: false,
+      error: `File must be ${mb}MB or smaller`,
+    };
   }
 
   const z_index = await getNextNoteZIndex(supabase, user.id);
+
   const parsed = noteCreateSchema.safeParse({
     type,
     content: "",
@@ -453,22 +670,37 @@ export async function createMediaNoteWithUpload(
   });
 
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message };
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid media note",
+    };
   }
 
   const { section_id, ...noteInput } = parsed.data;
+
   const { data: created, error: createError } = await supabase
     .from("canvas_notes")
-    .insert({ user_id: user.id, ...noteInput, ...(section_id ? { section_id } : {}) })
+    .insert({
+      user_id: user.id,
+      ...noteInput,
+      ...(section_id ? { section_id } : {}),
+    })
     .select()
     .single();
 
   if (createError || !created) {
-    return { success: false, error: createError?.message ?? "Failed to create note" };
+    return {
+      success: false,
+      error: createError?.message ?? "Failed to create note",
+    };
   }
 
   const note = created as unknown as CanvasNote;
-  const path = `${user.id}/${note.id}/${crypto.randomUUID()}-${safeFilename(file.name)}`;
+
+  const path = `${user.id}/${note.id}/${crypto.randomUUID()}-${safeFilename(
+    file.name
+  )}`;
+
   const { error: uploadError } = await supabase.storage
     .from(MEDIA_BUCKET)
     .upload(path, file, {
@@ -477,8 +709,16 @@ export async function createMediaNoteWithUpload(
     });
 
   if (uploadError) {
-    await supabase.from("canvas_notes").delete().eq("id", note.id).eq("user_id", user.id);
-    return { success: false, error: uploadError.message };
+    await supabase
+      .from("canvas_notes")
+      .delete()
+      .eq("id", note.id)
+      .eq("user_id", user.id);
+
+    return {
+      success: false,
+      error: uploadError.message,
+    };
   }
 
   const { data: updated, error: updateError } = await supabase
@@ -498,14 +738,30 @@ export async function createMediaNoteWithUpload(
   if (updateError || !updated) {
     await Promise.all([
       supabase.storage.from(MEDIA_BUCKET).remove([path]),
-      supabase.from("canvas_notes").delete().eq("id", note.id).eq("user_id", user.id),
+      supabase
+        .from("canvas_notes")
+        .delete()
+        .eq("id", note.id)
+        .eq("user_id", user.id),
     ]);
-    return { success: false, error: updateError?.message ?? "Failed to attach media" };
+
+    return {
+      success: false,
+      error: updateError?.message ?? "Failed to attach media",
+    };
   }
 
   revalidatePath("/app/canvas");
-  const signed = await withSignedUrl(supabase, updated as unknown as CanvasNote);
-  return { success: true, data: signed };
+
+  const signed = await withSignedUrl(
+    supabase,
+    updated as unknown as CanvasNote
+  );
+
+  return {
+    success: true,
+    data: signed,
+  };
 }
 
 export async function updateNoteContent(

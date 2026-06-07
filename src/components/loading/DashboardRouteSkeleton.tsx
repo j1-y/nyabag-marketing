@@ -65,14 +65,6 @@ export function BookmarkGridSkeleton() {
 export function CanvasBoardSkeleton() {
   return (
     <div className="dashboard-route-skeleton canvas-board-skeleton" role="status" aria-live="polite">
-      <div className="canvas-skeleton-world" aria-hidden="true">
-        <div className="canvas-skeleton-section canvas-skeleton-section-a" />
-        <div className="canvas-skeleton-section canvas-skeleton-section-b" />
-        <div className="canvas-skeleton-note canvas-skeleton-note-a" />
-        <div className="canvas-skeleton-note canvas-skeleton-note-b" />
-        <div className="canvas-skeleton-note canvas-skeleton-note-c" />
-        <div className="canvas-skeleton-note canvas-skeleton-note-d" />
-      </div>
       <div className="canvas-loading-pill canvas-loading-pill-floating">
         <SpinnerIcon size={16} />
         <span>Loading canvas...</span>

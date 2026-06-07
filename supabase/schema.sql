@@ -1326,3 +1326,42 @@ ON CONFLICT (slug) DO UPDATE SET
 -- Force Supabase/PostgREST to refresh its schema cache after new columns,
 -- tables, constraints, and policies are created.
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- Rate limits
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  scope       TEXT        NOT NULL,
+  identifier  TEXT        NOT NULL,
+  count       INTEGER     NOT NULL DEFAULT 1,
+  window_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(scope, identifier)
+);
+
+ALTER TABLE rate_limits
+  DROP CONSTRAINT IF EXISTS rate_limits_scope_check,
+  DROP CONSTRAINT IF EXISTS rate_limits_identifier_check,
+  DROP CONSTRAINT IF EXISTS rate_limits_count_check,
+  ADD CONSTRAINT rate_limits_scope_check CHECK (char_length(scope) <= 120),
+  ADD CONSTRAINT rate_limits_identifier_check CHECK (char_length(identifier) <= 160),
+  ADD CONSTRAINT rate_limits_count_check CHECK (count >= 0);
+
+DROP TRIGGER IF EXISTS rate_limits_updated_at ON rate_limits;
+CREATE TRIGGER rate_limits_updated_at
+  BEFORE UPDATE ON rate_limits
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_scope_identifier
+  ON rate_limits(scope, identifier);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_window_start
+  ON rate_limits(window_start);
+
+ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
+
+-- No user-facing policies. This table should only be touched from server code
+-- using the service role client.

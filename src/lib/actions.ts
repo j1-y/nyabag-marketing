@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getDesignData } from "@/lib/data";
+import { validatePublicHttpUrl } from "@/lib/security/url-safety";
+import { checkRateLimit, userLimitKey } from "@/lib/rate-limit";
 import { getDomain } from "@/lib/data";
 import { enrichBookmarkDesignMetadataFromScreenshot } from "@/lib/ai/bookmark-enrichment";
 import { GEMINI_MODEL } from "@/lib/ai/gemini";
@@ -357,8 +359,31 @@ export async function createBookmark(
 ): Promise<ActionResult<Bookmark>> {
   return timeAsync("createBookmark", async () => {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated" };
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return {
+        success: false,
+        error: "Not authenticated",
+      };
+    }
+
+    const rate = await checkRateLimit({
+      scope: "bookmark-create",
+      identifier: userLimitKey(user.id),
+      limit: 30,
+      windowSeconds: 60 * 60,
+    });
+
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: "You have saved too many bookmarks recently. Please try again later.",
+      };
+    }
 
     const parsed = bookmarkCreateSchema.safeParse({
       url: formData.get("url"),
@@ -368,28 +393,67 @@ export async function createBookmark(
     });
 
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0].message };
+      return {
+        success: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid bookmark details",
+      };
+    }
+
+    const safeUrl = await validatePublicHttpUrl(parsed.data.url);
+
+    if (!safeUrl.safe) {
+      return {
+        success: false,
+        error: safeUrl.error,
+      };
     }
 
     const result = await createBookmarkForUser({
       supabase,
       userId: user.id,
-      url: parsed.data.url,
+      url: safeUrl.url,
       title: parsed.data.title,
       tags: parsed.data.tags,
       note: parsed.data.note,
     });
 
     if (!result.success) return result;
+
     revalidatePath("/app");
+
     return result;
   });
 }
 
-export async function enrichBookmarkWithAI(bookmarkId: string): Promise<ActionResult<BookmarkAiMetadata>> {
+export async function enrichBookmarkWithAI(
+  bookmarkId: string
+): Promise<ActionResult<BookmarkAiMetadata>> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "bookmark-ai-enrich",
+    identifier: userLimitKey(user.id),
+    limit: 20,
+    windowSeconds: 24 * 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "AI analysis limit reached for today.",
+    };
+  }
 
   return enrichBookmarkWithAIScoped({
     supabase,
@@ -399,10 +463,35 @@ export async function enrichBookmarkWithAI(bookmarkId: string): Promise<ActionRe
   });
 }
 
-export async function refreshBookmarkAI(bookmarkId: string): Promise<ActionResult<BookmarkAiMetadata>> {
+export async function refreshBookmarkAI(
+  bookmarkId: string
+): Promise<ActionResult<BookmarkAiMetadata>> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "bookmark-ai-refresh",
+    identifier: userLimitKey(user.id),
+    limit: 5,
+    windowSeconds: 24 * 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "AI refresh limit reached for today.",
+    };
+  }
 
   return enrichBookmarkWithAIScoped({
     supabase,
@@ -412,10 +501,35 @@ export async function refreshBookmarkAI(bookmarkId: string): Promise<ActionResul
   });
 }
 
-export async function generateDesignDnaFromBookmark(bookmarkId: string): Promise<ActionResult<DesignDna>> {
+export async function generateDesignDnaFromBookmark(
+  bookmarkId: string
+): Promise<ActionResult<DesignDna>> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "design-dna-generate",
+    identifier: userLimitKey(user.id),
+    limit: 20,
+    windowSeconds: 24 * 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "Design DNA generation limit reached for today.",
+    };
+  }
 
   const { data: bookmark, error: bookmarkError } = await supabase
     .from("bookmarks")
@@ -424,8 +538,19 @@ export async function generateDesignDnaFromBookmark(bookmarkId: string): Promise
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (bookmarkError) return { success: false, error: bookmarkError.message };
-  if (!bookmark) return { success: false, error: "Bookmark not found" };
+  if (bookmarkError) {
+    return {
+      success: false,
+      error: bookmarkError.message,
+    };
+  }
+
+  if (!bookmark) {
+    return {
+      success: false,
+      error: "Bookmark not found",
+    };
+  }
 
   const bookmarkRecord = bookmark as Bookmark;
   const domain = getDomain(bookmarkRecord.url);
@@ -437,9 +562,18 @@ export async function generateDesignDnaFromBookmark(bookmarkId: string): Promise
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (existingError) return { success: false, error: existingError.message };
+  if (existingError) {
+    return {
+      success: false,
+      error: existingError.message,
+    };
+  }
+
   if (existing?.extraction_status === "completed") {
-    return { success: true, data: existing as DesignDna };
+    return {
+      success: true,
+      data: existing as DesignDna,
+    };
   }
 
   const pendingPayload = {
@@ -461,7 +595,12 @@ export async function generateDesignDnaFromBookmark(bookmarkId: string): Promise
     .select()
     .single();
 
-  if (pendingError) return { success: false, error: pendingError.message };
+  if (pendingError) {
+    return {
+      success: false,
+      error: pendingError.message,
+    };
+  }
 
   const result = await completeDesignDnaExtraction({
     supabase,
@@ -472,21 +611,62 @@ export async function generateDesignDnaFromBookmark(bookmarkId: string): Promise
 
   revalidatePath("/app/design-dna");
   revalidatePath(`/app/bookmarks/${bookmarkId}`);
-  if (result.success) revalidatePath(`/app/design-dna/${result.data.id}`);
-  else revalidatePath(`/app/design-dna/${pending.id}`);
 
-  return result.success ? result : { success: false, error: result.error };
+  if (result.success) {
+    revalidatePath(`/app/design-dna/${result.data.id}`);
+  } else {
+    revalidatePath(`/app/design-dna/${pending.id}`);
+  }
+
+  return result.success
+    ? result
+    : {
+        success: false,
+        error: result.error,
+      };
 }
 
-export async function regenerateDesignDna(designDnaId: string): Promise<ActionResult<DesignDna>> {
+export async function regenerateDesignDna(
+  designDnaId: string
+): Promise<ActionResult<DesignDna>> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "design-dna-regenerate",
+    identifier: userLimitKey(user.id),
+    limit: 5,
+    windowSeconds: 24 * 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "Design DNA regeneration limit reached for today.",
+    };
+  }
 
   const designDna = await getDesignDnaById(supabase, designDnaId, user.id);
-  if (!designDna) return { success: false, error: "Design DNA not found" };
+
+  if (!designDna) {
+    return {
+      success: false,
+      error: "Design DNA not found",
+    };
+  }
 
   let bookmark: Bookmark | null = null;
+
   if (designDna.bookmark_id) {
     const { data, error } = await supabase
       .from("bookmarks")
@@ -495,31 +675,41 @@ export async function regenerateDesignDna(designDnaId: string): Promise<ActionRe
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
     bookmark = data as Bookmark | null;
   }
 
-  const bookmarkRecord = bookmark ?? {
-    id: designDna.bookmark_id ?? "",
-    user_id: user.id,
-    url: designDna.source_url,
-    title: designDna.source_title || designDna.title,
-    tags: [],
-    palette: designDna.colors.map((color) => color.hex),
-    fonts: designDna.typography.map((item) => item.fontFamily).filter(Boolean),
-    screenshot_url: designDna.screenshot_url ?? null,
-    screenshot_path: null,
-    screenshot_refreshed_at: null,
-    summary: "",
-    metadata_refreshed_at: null,
-    note: "",
-    processing_status: "ready",
-    processing_error: null,
-    enrichment_started_at: null,
-    enrichment_finished_at: null,
-    created_at: designDna.created_at,
-    updated_at: designDna.updated_at,
-  } satisfies Bookmark;
+  const bookmarkRecord =
+    bookmark ??
+    ({
+      id: designDna.bookmark_id ?? "",
+      user_id: user.id,
+      url: designDna.source_url,
+      title: designDna.source_title || designDna.title,
+      tags: [],
+      palette: designDna.colors.map((color) => color.hex),
+      fonts: designDna.typography
+        .map((item) => item.fontFamily)
+        .filter(Boolean),
+      screenshot_url: designDna.screenshot_url ?? null,
+      screenshot_path: null,
+      screenshot_refreshed_at: null,
+      summary: "",
+      metadata_refreshed_at: null,
+      note: "",
+      processing_status: "ready",
+      processing_error: null,
+      enrichment_started_at: null,
+      enrichment_finished_at: null,
+      created_at: designDna.created_at,
+      updated_at: designDna.updated_at,
+    } satisfies Bookmark);
 
   const { error: pendingError } = await supabase
     .from("design_dna")
@@ -532,7 +722,12 @@ export async function regenerateDesignDna(designDnaId: string): Promise<ActionRe
     .eq("id", designDnaId)
     .eq("user_id", user.id);
 
-  if (pendingError) return { success: false, error: pendingError.message };
+  if (pendingError) {
+    return {
+      success: false,
+      error: pendingError.message,
+    };
+  }
 
   const result = await completeDesignDnaExtraction({
     supabase,
@@ -543,7 +738,10 @@ export async function regenerateDesignDna(designDnaId: string): Promise<ActionRe
 
   revalidatePath("/app/design-dna");
   revalidatePath(`/app/design-dna/${designDnaId}`);
-  if (bookmarkRecord.id) revalidatePath(`/app/bookmarks/${bookmarkRecord.id}`);
+
+  if (bookmarkRecord.id) {
+    revalidatePath(`/app/bookmarks/${bookmarkRecord.id}`);
+  }
 
   return result;
 }
@@ -594,27 +792,68 @@ export async function importBookmarks(
   formData: FormData
 ): Promise<ActionResult<ImportBookmarksResult>> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "bookmark-import",
+    identifier: userLimitKey(user.id),
+    limit: 3,
+    windowSeconds: 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "Import limit reached. Please try again later.",
+    };
+  }
 
   const rawUrls = formData.get("urls");
   const rawText = String(formData.get("text") ?? "");
+
   let sourceText = rawText;
 
   if (typeof rawUrls === "string" && rawUrls.trim()) {
     try {
       const parsedUrls = JSON.parse(rawUrls);
+
       if (Array.isArray(parsedUrls)) {
-        sourceText = parsedUrls.filter((value) => typeof value === "string").join("\n");
+        sourceText = parsedUrls
+          .filter((value) => typeof value === "string")
+          .join("\n");
       }
     } catch {
-      return { success: false, error: "Could not read imported URLs" };
+      return {
+        success: false,
+        error: "Could not read imported URLs",
+      };
     }
   }
 
   const urls = extractUrlsFromText(sourceText);
+
   if (urls.length === 0) {
-    return { success: false, error: "Paste or drop text containing URLs to begin." };
+    return {
+      success: false,
+      error: "Paste or drop text containing URLs to begin.",
+    };
+  }
+
+  if (urls.length > 50) {
+    return {
+      success: false,
+      error: "You can import up to 50 URLs at a time.",
+    };
   }
 
   const result: ImportBookmarksResult = {
@@ -636,22 +875,36 @@ export async function importBookmarks(
       result.failed.push({
         url: rawUrl,
         success: false,
-        error: parsed.error.issues[0].message,
+        error: parsed.error.issues[0]?.message ?? "Invalid URL",
       });
       continue;
     }
 
     const normalizedUrl = parsed.data.url;
+
+    const safeUrl = await validatePublicHttpUrl(normalizedUrl);
+
+    if (!safeUrl.safe) {
+      result.failed.push({
+        url: normalizedUrl,
+        success: false,
+        error: safeUrl.error,
+      });
+      continue;
+    }
+
+    const finalUrl = safeUrl.url;
+
     const { data: duplicate, error: duplicateError } = await supabase
       .from("bookmarks")
       .select("id")
       .eq("user_id", user.id)
-      .eq("url", normalizedUrl)
+      .eq("url", finalUrl)
       .maybeSingle();
 
     if (duplicateError) {
       result.failed.push({
-        url: normalizedUrl,
+        url: finalUrl,
         success: false,
         error: duplicateError.message,
       });
@@ -689,7 +942,10 @@ export async function importBookmarks(
     revalidatePath("/app");
   }
 
-  return { success: true, data: result };
+  return {
+    success: true,
+    data: result,
+  };
 }
 
 // ── Update ────────────────────────────────────────────────────
@@ -770,7 +1026,7 @@ export async function updateBookmark(
 
   if (urlChanged && existing?.screenshot_path) {
     await removeBookmarkScreenshot(supabase, existing.screenshot_path);
-  }
+  } 
 
   if (urlChanged) {
     const job = await enqueueBookmarkProcessingJob(supabase, id, user.id, url);
@@ -782,10 +1038,35 @@ export async function updateBookmark(
   return { success: true, data };
 }
 
-export async function refreshBookmarkScreenshot(id: string): Promise<ActionResult<Bookmark>> {
+export async function refreshBookmarkScreenshot(
+  id: string
+): Promise<ActionResult<Bookmark>> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "bookmark-refresh",
+    identifier: userLimitKey(user.id),
+    limit: 10,
+    windowSeconds: 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "Preview refresh limit reached. Please try again later.",
+    };
+  }
 
   const { data: existing, error: existingError } = await supabase
     .from("bookmarks")
@@ -795,7 +1076,10 @@ export async function refreshBookmarkScreenshot(id: string): Promise<ActionResul
     .single();
 
   if (existingError || !existing) {
-    return { success: false, error: "Bookmark not found" };
+    return {
+      success: false,
+      error: "Bookmark not found",
+    };
   }
 
   const { data, error } = await supabase
@@ -811,24 +1095,68 @@ export async function refreshBookmarkScreenshot(id: string): Promise<ActionResul
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
 
-  const job = await enqueueBookmarkProcessingJob(supabase, id, user.id, existing.url);
-  if (!job.success) return { success: false, error: job.error };
+  const job = await enqueueBookmarkProcessingJob(
+    supabase,
+    id,
+    user.id,
+    existing.url
+  );
+
+  if (!job.success) {
+    return {
+      success: false,
+      error: job.error,
+    };
+  }
 
   await triggerProcessorBestEffort("refreshBookmarkScreenshot");
 
   revalidatePath("/app");
   revalidatePath(`/app/bookmarks/${id}`);
 
-  return { success: true, data };
+  return {
+    success: true,
+    data,
+  };
 }
 
 // ── Delete ────────────────────────────────────────────────────
-export async function retryBookmarkProcessing(id: string): Promise<ActionResult<Bookmark>> {
+export async function retryBookmarkProcessing(
+  id: string
+): Promise<ActionResult<Bookmark>> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "bookmark-retry",
+    identifier: userLimitKey(user.id),
+    limit: 10,
+    windowSeconds: 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "Retry limit reached. Please try again later.",
+    };
+  }
 
   const { data: existing, error: existingError } = await supabase
     .from("bookmarks")
@@ -838,7 +1166,10 @@ export async function retryBookmarkProcessing(id: string): Promise<ActionResult<
     .single();
 
   if (existingError || !existing) {
-    return { success: false, error: "Bookmark not found" };
+    return {
+      success: false,
+      error: "Bookmark not found",
+    };
   }
 
   const { data, error } = await supabase
@@ -854,17 +1185,36 @@ export async function retryBookmarkProcessing(id: string): Promise<ActionResult<
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
 
-  const job = await enqueueBookmarkProcessingJob(supabase, id, user.id, existing.url);
-  if (!job.success) return { success: false, error: job.error };
+  const job = await enqueueBookmarkProcessingJob(
+    supabase,
+    id,
+    user.id,
+    existing.url
+  );
+
+  if (!job.success) {
+    return {
+      success: false,
+      error: job.error,
+    };
+  }
 
   await triggerProcessorBestEffort("retryBookmarkProcessing");
 
   revalidatePath("/app");
   revalidatePath(`/app/bookmarks/${id}`);
 
-  return { success: true, data };
+  return {
+    success: true,
+    data,
+  };
 }
 
 export async function getBookmarks(): Promise<ActionResult<Bookmark[]>> {
@@ -957,8 +1307,17 @@ export async function updateProfile(
   formData: FormData
 ): Promise<ActionResult<UserProfile>> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
 
   const parsed = profileUpdateSchema.safeParse({
     name: formData.get("name"),
@@ -967,7 +1326,10 @@ export async function updateProfile(
   });
 
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message };
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid profile details",
+    };
   }
 
   const { data: existing } = await supabase
@@ -980,15 +1342,38 @@ export async function updateProfile(
   const avatar = formData.get("avatar");
 
   if (avatar instanceof File && avatar.size > 0) {
+    const rate = await checkRateLimit({
+      scope: "profile-avatar-upload",
+      identifier: userLimitKey(user.id),
+      limit: 10,
+      windowSeconds: 24 * 60 * 60,
+    });
+
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: "Profile picture update limit reached for today.",
+      };
+    }
+
     if (!AVATAR_TYPES.has(avatar.type)) {
-      return { success: false, error: "Profile picture must be a JPG, PNG, WEBP, or GIF" };
+      return {
+        success: false,
+        error: "Profile picture must be a JPG, PNG, WEBP, or GIF",
+      };
     }
 
     if (avatar.size > MAX_AVATAR_BYTES) {
-      return { success: false, error: "Profile picture must be 5MB or smaller" };
+      return {
+        success: false,
+        error: "Profile picture must be 5MB or smaller",
+      };
     }
 
-    const nextPath = `${user.id}/avatar-${Date.now()}.${avatarExtension(avatar)}`;
+    const nextPath = `${user.id}/avatar-${Date.now()}.${avatarExtension(
+      avatar
+    )}`;
+
     const { error: uploadError } = await supabase.storage
       .from(PROFILE_AVATAR_BUCKET)
       .upload(nextPath, avatar, {
@@ -997,7 +1382,12 @@ export async function updateProfile(
         upsert: true,
       });
 
-    if (uploadError) return { success: false, error: uploadError.message };
+    if (uploadError) {
+      return {
+        success: false,
+        error: uploadError.message,
+      };
+    }
 
     if (avatarPath) {
       await supabase.storage.from(PROFILE_AVATAR_BUCKET).remove([avatarPath]);
@@ -1018,10 +1408,16 @@ export async function updateProfile(
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
 
   const avatarUrl = avatarPath
-    ? supabase.storage.from(PROFILE_AVATAR_BUCKET).getPublicUrl(avatarPath).data.publicUrl
+    ? supabase.storage.from(PROFILE_AVATAR_BUCKET).getPublicUrl(avatarPath).data
+        .publicUrl
     : null;
 
   revalidatePath("/app/profile");
@@ -1069,9 +1465,38 @@ export async function createTelegramConnectionCode(): Promise<
   ActionResult<{ code: string; expiresAt: string; botUrl?: string }>
 > {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
-  if (!isTelegramConfigured()) return { success: false, error: "Telegram integration is not configured" };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    };
+  }
+
+  if (!isTelegramConfigured()) {
+    return {
+      success: false,
+      error: "Telegram integration is not configured",
+    };
+  }
+
+  const rate = await checkRateLimit({
+    scope: "telegram-connection-code",
+    identifier: userLimitKey(user.id),
+    limit: 5,
+    windowSeconds: 60 * 60,
+  });
+
+  if (!rate.allowed) {
+    return {
+      success: false,
+      error: "You have generated too many Telegram codes. Please try again later.",
+    };
+  }
 
   const code = generateVerificationCode();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
@@ -1092,13 +1517,28 @@ export async function createTelegramConnectionCode(): Promise<
         connected_at: null,
         disconnected_at: null,
       },
-      { onConflict: "user_id" }
+      {
+        onConflict: "user_id",
+      }
     );
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
 
   revalidatePath("/app/profile");
-  return { success: true, data: { code, expiresAt, botUrl: getTelegramBotUrl() } };
+
+  return {
+    success: true,
+    data: {
+      code,
+      expiresAt,
+      botUrl: getTelegramBotUrl(),
+    },
+  };
 }
 
 export async function disconnectTelegram(): Promise<ActionResult> {
