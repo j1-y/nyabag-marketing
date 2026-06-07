@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SpinnerIcon } from "@phosphor-icons/react";
@@ -8,10 +8,10 @@ import { createClient } from "@/lib/supabase/client";
 import { timeAsync } from "@/lib/perf";
 import { getSafeInternalPath } from "@/lib/security/redirect-safety";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = getSafeInternalPath(searchParams.get("next"), "/app");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,39 +19,39 @@ export default function LoginPage() {
 
   const supabaseReady =
     !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://your-project-id.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_URL !==
+      "https://your-project-id.supabase.co";
+
+  const nextPath = getSafeInternalPath(searchParams.get("next"), "/app");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
     if (!supabaseReady) {
       setError("Supabase is not configured. See the setup guide on the home page.");
       return;
     }
+
     setError("");
     setLoading(true);
+
     try {
       await timeAsync("login submit client flow", async () => {
-  console.time("login: create supabase client");
-  const supabase = createClient();
-  console.timeEnd("login: create supabase client");
+        const supabase = createClient();
 
-  console.time("login: signInWithPassword");
-  const { error: authError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  console.timeEnd("login: signInWithPassword");
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-  if (authError) {
-    setError(authError.message);
-    setLoading(false);
-    return;
-  }
+        if (authError) {
+          setError(authError.message);
+          setLoading(false);
+          return;
+        }
 
-  console.time("login: router replace");
-  router.replace(nextPath);
-  console.timeEnd("login: router replace");
-});
+        router.replace(nextPath);
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Authentication failed");
       setLoading(false);
@@ -61,18 +61,27 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-          <div className="auth-logo">
-            <img src="/assets/logo.svg" alt="Nyabag logo" className="h-8 w-auto object-contain"/>
-            </div>
+        <div className="auth-logo">
+          <img
+            src="/assets/logo.svg"
+            alt="Nyabag logo"
+            className="h-8 w-auto object-contain"
+          />
+        </div>
+
         <h1 className="auth-title">Welcome back</h1>
         <p className="auth-subtitle">Sign in to access your bookmarks</p>
+
         <form className="auth-form" onSubmit={handleSubmit}>
           {error && <div className="auth-error">{error}</div>}
+
           {!supabaseReady && (
             <div className="auth-error">
-              ⚠️ Supabase env vars not configured. Fill in <code>.env.local</code> and restart the server.
+              ⚠️ Supabase env vars not configured. Fill in{" "}
+              <code>.env.local</code> and restart the server.
             </div>
           )}
+
           <div className="field">
             <label htmlFor="email">Email</label>
             <input
@@ -85,6 +94,7 @@ export default function LoginPage() {
               placeholder="you@example.com"
             />
           </div>
+
           <div className="field">
             <label htmlFor="password">Password</label>
             <input
@@ -97,6 +107,7 @@ export default function LoginPage() {
               placeholder="••••••••"
             />
           </div>
+
           <button
             type="submit"
             className="btn-primary auth-submit"
@@ -112,10 +123,38 @@ export default function LoginPage() {
             {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
+
         <p className="auth-footer">
           No account? <Link href="/signup">Create one</Link>
         </p>
       </div>
     </div>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-logo">
+          <img
+            src="/assets/logo.svg"
+            alt="Nyabag logo"
+            className="h-8 w-auto object-contain"
+          />
+        </div>
+
+        <h1 className="auth-title">Loading login…</h1>
+        <p className="auth-subtitle">Preparing your sign in page</p>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginForm />
+    </Suspense>
   );
 }
