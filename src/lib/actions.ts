@@ -1254,7 +1254,7 @@ export async function deleteBookmark(id: string): Promise<ActionResult> {
       return { success: false, error: "Not authenticated" };
     }
 
-    console.log(`[deleteBookmark] Authenticated user: ${user.email} (${user.id})`);
+    console.log(`[deleteBookmark] Authenticated this user: ${user.email} (${user.id})`);
 
     const { data: bookmarkForCleanup } = await supabase
       .from("bookmarks")
