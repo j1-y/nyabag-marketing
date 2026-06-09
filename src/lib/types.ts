@@ -1,3 +1,22 @@
+export type BookmarkFolder = {
+  id: string;
+  user_id: string;
+  parent_id: string | null;
+  name: string;
+  description: string;
+  color: string | null;
+  icon: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BookmarkFolderTreeNode = BookmarkFolder & {
+  children: BookmarkFolderTreeNode[];
+  bookmark_count?: number;
+  recursive_bookmark_count?: number;
+};
+
 export type Bookmark = {
   id: string;
   user_id: string;
@@ -18,6 +37,8 @@ export type Bookmark = {
   enrichment_finished_at: string | null;
   created_at: string;
   updated_at: string;
+  folder_id?: string | null;
+  folder?: BookmarkFolder | null;
   ai_metadata?: BookmarkAiMetadata | null;
   design_dna?: DesignDna | null;
 };

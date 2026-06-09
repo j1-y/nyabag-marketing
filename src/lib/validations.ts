@@ -21,6 +21,7 @@ export const bookmarkCreateSchema = z.object({
     )
     .pipe(z.string().array().max(20)),
   note: z.string().trim().max(2000).optional(),
+  folder_id: z.string().uuid().nullable().optional(),
 });
 
 export const bookmarkUpdateSchema = bookmarkCreateSchema.extend({
@@ -29,6 +30,41 @@ export const bookmarkUpdateSchema = bookmarkCreateSchema.extend({
 
 export type BookmarkCreateInput = z.infer<typeof bookmarkCreateSchema>;
 export type BookmarkUpdateInput = z.infer<typeof bookmarkUpdateSchema>;
+
+// ── Folder schemas ────────────────────────────────────────────
+
+const hexColorSchema = z
+  .string()
+  .regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color (e.g. #FF5733)")
+  .nullable()
+  .optional();
+
+export const folderCreateSchema = z.object({
+  name: z.string().trim().min(1, "Folder name is required").max(80, "Name must be 80 characters or less"),
+  parent_id: z.string().uuid().nullable().optional(),
+  description: z.string().trim().max(300).optional().default(""),
+  color: hexColorSchema,
+  icon: z.string().trim().max(40).nullable().optional(),
+});
+
+export const folderUpdateSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(80).optional(),
+  parent_id: z.string().uuid().nullable().optional(),
+  description: z.string().trim().max(300).optional(),
+  color: hexColorSchema,
+  icon: z.string().trim().max(40).nullable().optional(),
+  sort_order: z.number().int().optional(),
+});
+
+export const moveBookmarkToFolderSchema = z.object({
+  bookmark_id: z.string().uuid(),
+  folder_id: z.string().uuid().nullable(),
+});
+
+export type FolderCreateInput = z.infer<typeof folderCreateSchema>;
+export type FolderUpdateInput = z.infer<typeof folderUpdateSchema>;
+export type MoveBookmarkToFolderInput = z.infer<typeof moveBookmarkToFolderSchema>;
 
 export const profileUpdateSchema = z.object({
   name: z.string().trim().max(120, "Name must be 120 characters or less").optional(),

@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import { DashboardNav } from "./DashboardNav";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { MobileBookmarkCapture } from "./MobileBookmarkCapture";
+import type { BookmarkFolder } from "@/lib/types";
 
 type DashboardShellProps = {
   children: React.ReactNode;
   userEmail: string;
   profileName: string;
   profileAvatarUrl: string | null;
+  folders: BookmarkFolder[];
 };
 
 const SIDEBAR_KEY = "nyabag-sidebar-collapsed";
@@ -66,6 +68,7 @@ export function DashboardShell({
   userEmail,
   profileName,
   profileAvatarUrl,
+  folders,
 }: DashboardShellProps) {
   const pathname = usePathname();
   const collapsed = useSyncExternalStore(
@@ -105,6 +108,7 @@ export function DashboardShell({
         userEmail={userEmail}
         profileName={profileName}
         profileAvatarUrl={profileAvatarUrl}
+        folders={folders}
       />
       <div className="main-content">
         <DashboardNav />

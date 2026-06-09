@@ -16,6 +16,7 @@ import {
 import { Field, FieldHint, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { FolderSelector } from "@/components/folders/FolderSelector";
 
 export function AddBookmarkModal() {
   const {
@@ -30,6 +31,7 @@ export function AddBookmarkModal() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [urlInput, setUrlInput] = useState("");
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
   const domainHint = (() => {
     if (!urlInput) return "Auto-detected from URL";
@@ -46,6 +48,10 @@ export function AddBookmarkModal() {
     e.preventDefault();
     setError("");
     const fd = new FormData(formRef.current!);
+    // Ensure folder_id is in the form data
+    if (selectedFolderId) {
+      fd.set("folder_id", selectedFolderId);
+    }
     const optimisticUrl = String(fd.get("url") ?? "");
     const optimisticTitle = String(fd.get("title") ?? "").trim() || domainHint;
     const pendingId = crypto.randomUUID();
@@ -64,6 +70,7 @@ export function AddBookmarkModal() {
         setBookmarks((prev) => [result.data, ...prev.filter((b) => b.id !== result.data.id)]);
         formRef.current?.reset();
         setUrlInput("");
+        setSelectedFolderId(null);
       } else {
         setError(result.error);
         openAdd();
@@ -71,8 +78,15 @@ export function AddBookmarkModal() {
     });
   }
 
+  function handleClose() {
+    setSelectedFolderId(null);
+    setUrlInput("");
+    setError("");
+    closeAdd();
+  }
+
   return (
-    <Dialog open={addOpen} onOpenChange={(open) => (open ? openAdd() : closeAdd())}>
+    <Dialog open={addOpen} onOpenChange={(open) => (open ? openAdd() : handleClose())}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New bookmark</DialogTitle>
@@ -101,9 +115,19 @@ export function AddBookmarkModal() {
               <Textarea id="add-note" name="note" rows={2} placeholder="Why did you save this?" className="resize-none" />
               <FieldHint>Optional.</FieldHint>
             </Field>
+            <Field>
+              <FieldLabel htmlFor="add-folder">Folder</FieldLabel>
+              <FolderSelector
+                id="add-folder"
+                name="folder_id"
+                value={selectedFolderId}
+                onChange={setSelectedFolderId}
+              />
+              <FieldHint>Optional. You can always move it later.</FieldHint>
+            </Field>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeAdd}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
             <Button type="submit" disabled={isPending}>
               <FloppyDiskIcon /> {isPending ? "Saving..." : "Save"}
             </Button>

@@ -15,6 +15,8 @@ import {
   type Icon,
 } from "@phosphor-icons/react";
 import { signOut } from "@/lib/actions";
+import { FolderTree } from "@/components/folders/FolderTree";
+import type { BookmarkFolder } from "@/lib/types";
 
 type DashboardSidebarProps = {
   collapsed: boolean;
@@ -22,6 +24,7 @@ type DashboardSidebarProps = {
   userEmail: string;
   profileName: string;
   profileAvatarUrl: string | null;
+  folders: BookmarkFolder[];
 };
 
 const primaryItems = [
@@ -62,6 +65,7 @@ export function DashboardSidebar({
   userEmail,
   profileName,
   profileAvatarUrl,
+  folders,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -116,6 +120,12 @@ export function DashboardSidebar({
           })}
         </div>
 
+        {/* Folders section */}
+        {!collapsed && (
+          <div className="dashboard-sidebar-folders">
+            <FolderTree folders={folders} collapsed={collapsed} />
+          </div>
+        )}
       </nav>
 
       <div className="dashboard-sidebar-profile" ref={profileRef}>

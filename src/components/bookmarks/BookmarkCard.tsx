@@ -4,17 +4,20 @@ import { memo, useCallback, useEffect, useRef, useState, useTransition } from "r
 import { useRouter } from "next/navigation";
 import {
   ArrowSquareOutIcon,
+  FolderSimpleIcon,
   ImageIcon,
   PencilSimpleIcon,
   SpinnerIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { retryBookmarkProcessing } from "@/lib/actions";
+import { getBookmarkFolders } from "@/lib/folder-actions";
 import { getDomain, getFaviconUrl } from "@/lib/data";
-import type { Bookmark } from "@/lib/types";
+import type { Bookmark, BookmarkFolder } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { AIMetadataChip } from "./AIMetadataChip";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
+import { MoveToFolderMenu } from "@/components/folders/MoveToFolderMenu";
 
 const EAGER_PREVIEW_COUNT = 3;
 
@@ -41,8 +44,13 @@ function BookmarkCardComponent({
   const [visible, setVisible] = useState(false);
   const [retryError, setRetryError] = useState("");
   const [isRetrying, startRetryTransition] = useTransition();
+  const [moveFolderOpen, setMoveFolderOpen] = useState(false);
+  const [folders, setFolders] = useState<BookmarkFolder[]>([]);
+  const [foldersLoaded, setFoldersLoaded] = useState(false);
+  const [, startFolderTransition] = useTransition();
   const cardRef = useRef<HTMLElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
+  const moveFolderRef = useRef<HTMLDivElement>(null);
 
   const domain = getDomain(bookmark.url);
   const favicon = getFaviconUrl(bookmark.url);
@@ -82,6 +90,30 @@ function BookmarkCardComponent({
     setImageState({ src: screenshot, loaded: false, error: false });
     setImageRetryKey((key) => key + 1);
   }
+
+  function handleMoveFolder(e: React.MouseEvent) {
+    e.stopPropagation();
+    setMoveFolderOpen((v) => !v);
+    if (!foldersLoaded) {
+      startFolderTransition(async () => {
+        const result = await getBookmarkFolders();
+        if (result.success) setFolders(result.data);
+        setFoldersLoaded(true);
+      });
+    }
+  }
+
+  // Close move folder menu on outside click
+  useEffect(() => {
+    if (!moveFolderOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      if (!moveFolderRef.current?.contains(e.target as Node)) {
+        setMoveFolderOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [moveFolderOpen]);
 
   const handleImageRef = useCallback((node: HTMLImageElement | null) => {
     imageRef.current = node;
@@ -249,6 +281,27 @@ function BookmarkCardComponent({
               >
                 <PencilSimpleIcon className="h-3.5 w-3.5" />
               </Button>
+              {/* Move to folder */}
+              <div className="moodboard-move-folder-wrap" ref={moveFolderRef}>
+                <Button
+                  variant="ghost" size="icon" className="moodboard-action"
+                  title="Move to folder"
+                  aria-label={`Move ${bookmark.title} to folder`}
+                  aria-haspopup="menu"
+                  aria-expanded={moveFolderOpen}
+                  onClick={handleMoveFolder}
+                >
+                  <FolderSimpleIcon className="h-3.5 w-3.5" />
+                </Button>
+                {moveFolderOpen && (
+                  <MoveToFolderMenu
+                    bookmarkId={bookmark.id}
+                    currentFolderId={bookmark.folder_id}
+                    folders={folders}
+                    onMoved={() => setMoveFolderOpen(false)}
+                  />
+                )}
+              </div>
               <Button
                 variant="ghost" size="icon" className="moodboard-action moodboard-action-danger"
                 title="Delete"

@@ -76,9 +76,11 @@ function DashboardGreeting({
 function GridInner({
   profileName,
   userEmail,
+  showGreeting = true,
 }: {
   profileName: string;
   userEmail: string;
+  showGreeting?: boolean;
 }) {
   const { filtered, pendingBookmarks, openAdd, openImport, openEdit, deleteItem } = useBookmarks();
   const router = useRouter();
@@ -95,12 +97,14 @@ function GridInner({
     <>
       <BookmarkSearchBar />
       <main className="dashboard-home">
-        <DashboardGreeting
-          profileName={profileName}
-          userEmail={userEmail}
-          onNewBookmark={openAdd}
-          onImportReferences={openImport}
-        />
+        {showGreeting && (
+          <DashboardGreeting
+            profileName={profileName}
+            userEmail={userEmail}
+            onNewBookmark={openAdd}
+            onImportReferences={openImport}
+          />
+        )}
 
         {/* Grid */}
         {filtered.length === 0 && pendingBookmarks.length === 0 ? (
@@ -141,14 +145,16 @@ export function BookmarkGrid({
   initialBookmarks,
   userEmail,
   profileName,
+  showGreeting = true,
 }: {
   initialBookmarks: Bookmark[];
   userEmail: string;
   profileName: string;
+  showGreeting?: boolean;
 }) {
   return (
     <BookmarksProvider initial={initialBookmarks}>
-      <GridInner profileName={profileName} userEmail={userEmail} />
+      <GridInner profileName={profileName} userEmail={userEmail} showGreeting={showGreeting} />
     </BookmarksProvider>
   );
 }

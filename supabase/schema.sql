@@ -1365,3 +1365,82 @@ ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
 
 -- No user-facing policies. This table should only be touched from server code
 -- using the service role client.
+
+-- ============================================================
+-- Bookmark Folders
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS bookmark_folders (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  parent_id   UUID        REFERENCES bookmark_folders(id) ON DELETE CASCADE,
+  name        TEXT        NOT NULL,
+  description TEXT        NOT NULL DEFAULT '',
+  color       TEXT,
+  icon        TEXT,
+  sort_order  INTEGER     NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE bookmark_folders
+  ADD COLUMN IF NOT EXISTS parent_id   UUID REFERENCES bookmark_folders(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS color       TEXT,
+  ADD COLUMN IF NOT EXISTS icon        TEXT,
+  ADD COLUMN IF NOT EXISTS sort_order  INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE bookmark_folders
+  DROP CONSTRAINT IF EXISTS bookmark_folders_name_check,
+  DROP CONSTRAINT IF EXISTS bookmark_folders_description_check,
+  DROP CONSTRAINT IF EXISTS bookmark_folders_color_check,
+  DROP CONSTRAINT IF EXISTS bookmark_folders_icon_check,
+  ADD CONSTRAINT bookmark_folders_name_check        CHECK (char_length(name) BETWEEN 1 AND 80),
+  ADD CONSTRAINT bookmark_folders_description_check CHECK (char_length(description) <= 300),
+  ADD CONSTRAINT bookmark_folders_color_check       CHECK (color IS NULL OR color ~ '^#[0-9A-Fa-f]{6}$'),
+  ADD CONSTRAINT bookmark_folders_icon_check        CHECK (icon IS NULL OR char_length(icon) <= 40);
+
+DROP TRIGGER IF EXISTS bookmark_folders_updated_at ON bookmark_folders;
+CREATE TRIGGER bookmark_folders_updated_at
+  BEFORE UPDATE ON bookmark_folders
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_bookmark_folders_user_id
+  ON bookmark_folders(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_bookmark_folders_parent_id
+  ON bookmark_folders(parent_id);
+
+CREATE INDEX IF NOT EXISTS idx_bookmark_folders_user_parent
+  ON bookmark_folders(user_id, parent_id);
+
+CREATE INDEX IF NOT EXISTS idx_bookmark_folders_sort_order
+  ON bookmark_folders(sort_order);
+
+ALTER TABLE bookmark_folders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_bookmark_folders" ON bookmark_folders;
+CREATE POLICY "select_own_bookmark_folders" ON bookmark_folders
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_bookmark_folders" ON bookmark_folders;
+CREATE POLICY "insert_own_bookmark_folders" ON bookmark_folders
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "update_own_bookmark_folders" ON bookmark_folders;
+CREATE POLICY "update_own_bookmark_folders" ON bookmark_folders
+  FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_bookmark_folders" ON bookmark_folders;
+CREATE POLICY "delete_own_bookmark_folders" ON bookmark_folders
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Add folder_id to bookmarks (nullable, ON DELETE SET NULL so deleting folder uncategorizes)
+ALTER TABLE bookmarks
+  ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES bookmark_folders(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS bookmarks_folder_id_idx
+  ON bookmarks(folder_id);
+
+CREATE INDEX IF NOT EXISTS bookmarks_user_folder_idx
+  ON bookmarks(user_id, folder_id);

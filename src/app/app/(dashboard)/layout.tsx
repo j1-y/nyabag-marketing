@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUserProfile } from "@/lib/profile";
 import { DashboardShell } from "@/components/layout/DashboardShell";
+import type { BookmarkFolder } from "@/lib/types";
 
 export default async function DashboardLayout({
   children,
@@ -47,16 +48,27 @@ export default async function DashboardLayout({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const profile = await getUserProfile(supabase, user);
+
+  const [profile, foldersResult] = await Promise.all([
+    getUserProfile(supabase, user),
+    supabase
+      .from("bookmark_folders")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true }),
+  ]);
+
+  const folders = (foldersResult.data ?? []) as BookmarkFolder[];
 
   return (
     <DashboardShell
       userEmail={user.email ?? ""}
       profileName={profile.name}
       profileAvatarUrl={profile.avatar_url ?? null}
+      folders={folders}
     >
       {children}
     </DashboardShell>
   );
 }
-

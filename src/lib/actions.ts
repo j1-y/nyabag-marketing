@@ -34,6 +34,7 @@ type CreateBookmarkForUserInput = {
   title?: string;
   tags?: string[];
   note?: string;
+  folder_id?: string | null;
 };
 
 function avatarExtension(file: File) {
@@ -309,6 +310,7 @@ async function createBookmarkForUser({
   title,
   tags = [],
   note,
+  folder_id,
 }: CreateBookmarkForUserInput): Promise<ActionResult<Bookmark>> {
   const domain = getDomain(url);
   const id = crypto.randomUUID();
@@ -339,6 +341,7 @@ async function createBookmarkForUser({
       processing_error: null,
       enrichment_started_at: null,
       enrichment_finished_at: null,
+      folder_id: folder_id ?? null,
     })
     .select()
     .single();
@@ -385,11 +388,13 @@ export async function createBookmark(
       };
     }
 
+    const rawFolderId = formData.get("folder_id");
     const parsed = bookmarkCreateSchema.safeParse({
       url: formData.get("url"),
       title: formData.get("title") ?? undefined,
       tags: formData.get("tags") ?? "",
       note: formData.get("note") ?? undefined,
+      folder_id: rawFolderId ? String(rawFolderId) : null,
     });
 
     if (!parsed.success) {
@@ -408,6 +413,21 @@ export async function createBookmark(
       };
     }
 
+    // Verify folder ownership if provided
+    let validFolderId: string | null = null;
+    if (parsed.data.folder_id) {
+      const { data: folder } = await supabase
+        .from("bookmark_folders")
+        .select("id")
+        .eq("id", parsed.data.folder_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!folder) {
+        return { success: false, error: "Folder not found or not owned by you" };
+      }
+      validFolderId = folder.id;
+    }
+
     const result = await createBookmarkForUser({
       supabase,
       userId: user.id,
@@ -415,11 +435,13 @@ export async function createBookmark(
       title: parsed.data.title,
       tags: parsed.data.tags,
       note: parsed.data.note,
+      folder_id: validFolderId,
     });
 
     if (!result.success) return result;
 
     revalidatePath("/app");
+    if (validFolderId) revalidatePath(`/app/folders/${validFolderId}`);
 
     return result;
   });
@@ -956,19 +978,21 @@ export async function updateBookmark(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
+  const rawFolderId = formData.get("folder_id");
   const parsed = bookmarkUpdateSchema.safeParse({
     id: formData.get("id"),
     url: formData.get("url"),
     title: formData.get("title"),
     tags: formData.get("tags") ?? "",
     note: formData.get("note"),
+    folder_id: rawFolderId !== null ? (rawFolderId === "" ? null : String(rawFolderId)) : undefined,
   });
 
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const { id, url, tags, note } = parsed.data;
+  const { id, url, tags, note, folder_id: parsedFolderId } = parsed.data;
 
   const { data: existing } = await supabase
     .from("bookmarks")
@@ -998,25 +1022,51 @@ export async function updateBookmark(
           fonts: designData.fonts,
         };
 
+  // Validate folder ownership if folder_id is being updated
+  let resolvedFolderId: string | null | undefined = undefined; // undefined = don't touch folder
+  if (parsedFolderId !== undefined) {
+    if (parsedFolderId === null || parsedFolderId === "") {
+      resolvedFolderId = null; // Remove from folder
+    } else {
+      const { data: folder } = await supabase
+        .from("bookmark_folders")
+        .select("id")
+        .eq("id", parsedFolderId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!folder) {
+        return { success: false, error: "Folder not found or not owned by you" };
+      }
+      resolvedFolderId = folder.id;
+    }
+  }
+
+  const updatePayload: Record<string, unknown> = {
+    url,
+    title,
+    tags,
+    note: note ?? "",
+    palette,
+    fonts,
+    screenshot_url: urlChanged ? null : existing?.screenshot_url ?? null,
+    screenshot_path: urlChanged ? null : existing?.screenshot_path ?? null,
+    screenshot_refreshed_at: urlChanged ? null : existing?.screenshot_refreshed_at ?? null,
+    summary: urlChanged ? "" : existing?.summary ?? "",
+    metadata_refreshed_at: urlChanged ? null : existing?.metadata_refreshed_at ?? null,
+    processing_status: urlChanged ? "queued" : undefined,
+    processing_error: urlChanged ? null : undefined,
+    enrichment_started_at: urlChanged ? null : undefined,
+    enrichment_finished_at: urlChanged ? null : undefined,
+  };
+
+  // Only include folder_id in update if it was explicitly provided in form
+  if (resolvedFolderId !== undefined) {
+    updatePayload.folder_id = resolvedFolderId;
+  }
+
   const { data, error } = await supabase
     .from("bookmarks")
-    .update({
-      url,
-      title,
-      tags,
-      note: note ?? "",
-      palette,
-      fonts,
-      screenshot_url: urlChanged ? null : existing?.screenshot_url ?? null,
-      screenshot_path: urlChanged ? null : existing?.screenshot_path ?? null,
-      screenshot_refreshed_at: urlChanged ? null : existing?.screenshot_refreshed_at ?? null,
-      summary: urlChanged ? "" : existing?.summary ?? "",
-      metadata_refreshed_at: urlChanged ? null : existing?.metadata_refreshed_at ?? null,
-      processing_status: urlChanged ? "queued" : undefined,
-      processing_error: urlChanged ? null : undefined,
-      enrichment_started_at: urlChanged ? null : undefined,
-      enrichment_finished_at: urlChanged ? null : undefined,
-    })
+    .update(updatePayload)
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
@@ -1035,6 +1085,8 @@ export async function updateBookmark(
   }
 
   revalidatePath("/app");
+  if (resolvedFolderId) revalidatePath(`/app/folders/${resolvedFolderId}`);
+  revalidatePath("/app/folders/uncategorized");
   return { success: true, data };
 }
 
