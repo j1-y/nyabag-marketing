@@ -15,7 +15,8 @@ type ExtensionCaptureType =
   | "image"
   | "link"
   | "selection"
-  | "visible_screenshot";
+  | "visible_screenshot"
+  | "full_page_screenshot";
 
 type ExtensionCapturePayload = {
   type?: ExtensionCaptureType;
@@ -26,6 +27,8 @@ type ExtensionCapturePayload = {
   imageBase64?: string;
   collectionId?: string | null;
   source?: string;
+  /** Set by the extension when it has already uploaded a screenshot via upload-url/commit-screenshot */
+  hasExtensionScreenshot?: boolean;
 };
 
 function truncate(value: string, max: number) {
@@ -59,7 +62,7 @@ function getTitleForCapture(payload: ExtensionCapturePayload, safeTargetUrl: str
     return pageTitle || (domain ? `Selection from ${domain}` : "Saved selection");
   }
 
-  if (payload.type === "visible_screenshot") {
+  if (payload.type === "visible_screenshot" || payload.type === "full_page_screenshot") {
     return pageTitle || (domain ? `Screenshot from ${domain}` : "Visible screenshot");
   }
 
@@ -160,7 +163,7 @@ export async function POST(request: NextRequest) {
   }
 
   const targetUrl =
-    type === "selection" || type === "visible_screenshot"
+    type === "selection" || type === "visible_screenshot" || type === "full_page_screenshot"
       ? payload.pageUrl
       : payload.url;
 
@@ -218,7 +221,8 @@ export async function POST(request: NextRequest) {
       screenshot_refreshed_at: isImageCapture ? new Date().toISOString() : null,
       summary: type === "selection" ? truncate(payload.text?.trim() ?? "", 1000) : "",
       metadata_refreshed_at: null,
-      processing_status: isImageCapture ? "ready" : "queued",
+      processing_status:
+        isImageCapture || payload.hasExtensionScreenshot ? "ready" : "queued",
       processing_error: null,
       enrichment_started_at: null,
       enrichment_finished_at: null,
@@ -253,8 +257,8 @@ export async function POST(request: NextRequest) {
         ? "Image saved to Nyabag"
         : type === "selection"
           ? "Selection saved to Nyabag"
-          : type === "visible_screenshot"
-            ? "Screenshot page saved to Nyabag"
+          : type === "visible_screenshot" || type === "full_page_screenshot"
+            ? "Screenshot saved to Nyabag"
             : "Saved to Nyabag",
     bookmark,
   });
