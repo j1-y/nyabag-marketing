@@ -14,13 +14,9 @@ export function OPTIONS(request: NextRequest) {
 }
 
 const CAPTURES_BUCKET = "captures";
-/** Max output width in pixels — preserves aspect ratio */
 const MAX_WIDTH = 1600;
-/** JPEG quality (0–100). 75 = good quality, ~5–8× smaller than raw capture */
 const JPEG_QUALITY = 75;
-/** Reject payloads larger than 15 MB (raw base64-decoded bytes) */
 const MAX_INPUT_BYTES = 15 * 1024 * 1024;
-/** Signed URL lifetime: 1 year */
 const SIGNED_URL_TTL = 365 * 24 * 60 * 60;
 
 export async function POST(request: NextRequest) {
@@ -33,7 +29,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 120 screenshot captures per hour per user
   const rate = await checkRateLimit({
     scope: "extension-captures",
     identifier: userLimitKey(auth.user.id),
@@ -42,10 +37,7 @@ export async function POST(request: NextRequest) {
   });
   if (!rate.allowed) {
     return extensionCors(
-      NextResponse.json(
-        { error: "Capture limit reached. Please try again later." },
-        { status: 429 }
-      ),
+      NextResponse.json({ error: "Capture limit reached. Please try again later." }, { status: 429 }),
       origin
     );
   }
@@ -55,6 +47,7 @@ export async function POST(request: NextRequest) {
     mimeType?: string;
     pageUrl?: string;
     pageTitle?: string;
+    source?: string;
   };
 
   try {
@@ -66,12 +59,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const {
-    imageBase64,
-    mimeType = "image/jpeg",
-    pageUrl,
-    pageTitle,
-  } = body;
+  const { imageBase64, pageUrl, pageTitle, source = "extension" } = body;
 
   if (!imageBase64) {
     return extensionCors(
@@ -80,16 +68,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Strip the data URL prefix (data:image/jpeg;base64,…) if present
   const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, "");
   const inputBuffer = Buffer.from(base64Data, "base64");
 
   if (inputBuffer.byteLength > MAX_INPUT_BYTES) {
     return extensionCors(
-      NextResponse.json(
-        { error: "Image too large (max 15 MB)" },
-        { status: 413 }
-      ),
+      NextResponse.json({ error: "Image too large (max 15 MB)" }, { status: 413 }),
       origin
     );
   }
@@ -117,42 +101,61 @@ export async function POST(request: NextRequest) {
 
   const { error: uploadError } = await supabase.storage
     .from(CAPTURES_BUCKET)
-    .upload(path, compressed, {
-      contentType: "image/jpeg",
-      upsert: false,
-    });
+    .upload(path, compressed, { contentType: "image/jpeg", upsert: false });
 
   if (uploadError) {
     console.error("[captures] storage upload failed:", uploadError.message);
     return extensionCors(
-      NextResponse.json(
-        { error: uploadError.message ?? "Storage upload failed" },
-        { status: 500 }
-      ),
+      NextResponse.json({ error: uploadError.message ?? "Storage upload failed" }, { status: 500 }),
       origin
     );
   }
 
-  // ── Generate a signed URL (1 year) for the caller ───────────────────────────
+  // ── Signed URL (1-year) ──────────────────────────────────────────────────────
   const { data: signedData } = await supabase.storage
     .from(CAPTURES_BUCKET)
     .createSignedUrl(path, SIGNED_URL_TTL);
 
-  const savings = Math.round((1 - compressed.byteLength / originalSize) * 100);
+  const captureUrl = signedData?.signedUrl ?? null;
+  const compressedSize = compressed.byteLength;
+  const savings = Math.round((1 - compressedSize / originalSize) * 100);
+
+  // ── Persist metadata to the captures table ───────────────────────────────────
+  const { data: capture, error: insertError } = await supabase
+    .from("captures")
+    .insert({
+      user_id: auth.user.id,
+      path,
+      capture_url: captureUrl,
+      page_url: pageUrl ?? null,
+      page_title: pageTitle ?? null,
+      original_size: originalSize,
+      compressed_size: compressedSize,
+      source,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    // Non-fatal: image is already in storage; log but continue
+    console.warn("[captures] DB insert failed (non-fatal):", insertError.message);
+  }
+
   console.log(
-    `[captures] saved ${path} — ${originalSize} → ${compressed.byteLength} bytes (${savings}% smaller)`,
+    `[captures] saved ${path} — ${originalSize} → ${compressedSize} bytes (${savings}% smaller)`,
     pageUrl ? `| ${pageUrl}` : ""
   );
 
   return extensionCors(
     NextResponse.json({
       success: true,
-      captureUrl: signedData?.signedUrl ?? null,
+      captureUrl,
       path,
+      id: capture?.id ?? null,
       pageUrl: pageUrl ?? null,
       pageTitle: pageTitle ?? null,
       originalSize,
-      compressedSize: compressed.byteLength,
+      compressedSize,
       savings: `${savings}%`,
     }),
     origin

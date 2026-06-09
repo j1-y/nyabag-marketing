@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookmarkSimpleIcon,
+  CameraIcon,
   CaretLeftIcon,
   CaretRightIcon,
   GearSixIcon,
@@ -45,6 +46,12 @@ const primaryItems = [
     label: "Design DNA",
     icon: PaletteIcon,
     isActive: (pathname: string) => pathname.startsWith("/app/design-dna"),
+  },
+  {
+    href: "/app/captures",
+    label: "Captures",
+    icon: CameraIcon,
+    isActive: (pathname: string) => pathname.startsWith("/app/captures"),
   },
 ];
 
