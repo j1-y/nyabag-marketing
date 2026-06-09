@@ -6,9 +6,14 @@ import { validatePublicHttpUrl } from "@/lib/security/url-safety";
 import { checkRateLimit, userLimitKey } from "@/lib/rate-limit";
 import { getDesignData, getDomain } from "@/lib/data";
 import { triggerBookmarkProcessor } from "@/lib/bookmarks/trigger-processor";
+import { extensionCors, handleExtensionPreflight } from "@/lib/extension/cors";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+export function OPTIONS(request: NextRequest) {
+  return handleExtensionPreflight(request);
+}
 
 type ExtensionCaptureType =
   | "page"
@@ -128,10 +133,14 @@ async function triggerProcessorBestEffort() {
 }
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
   const auth = await authenticateExtensionUser(request);
 
   if (!auth.success) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
+    return extensionCors(
+      NextResponse.json({ error: auth.error }, { status: auth.status }),
+      origin
+    );
   }
 
   const rate = await checkRateLimit({
@@ -142,9 +151,12 @@ export async function POST(request: NextRequest) {
   });
 
   if (!rate.allowed) {
-    return NextResponse.json(
-      { error: "Extension capture limit reached. Please try again later." },
-      { status: 429 }
+    return extensionCors(
+      NextResponse.json(
+        { error: "Extension capture limit reached. Please try again later." },
+        { status: 429 }
+      ),
+      origin
     );
   }
 
@@ -153,13 +165,19 @@ export async function POST(request: NextRequest) {
   try {
     payload = (await request.json()) as ExtensionCapturePayload;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    return extensionCors(
+      NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 }),
+      origin
+    );
   }
 
   const type = payload.type;
 
   if (!type) {
-    return NextResponse.json({ error: "Capture type is required" }, { status: 400 });
+    return extensionCors(
+      NextResponse.json({ error: "Capture type is required" }, { status: 400 }),
+      origin
+    );
   }
 
   const targetUrl =
@@ -174,7 +192,10 @@ export async function POST(request: NextRequest) {
   const safeTargetUrl = await validatePublicHttpUrl(targetUrl);
 
   if (!safeTargetUrl.safe) {
-    return NextResponse.json({ error: safeTargetUrl.error }, { status: 400 });
+    return extensionCors(
+      NextResponse.json({ error: safeTargetUrl.error }, { status: 400 }),
+      origin
+    );
   }
 
   let safePageUrl: string | undefined;
@@ -231,7 +252,10 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+    return extensionCors(
+      NextResponse.json({ error: insertError.message }, { status: 500 }),
+      origin
+    );
   }
 
   if (!isImageCapture) {
@@ -244,22 +268,28 @@ export async function POST(request: NextRequest) {
 
     if (!job.success) {
       await supabase.from("bookmarks").delete().eq("id", bookmarkId).eq("user_id", auth.user.id);
-      return NextResponse.json({ error: job.error }, { status: 500 });
+      return extensionCors(
+        NextResponse.json({ error: job.error }, { status: 500 }),
+        origin
+      );
     }
 
     await triggerProcessorBestEffort();
   }
 
-  return NextResponse.json({
-    success: true,
-    message:
-      type === "image"
-        ? "Image saved to Nyabag"
-        : type === "selection"
-          ? "Selection saved to Nyabag"
-          : type === "visible_screenshot" || type === "full_page_screenshot"
-            ? "Screenshot saved to Nyabag"
-            : "Saved to Nyabag",
-    bookmark,
-  });
+  return extensionCors(
+    NextResponse.json({
+      success: true,
+      message:
+        type === "image"
+          ? "Image saved to Nyabag"
+          : type === "selection"
+            ? "Selection saved to Nyabag"
+            : type === "visible_screenshot" || type === "full_page_screenshot"
+              ? "Screenshot saved to Nyabag"
+              : "Saved to Nyabag",
+      bookmark,
+    }),
+    origin
+  );
 }

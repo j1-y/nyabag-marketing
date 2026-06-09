@@ -4,9 +4,14 @@ import sharp from "sharp";
 import { createAdminServiceClient } from "@/lib/admin/service";
 import { authenticateExtensionUser } from "@/lib/extension/auth";
 import { checkRateLimit, userLimitKey } from "@/lib/rate-limit";
+import { extensionCors, handleExtensionPreflight } from "@/lib/extension/cors";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+export function OPTIONS(request: NextRequest) {
+  return handleExtensionPreflight(request);
+}
 
 const CAPTURES_BUCKET = "captures";
 /** Max output width in pixels — preserves aspect ratio */
@@ -19,9 +24,13 @@ const MAX_INPUT_BYTES = 15 * 1024 * 1024;
 const SIGNED_URL_TTL = 365 * 24 * 60 * 60;
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
   const auth = await authenticateExtensionUser(request);
   if (!auth.success) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
+    return extensionCors(
+      NextResponse.json({ error: auth.error }, { status: auth.status }),
+      origin
+    );
   }
 
   // 120 screenshot captures per hour per user
@@ -32,9 +41,12 @@ export async function POST(request: NextRequest) {
     windowSeconds: 60 * 60,
   });
   if (!rate.allowed) {
-    return NextResponse.json(
-      { error: "Capture limit reached. Please try again later." },
-      { status: 429 }
+    return extensionCors(
+      NextResponse.json(
+        { error: "Capture limit reached. Please try again later." },
+        { status: 429 }
+      ),
+      origin
     );
   }
 
@@ -48,7 +60,10 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    return extensionCors(
+      NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 }),
+      origin
+    );
   }
 
   const {
@@ -59,7 +74,10 @@ export async function POST(request: NextRequest) {
   } = body;
 
   if (!imageBase64) {
-    return NextResponse.json({ error: "imageBase64 is required" }, { status: 400 });
+    return extensionCors(
+      NextResponse.json({ error: "imageBase64 is required" }, { status: 400 }),
+      origin
+    );
   }
 
   // Strip the data URL prefix (data:image/jpeg;base64,…) if present
@@ -67,9 +85,12 @@ export async function POST(request: NextRequest) {
   const inputBuffer = Buffer.from(base64Data, "base64");
 
   if (inputBuffer.byteLength > MAX_INPUT_BYTES) {
-    return NextResponse.json(
-      { error: "Image too large (max 15 MB)" },
-      { status: 413 }
+    return extensionCors(
+      NextResponse.json(
+        { error: "Image too large (max 15 MB)" },
+        { status: 413 }
+      ),
+      origin
     );
   }
 
@@ -84,7 +105,10 @@ export async function POST(request: NextRequest) {
       .toBuffer();
   } catch (err) {
     console.error("[captures] sharp compression failed:", err);
-    return NextResponse.json({ error: "Image processing failed" }, { status: 500 });
+    return extensionCors(
+      NextResponse.json({ error: "Image processing failed" }, { status: 500 }),
+      origin
+    );
   }
 
   // ── Upload to Supabase Storage ───────────────────────────────────────────────
@@ -100,9 +124,12 @@ export async function POST(request: NextRequest) {
 
   if (uploadError) {
     console.error("[captures] storage upload failed:", uploadError.message);
-    return NextResponse.json(
-      { error: uploadError.message ?? "Storage upload failed" },
-      { status: 500 }
+    return extensionCors(
+      NextResponse.json(
+        { error: uploadError.message ?? "Storage upload failed" },
+        { status: 500 }
+      ),
+      origin
     );
   }
 
@@ -117,14 +144,17 @@ export async function POST(request: NextRequest) {
     pageUrl ? `| ${pageUrl}` : ""
   );
 
-  return NextResponse.json({
-    success: true,
-    captureUrl: signedData?.signedUrl ?? null,
-    path,
-    pageUrl: pageUrl ?? null,
-    pageTitle: pageTitle ?? null,
-    originalSize,
-    compressedSize: compressed.byteLength,
-    savings: `${savings}%`,
-  });
+  return extensionCors(
+    NextResponse.json({
+      success: true,
+      captureUrl: signedData?.signedUrl ?? null,
+      path,
+      pageUrl: pageUrl ?? null,
+      pageTitle: pageTitle ?? null,
+      originalSize,
+      compressedSize: compressed.byteLength,
+      savings: `${savings}%`,
+    }),
+    origin
+  );
 }
