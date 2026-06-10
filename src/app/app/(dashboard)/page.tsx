@@ -24,6 +24,8 @@ export default async function DashboardPage() {
         return supabase
           .from("bookmarks")
           .select("*")
+          .eq("user_id", user.id)
+          .is("folder_id", null)
           .order("created_at", { ascending: false });
       }),
 

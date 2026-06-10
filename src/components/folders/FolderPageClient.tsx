@@ -141,7 +141,7 @@ function FolderPageInner({
 
           {/* Bookmarks */}
           {filtered.length > 0 && (
-            <section className="folder-table-section">
+            <section className="folder-table-section" style={{ border: "1px solid #ebebeb", borderRadius: "16" }}>
               {/* List view */}
               {view === "list" && (
                 <>
