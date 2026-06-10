@@ -4,12 +4,13 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowSquareOutIcon,
+  CaretDownIcon,
   FolderSimpleIcon,
   PencilSimpleIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { getDomain, getFaviconUrl } from "@/lib/data";
-import { getBookmarkFolders } from "@/lib/folder-actions";
+import { Button } from "@/components/ui/button";
 import { MoveToFolderMenu } from "@/components/folders/MoveToFolderMenu";
 import type { Bookmark, BookmarkFolder } from "@/lib/types";
 
@@ -36,15 +37,13 @@ type Props = {
   bookmark: Bookmark;
   onEdit: (bookmark: Bookmark) => void;
   onDelete: (bookmark: Bookmark) => void;
+  isInbox?: boolean;
 };
 
-export function FolderBookmarkRow({ bookmark, onEdit, onDelete }: Props) {
+export function FolderBookmarkRow({ bookmark, onEdit, onDelete, isInbox }: Props) {
   const router = useRouter();
   const [faviconError, setFaviconError] = useState(false);
-  const [moveFolderOpen, setMoveFolderOpen] = useState(false);
-  const [folders, setFolders] = useState<BookmarkFolder[]>([]);
-  const [foldersLoaded, setFoldersLoaded] = useState(false);
-  const [, startFolderTransition] = useTransition();
+  const [isExiting, setIsExiting] = useState(false);
   const moveRef = useRef<HTMLDivElement>(null);
 
   const domain = getDomain(bookmark.url);
@@ -55,35 +54,14 @@ export function FolderBookmarkRow({ bookmark, onEdit, onDelete }: Props) {
     year: "numeric",
   }).format(new Date(bookmark.created_at));
 
-  function handleMoveClick(e: React.MouseEvent) {
-    e.stopPropagation();
-    setMoveFolderOpen((v) => !v);
-    if (!foldersLoaded) {
-      startFolderTransition(async () => {
-        const result = await getBookmarkFolders();
-        if (result.success) setFolders(result.data);
-        setFoldersLoaded(true);
-      });
-    }
-  }
 
-  useEffect(() => {
-    if (!moveFolderOpen) return;
-    function onPointerDown(e: PointerEvent) {
-      if (!moveRef.current?.contains(e.target as Node)) {
-        setMoveFolderOpen(false);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [moveFolderOpen]);
 
   const initials = getInitials(domain);
   const bg = avatarColor(domain);
 
   return (
     <div
-      className="folder-table-row"
+      className={`folder-table-row ${isExiting ? "exiting" : ""}`}
       role="button"
       tabIndex={0}
       onClick={() => router.push(`/app/bookmarks/${bookmark.id}`)}
@@ -96,78 +74,67 @@ export function FolderBookmarkRow({ bookmark, onEdit, onDelete }: Props) {
         <span className="folder-table-row-title">{bookmark.title}</span>
       </div>
 
-      <div className="folder-table-td" style={{ width: 200, color: "#888", fontSize: 14 }}>
+      <div className="folder-table-td folder-bm-date" style={{ width: 200, color: "#888", fontSize: 14 }}>
         {formattedDate}
       </div>
 
-      <div className="folder-table-td" style={{ width: 160 }}>
-        <div className="folder-avatar-wrap">
-          <span className="folder-avatar" style={{ background: bg }}>
-            {initials}
-          </span>
-          <span className="folder-avatar-name">{domain}</span>
+      <div className="folder-table-td" style={{ width: 180, overflow: "visible", display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 12 }}>
+        <div ref={moveRef} className="cell-move-wrap" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+          <MoveToFolderMenu
+            bookmarkId={bookmark.id}
+            currentFolderId={bookmark.folder_id}
+            onMoved={() => {
+              if (isInbox) {
+                setIsExiting(true);
+                setTimeout(() => router.refresh(), 300);
+              } else {
+                router.refresh();
+              }
+            }}
+          >
+            <Button variant="outline" size="sm" className="gap-2 text-xs h-8 px-2.5">
+              Move To <CaretDownIcon size={12} weight="bold" />
+            </Button>
+          </MoveToFolderMenu>
         </div>
-      </div>
 
-      {/* Hover actions — stop propagation so row click doesn't fire */}
-      <div
-        className="folder-bm-actions"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          className="folder-bm-action-btn"
-          title="Open link"
-          aria-label={`Open ${bookmark.title}`}
-          onClick={() =>
-            window.open(bookmark.url, "_blank", "noopener,noreferrer")
-          }
+        {/* Hover actions — stop propagation so row click doesn't fire */}
+        <div
+          className="folder-bm-actions"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
         >
-          <ArrowSquareOutIcon size={13} />
-        </button>
-        <button
-          type="button"
-          className="folder-bm-action-btn"
-          title="Edit"
-          aria-label="Edit bookmark"
-          onClick={() => onEdit(bookmark)}
-        >
-          <PencilSimpleIcon size={13} />
-        </button>
-        <div ref={moveRef} className="folder-bm-move-wrap">
           <button
             type="button"
             className="folder-bm-action-btn"
-            title="Move to folder"
-            aria-label="Move to folder"
-            aria-haspopup="menu"
-            aria-expanded={moveFolderOpen}
-            onClick={handleMoveClick}
+            title="Open link"
+            aria-label={`Open ${bookmark.title}`}
+            onClick={() =>
+              window.open(bookmark.url, "_blank", "noopener,noreferrer")
+            }
           >
-            <FolderSimpleIcon size={13} />
+            <ArrowSquareOutIcon size={13} />
           </button>
-          {moveFolderOpen && (
-            <MoveToFolderMenu
-              bookmarkId={bookmark.id}
-              currentFolderId={bookmark.folder_id}
-              folders={folders}
-              onMoved={() => {
-                setMoveFolderOpen(false);
-                router.refresh();
-              }}
-            />
-          )}
+          <button
+            type="button"
+            className="folder-bm-action-btn"
+            title="Edit"
+            aria-label="Edit bookmark"
+            onClick={() => onEdit(bookmark)}
+          >
+            <PencilSimpleIcon size={13} />
+          </button>
+
+          <button
+            type="button"
+            className="folder-bm-action-btn folder-bm-action-btn-danger"
+            title="Delete"
+            aria-label="Delete bookmark"
+            onClick={() => onDelete(bookmark)}
+          >
+            <TrashIcon size={13} />
+          </button>
         </div>
-        <button
-          type="button"
-          className="folder-bm-action-btn folder-bm-action-btn-danger"
-          title="Delete"
-          aria-label="Delete bookmark"
-          onClick={() => onDelete(bookmark)}
-        >
-          <TrashIcon size={13} />
-        </button>
       </div>
     </div>
   );

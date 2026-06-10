@@ -44,13 +44,8 @@ function BookmarkCardComponent({
   const [visible, setVisible] = useState(false);
   const [retryError, setRetryError] = useState("");
   const [isRetrying, startRetryTransition] = useTransition();
-  const [moveFolderOpen, setMoveFolderOpen] = useState(false);
-  const [folders, setFolders] = useState<BookmarkFolder[]>([]);
-  const [foldersLoaded, setFoldersLoaded] = useState(false);
-  const [, startFolderTransition] = useTransition();
   const cardRef = useRef<HTMLElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const moveFolderRef = useRef<HTMLDivElement>(null);
 
   const domain = getDomain(bookmark.url);
   const favicon = getFaviconUrl(bookmark.url);
@@ -91,29 +86,7 @@ function BookmarkCardComponent({
     setImageRetryKey((key) => key + 1);
   }
 
-  function handleMoveFolder(e: React.MouseEvent) {
-    e.stopPropagation();
-    setMoveFolderOpen((v) => !v);
-    if (!foldersLoaded) {
-      startFolderTransition(async () => {
-        const result = await getBookmarkFolders();
-        if (result.success) setFolders(result.data);
-        setFoldersLoaded(true);
-      });
-    }
-  }
 
-  // Close move folder menu on outside click
-  useEffect(() => {
-    if (!moveFolderOpen) return;
-    function onPointerDown(e: PointerEvent) {
-      if (!moveFolderRef.current?.contains(e.target as Node)) {
-        setMoveFolderOpen(false);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [moveFolderOpen]);
 
   const handleImageRef = useCallback((node: HTMLImageElement | null) => {
     imageRef.current = node;
@@ -282,25 +255,19 @@ function BookmarkCardComponent({
                 <PencilSimpleIcon className="h-3.5 w-3.5" />
               </Button>
               {/* Move to folder */}
-              <div className="moodboard-move-folder-wrap" ref={moveFolderRef}>
-                <Button
-                  variant="ghost" size="icon" className="moodboard-action"
-                  title="Move to folder"
-                  aria-label={`Move ${bookmark.title} to folder`}
-                  aria-haspopup="menu"
-                  aria-expanded={moveFolderOpen}
-                  onClick={handleMoveFolder}
+              <div className="moodboard-move-folder-wrap" onClick={(e) => e.stopPropagation()}>
+                <MoveToFolderMenu
+                  bookmarkId={bookmark.id}
+                  currentFolderId={bookmark.folder_id}
                 >
-                  <FolderSimpleIcon className="h-3.5 w-3.5" />
-                </Button>
-                {moveFolderOpen && (
-                  <MoveToFolderMenu
-                    bookmarkId={bookmark.id}
-                    currentFolderId={bookmark.folder_id}
-                    folders={folders}
-                    onMoved={() => setMoveFolderOpen(false)}
-                  />
-                )}
+                  <Button
+                    variant="ghost" size="icon" className="moodboard-action"
+                    title="Move to folder"
+                    aria-label={`Move ${bookmark.title} to folder`}
+                  >
+                    <FolderSimpleIcon className="h-3.5 w-3.5" />
+                  </Button>
+                </MoveToFolderMenu>
               </div>
               <Button
                 variant="ghost" size="icon" className="moodboard-action moodboard-action-danger"

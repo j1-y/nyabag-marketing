@@ -8249,7 +8249,6 @@
 /* Sidebar: Folders section */
 .dashboard-sidebar-folders {
   margin-top: 4px;
-  padding: 0 8px;
   border-top: 1px solid rgba(15, 15, 16, 0.08);
   padding-top: 8px;
 }
@@ -8327,7 +8326,6 @@
 
 .folder-tree-static-item:hover,
 .folder-tree-item:hover {
-  background: rgba(15, 15, 16, 0.045);
   color: var(--text);
 }
 
@@ -8342,8 +8340,6 @@
   background: var(--white, #ffffff);
   color: var(--text);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 8px 20px rgba(15, 15, 16, 0.06);
-  border: 1px solid rgba(15, 15, 16, 0.06);
 }
 
 .folder-tree-static-item svg,
@@ -8366,7 +8362,7 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .folder-tree-root-item,
@@ -8392,13 +8388,13 @@
   padding-left: 10px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .folder-tree-children::before {
   content: "";
   position: absolute;
-  left: 0;
+  left: 30px;
   top: 6px;
   bottom: 6px;
   width: 1px;
@@ -9194,7 +9190,7 @@
   color: var(--text3);
   flex-shrink: 0;
   min-width: 86px;
-  text-align: right;
+  text-align: left;
 }
 
 /* Row actions */
@@ -9305,3 +9301,41 @@
 .folder-empty-text-new { font-size: 15px; font-weight: 500; color: #555; margin: 0; }
 .folder-empty-subtext-new { font-size: 13px; color: #aaa; margin: 0; }
 
+/* Move To Dropdown */
+.cell-move-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.cell-move-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 12.5px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.cell-move-btn:hover,
+.cell-move-btn[aria-expanded="true"] {
+  background: var(--bg3);
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+.folder-table-row.exiting {
+  opacity: 0;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0;
+  padding: 0;
+  border-bottom: none;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

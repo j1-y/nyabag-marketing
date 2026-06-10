@@ -147,8 +147,8 @@ function FolderPageInner({
                 <>
                   <div className="folder-table-header">
                     <div className="folder-table-th" style={{ flex: 1, paddingLeft: 12 }}>File name</div>
-                    <div className="folder-table-th" style={{ width: 200 }}>Date added</div>
-                    <div className="folder-table-th" style={{ width: 160 }}>Added by</div>
+                    <div className="folder-table-th folder-bm-date" style={{ width: 200 }}>Date added</div>
+                    <div className="folder-table-th" style={{ width: 180 }}>Action</div>
                   </div>
                   <div className="folder-bm-list">
                     {sortedBookmarks.map((bm) => (
@@ -157,6 +157,7 @@ function FolderPageInner({
                         bookmark={bm}
                         onEdit={openEdit}
                         onDelete={setPendingDelete}
+                        isInbox={isInbox}
                       />
                     ))}
                   </div>
