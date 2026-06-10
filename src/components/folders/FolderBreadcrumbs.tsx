@@ -11,10 +11,6 @@ type FolderBreadcrumbsProps = {
 export function FolderBreadcrumbs({ breadcrumbs, isInbox }: FolderBreadcrumbsProps) {
   return (
     <nav className="folder-breadcrumbs" aria-label="Folder navigation">
-      <Link href="/app" className="folder-breadcrumb-item folder-breadcrumb-link">
-        <CopyIcon weight="fill" size={14} aria-hidden="true" className="folder-breadcrumb-icon" />
-        <span className="folder-breadcrumb-text">Documents</span>
-      </Link>
 
       {isInbox ? (
         <>

@@ -92,11 +92,7 @@ export function FolderBookmarkRow({ bookmark, onEdit, onDelete }: Props) {
       }}
       aria-label={`Open ${bookmark.title}`}
     >
-      <div className="folder-table-td-check">
-        <div className="folder-ui-checkbox"><span className="folder-ui-checkmark" style={{ opacity: 0 }}>✓</span></div>
-      </div>
-      
-      <div className="folder-table-td" style={{ flex: 1 }}>
+      <div className="folder-table-td" style={{ flex: 1, paddingLeft: 12 }}>
         <span className="folder-table-row-title">{bookmark.title}</span>
       </div>
 

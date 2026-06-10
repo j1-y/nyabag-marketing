@@ -97,26 +97,25 @@ function FolderPageInner({
         onAddBookmark={openAdd}
         viewToggleNode={
           <div className="folder-view-toggle">
-            <span className="folder-view-divider" />
             <button
               type="button"
               className={`folder-view-btn${view === "list" ? " active" : ""}`}
               onClick={() => setView("list")}
               aria-pressed={view === "list"}
+              aria-label="Switch to list view"
               title="List view"
             >
-              <ListIcon size={14} aria-hidden="true" />
-              List View
+              <ListIcon size={16} aria-hidden="true" />
             </button>
             <button
               type="button"
               className={`folder-view-btn${view === "grid" ? " active" : ""}`}
               onClick={() => setView("grid")}
               aria-pressed={view === "grid"}
+              aria-label="Switch to grid view"
               title="Grid view"
             >
-              <SquaresFourIcon size={14} aria-hidden="true" />
-              Grid
+              <SquaresFourIcon size={16} aria-hidden="true" />
             </button>
           </div>
         }
@@ -147,10 +146,7 @@ function FolderPageInner({
               {view === "list" && (
                 <>
                   <div className="folder-table-header">
-                    <div className="folder-table-th-check">
-                      <input type="checkbox" disabled style={{ opacity: 0.3 }} />
-                    </div>
-                    <div className="folder-table-th" style={{ flex: 1 }}>File name</div>
+                    <div className="folder-table-th" style={{ flex: 1, paddingLeft: 12 }}>File name</div>
                     <div className="folder-table-th" style={{ width: 200 }}>Date added</div>
                     <div className="folder-table-th" style={{ width: 160 }}>Added by</div>
                   </div>

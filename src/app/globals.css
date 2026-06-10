@@ -2959,8 +2959,11 @@
 }
 
 .bm-grid.view-moodboard {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 340px));
-  justify-content: center;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+  justify-content: start;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* ─── Card ───────────────────────────────────────────────── */
@@ -7877,10 +7880,7 @@
     padding-top: 1.25rem;
   }
 
-  .bm-grid.view-moodboard {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 320px));
-    justify-content: center;
-  }
+
 
   .moodboard-card {
     min-height: clamp(420px, 62svh, 780px);
@@ -7957,10 +7957,7 @@
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   }
 
-  .bm-grid.view-moodboard {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 320px));
-    justify-content: center;
-  }
+
 
   .moodboard-card {
     min-height: clamp(420px, 62svh, 780px);
@@ -9264,8 +9261,7 @@
   }
 }
 
-/* --- Folders Revamp UI ------------------------------------------------------ */
-.folder-page-wrapper { max-width: 900px; margin: 0 auto; padding: 28px 32px 80px; min-height: 100vh; }
+.folder-page-wrapper { max-width: 100%; width: 100%; margin: 0; padding: 28px 32px 80px; min-height: 100vh; }
 .folder-breadcrumb-nav { display: flex; align-items: center; gap: 4px; margin-bottom: 20px; font-size: 13px; color: #888; }
 .folder-breadcrumb-link { display: inline-flex; align-items: center; gap: 5px; color: #555; text-decoration: none; font-weight: 500; }
 .folder-breadcrumb-icon { display: flex; align-items: center; }
@@ -9276,7 +9272,7 @@
 .folder-header-heading { font-size: 22px; font-weight: 700; color: #111; letter-spacing: -0.02em; margin: 0; }
 .folder-view-toggle { display: flex; align-items: center; gap: 2px; }
 .folder-view-divider { display: inline-block; width: 1px; height: 20px; background: #e5e5e5; margin: 0 12px 0 4px; }
-.folder-view-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; border: none; background: transparent; font-size: 13px; font-weight: 400; color: #888; cursor: pointer; transition: background 0.1s; }
+.folder-view-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 6px; border: none; background: transparent; color: #888; cursor: pointer; transition: background 0.1s; }
 .folder-view-btn.active { background: #f0f0f0; color: #111; font-weight: 500; }
 .folder-recent-section { margin-bottom: 32px; }
 .folder-section-label { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 14px; letter-spacing: -0.01em; }
@@ -9293,7 +9289,6 @@
 .folder-table-th { font-size: 13px; font-weight: 500; color: #888; padding: 0 12px; text-align: left; background: none; border: none; cursor: default; display: flex; align-items: center; gap: 4px; }
 .folder-table-th.sortable { cursor: pointer; }
 .folder-table-th.active { color: #111; }
-.folder-table-th-check { width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .folder-table-row { display: flex; align-items: center; padding: 0 12px; min-height: 52px; border-bottom: 1px solid #f5f5f5; transition: background 0.1s; background: #fff; position: relative; }
 .folder-table-row:hover { background: #fafafa; }
 .folder-table-row.selected { background: #f5f5ff; }
