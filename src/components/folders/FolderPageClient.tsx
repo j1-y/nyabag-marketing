@@ -22,7 +22,7 @@ type Props = {
   currentFolder: BookmarkFolder | null;
   subfolders: BookmarkFolder[];
   breadcrumbs: BookmarkFolder[];
-  isUncategorized: boolean;
+  isInbox: boolean;
   allFolders: BookmarkFolder[];
 };
 
@@ -40,7 +40,7 @@ function FolderPageInner({
   currentFolder,
   subfolders,
   breadcrumbs,
-  isUncategorized,
+  isInbox,
   allFolders,
 }: Props) {
   const { filtered, openAdd, openEdit, deleteItem } = useBookmarks();
@@ -80,32 +80,59 @@ function FolderPageInner({
   const isEmpty = subfolders.length === 0 && filtered.length === 0;
 
   return (
-    <div className="folder-detail-page">
+    <div className="folder-page-wrapper">
       {/* Breadcrumbs */}
       <FolderBreadcrumbs
         breadcrumbs={breadcrumbs}
-        isUncategorized={isUncategorized}
+        isInbox={isInbox}
       />
 
       {/* Page header */}
       <FolderDetailHeader
         folder={currentFolder}
-        isUncategorized={isUncategorized}
+        isInbox={isInbox}
         bookmarkCount={filtered.length}
         subfolderCount={subfolders.length}
         allFolders={allFolders}
         onAddBookmark={openAdd}
+        viewToggleNode={
+          <div className="folder-view-toggle">
+            <span className="folder-view-divider" />
+            <button
+              type="button"
+              className={`folder-view-btn${view === "list" ? " active" : ""}`}
+              onClick={() => setView("list")}
+              aria-pressed={view === "list"}
+              title="List view"
+            >
+              <ListIcon size={14} aria-hidden="true" />
+              List View
+            </button>
+            <button
+              type="button"
+              className={`folder-view-btn${view === "grid" ? " active" : ""}`}
+              onClick={() => setView("grid")}
+              aria-pressed={view === "grid"}
+              title="Grid view"
+            >
+              <SquaresFourIcon size={14} aria-hidden="true" />
+              Grid
+            </button>
+          </div>
+        }
       />
 
       {isEmpty ? (
-        <FolderEmptyState isUncategorized={isUncategorized} />
+        <FolderEmptyState isInbox={isInbox} />
       ) : (
         <>
           {/* Subfolders grid */}
           {subfolders.length > 0 && (
-            <section className="folder-section">
-              <h2 className="folder-section-title">Subfolders</h2>
-              <div className="folder-card-grid">
+            <section className="folder-recent-section">
+              <h2 className="folder-section-label">
+                Recent <span className="folder-section-count">{subfolders.length}</span>
+              </h2>
+              <div className="folder-card-grid-new">
                 {subfolders.map((sf) => (
                   <FolderCard key={sf.id} folder={sf} />
                 ))}
@@ -115,67 +142,29 @@ function FolderPageInner({
 
           {/* Bookmarks */}
           {filtered.length > 0 && (
-            <section className="folder-section">
-              {subfolders.length > 0 && (
-                <h2 className="folder-section-title">Bookmarks in this folder</h2>
-              )}
-
-              {/* Toolbar */}
-              <div className="folder-toolbar">
-                <div className="folder-toolbar-left">
-                  <label htmlFor="folder-sort" className="folder-toolbar-label">
-                    Sort
-                  </label>
-                  <select
-                    id="folder-sort"
-                    className="folder-sort-select"
-                    value={sort}
-                    onChange={(e) => setSort(e.target.value as SortKey)}
-                    aria-label="Sort bookmarks"
-                  >
-                    <option value="date">Date saved</option>
-                    <option value="title">Title A–Z</option>
-                    <option value="domain">Domain</option>
-                  </select>
-                </div>
-                <div
-                  className="folder-view-toggle"
-                  role="group"
-                  aria-label="View mode"
-                >
-                  <button
-                    type="button"
-                    className={`folder-view-btn${view === "list" ? " active" : ""}`}
-                    onClick={() => setView("list")}
-                    aria-pressed={view === "list"}
-                    title="List view"
-                  >
-                    <ListIcon size={14} aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    className={`folder-view-btn${view === "grid" ? " active" : ""}`}
-                    onClick={() => setView("grid")}
-                    aria-pressed={view === "grid"}
-                    title="Moodboard view"
-                  >
-                    <SquaresFourIcon size={14} aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-
+            <section className="folder-table-section">
               {/* List view */}
               {view === "list" && (
-                <div className="folder-bm-list">
-                  {sortedBookmarks.map((bm) => (
-                    <FolderBookmarkRow
-                      key={bm.id}
-                      bookmark={bm}
-                      onEdit={openEdit}
-                      onDelete={setPendingDelete}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="folder-table-header">
+                    <div className="folder-table-th-check">
+                      <input type="checkbox" disabled style={{ opacity: 0.3 }} />
+                    </div>
+                    <div className="folder-table-th" style={{ flex: 1 }}>File name</div>
+                    <div className="folder-table-th" style={{ width: 200 }}>Date added</div>
+                    <div className="folder-table-th" style={{ width: 160 }}>Added by</div>
+                  </div>
+                  <div className="folder-bm-list">
+                    {sortedBookmarks.map((bm) => (
+                      <FolderBookmarkRow
+                        key={bm.id}
+                        bookmark={bm}
+                        onEdit={openEdit}
+                        onDelete={setPendingDelete}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
 
               {/* Moodboard / grid view */}

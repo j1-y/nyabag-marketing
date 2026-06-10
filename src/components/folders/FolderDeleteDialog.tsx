@@ -55,7 +55,7 @@ export function FolderDeleteDialog({
           <DialogDescription>
             This will delete <strong>&ldquo;{folder.name}&rdquo;</strong> and its
             subfolders. Bookmarks inside them will be moved to{" "}
-            <strong>Uncategorized</strong>. Your bookmarks will not be deleted.
+            <strong>Inbox</strong>. Your bookmarks will not be deleted.
           </DialogDescription>
         </DialogHeader>
         {error && (

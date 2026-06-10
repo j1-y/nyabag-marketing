@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { TrayIcon } from "@phosphor-icons/react";
+import { TrayIcon, FolderPlusIcon, CaretDownIcon, CaretRightIcon, FolderOpenIcon } from "@phosphor-icons/react";
 import { FolderCreateDialog } from "./FolderCreateDialog";
 import { FolderTreeItem } from "./FolderTreeItem";
 import { buildFolderTree } from "@/lib/folders";
@@ -50,7 +50,7 @@ export function FolderTree({ folders, collapsed }: FolderTreeProps) {
     const match = pathname.match(/^\/app\/folders\/([^/]+)$/);
     if (!match) return;
     const activeFolderId = match[1];
-    if (activeFolderId === "uncategorized") return;
+    if (activeFolderId === "inbox") return;
 
     setExpandedIds((prev) => {
       // Find ancestor folders
@@ -82,7 +82,7 @@ export function FolderTree({ folders, collapsed }: FolderTreeProps) {
   }, []);
 
   const tree = buildFolderTree(folders);
-  const uncatActive = pathname === "/app/folders/uncategorized";
+  const uncatActive = pathname === "/app/folders/inbox";
 
   if (collapsed) {
     return null; // Sidebar collapsed — don't show tree
@@ -96,22 +96,23 @@ export function FolderTree({ folders, collapsed }: FolderTreeProps) {
           type="button"
           className="folder-tree-new-btn"
           onClick={() => setCreateOpen(true)}
-          aria-label="Create new folder"
+          aria-label="Create design folder"
           title="New folder"
         >
-          +
+          <FolderPlusIcon size={16} weight="regular" />
         </button>
       </div>
 
       <nav className="folder-tree-nav" aria-label="Folders">
-        {/* Uncategorized */}
+        {/* Inbox */}
         <Link
-          href="/app/folders/uncategorized"
-          className={`folder-tree-static-item ${uncatActive ? "active" : ""}`}
-          title="Uncategorized bookmarks"
+          href="/app/folders/inbox"
+          className={`folder-tree-static-item folder-tree-root-item ${uncatActive ? "active" : ""}`}
+          title="Inbox bookmarks"
         >
-          <TrayIcon size={15} aria-hidden="true" />
-          <span>Uncategorized</span>
+          <span className="folder-tree-chevron-placeholder" />
+          <TrayIcon size={16} aria-hidden="true" className="folder-tree-root-icon" />
+          <span className="folder-tree-root-label">Inbox</span>
         </Link>
 
         {/* User folders */}

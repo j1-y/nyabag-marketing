@@ -1,18 +1,18 @@
 import { FolderIcon } from "@phosphor-icons/react/dist/ssr";
 
 type FolderEmptyStateProps = {
-  isUncategorized?: boolean;
+  isInbox?: boolean;
 };
 
-export function FolderEmptyState({ isUncategorized }: FolderEmptyStateProps) {
-  if (isUncategorized) {
+export function FolderEmptyState({ isInbox }: FolderEmptyStateProps) {
+  if (isInbox) {
     return (
       <div className="folder-empty-state">
         <div className="folder-empty-state-icon" aria-hidden="true">
           <FolderIcon size={24} weight="duotone" />
         </div>
-        <h3>All organized</h3>
-        <p>All your bookmarks are inside folders.</p>
+        <h3>Inbox is empty</h3>
+        <p>New bookmarks land here until you move them into a folder.</p>
       </div>
     );
   }

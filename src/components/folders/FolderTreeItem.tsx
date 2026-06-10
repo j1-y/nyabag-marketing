@@ -68,7 +68,7 @@ export function FolderTreeItem({
           aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
           aria-expanded={isExpanded}
           tabIndex={hasChildren ? 0 : -1}
-          style={{ visibility: hasChildren ? "visible" : "hidden" }}
+          style={{ visibility: hasChildren || depth === 0 ? "visible" : "hidden" }}
         >
           {isExpanded ? (
             <CaretDownIcon size={11} weight="bold" />

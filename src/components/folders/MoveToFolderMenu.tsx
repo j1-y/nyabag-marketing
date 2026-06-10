@@ -55,7 +55,7 @@ export function MoveToFolderMenu({
         aria-pressed={!currentFolderId}
       >
         <FolderIcon size={13} aria-hidden="true" />
-        Uncategorized
+        Inbox
         {!currentFolderId && <span className="move-folder-current">(current)</span>}
       </button>
 

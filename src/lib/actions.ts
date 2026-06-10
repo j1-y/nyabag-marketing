@@ -1086,7 +1086,7 @@ export async function updateBookmark(
 
   revalidatePath("/app");
   if (resolvedFolderId) revalidatePath(`/app/folders/${resolvedFolderId}`);
-  revalidatePath("/app/folders/uncategorized");
+  revalidatePath("/app/folders/inbox");
   return { success: true, data };
 }
 

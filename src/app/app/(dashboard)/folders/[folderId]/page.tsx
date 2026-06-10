@@ -13,7 +13,7 @@ export default async function FolderPage({
   params: Promise<{ folderId: string }>;
 }) {
   const { folderId } = await params;
-  const isUncategorized = folderId === "uncategorized";
+  const isInbox = folderId === "inbox";
 
   const supabase = await createClient();
   const {
@@ -37,7 +37,7 @@ export default async function FolderPage({
   let subfolders: BookmarkFolder[] = [];
   let breadcrumbs: BookmarkFolder[] = [];
 
-  if (!isUncategorized) {
+  if (!isInbox) {
     currentFolder = allFolders.find((f) => f.id === folderId) ?? null;
     if (!currentFolder) notFound();
 
@@ -45,8 +45,8 @@ export default async function FolderPage({
     breadcrumbs = getFolderBreadcrumbs(allFolders, folderId);
   }
 
-  // Bookmarks for this folder (or uncategorized)
-  const bookmarksQuery = isUncategorized
+  // Bookmarks for this folder (or inbox)
+  const bookmarksQuery = isInbox
     ? supabase
         .from("bookmarks")
         .select("*")
@@ -83,7 +83,7 @@ export default async function FolderPage({
       currentFolder={currentFolder}
       subfolders={subfolders}
       breadcrumbs={breadcrumbs}
-      isUncategorized={isUncategorized}
+      isInbox={isInbox}
       allFolders={allFolders}
     />
   );

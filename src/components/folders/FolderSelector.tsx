@@ -58,7 +58,7 @@ export function FolderSelector({
         aria-label="Select folder"
       >
         <option value="">
-          {loaded ? "No folder (Uncategorized)" : "Loading folders…"}
+          {loaded ? "Inbox" : "Loading folders…"}
         </option>
         {flatOptions.map(({ folder, depth }) => (
           <option key={folder.id} value={folder.id}>

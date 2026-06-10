@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -8,6 +7,7 @@ import {
   CameraIcon,
   CaretLeftIcon,
   CaretRightIcon,
+  CaretUpDownIcon,
   GearSixIcon,
   NoteIcon,
   PaletteIcon,
@@ -18,6 +18,22 @@ import {
 import { signOut } from "@/lib/actions";
 import { FolderTree } from "@/components/folders/FolderTree";
 import type { BookmarkFolder } from "@/lib/types";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+// ─── Types ───────────────────────────────────────────────────
 
 type DashboardSidebarProps = {
   collapsed: boolean;
@@ -28,43 +44,61 @@ type DashboardSidebarProps = {
   folders: BookmarkFolder[];
 };
 
-const primaryItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: Icon;
+  match: (pathname: string) => boolean;
+};
+
+// ─── Nav config ──────────────────────────────────────────────
+
+const NAV_ITEMS: NavItem[] = [
   {
     href: "/app",
     label: "Bookmarks",
     icon: BookmarkSimpleIcon,
-    isActive: (pathname: string) => pathname === "/app" || pathname.startsWith("/app/bookmarks"),
+    match: (p) =>
+      p === "/app" ||
+      p.startsWith("/app/bookmarks") ||
+      p.startsWith("/app/folders"),
   },
   {
     href: "/app/canvas",
     label: "Canvas",
     icon: NoteIcon,
-    isActive: (pathname: string) => pathname.startsWith("/app/canvas"),
+    match: (p) => p.startsWith("/app/canvas"),
   },
   {
     href: "/app/design-dna",
     label: "Design DNA",
     icon: PaletteIcon,
-    isActive: (pathname: string) => pathname.startsWith("/app/design-dna"),
+    match: (p) => p.startsWith("/app/design-dna"),
   },
   {
     href: "/app/captures",
     label: "Captures",
     icon: CameraIcon,
-    isActive: (pathname: string) => pathname.startsWith("/app/captures"),
+    match: (p) => p.startsWith("/app/captures"),
   },
 ];
+
+// ─── Helpers ─────────────────────────────────────────────────
 
 function initials(name: string, email: string) {
   const source = name.trim() || email.trim();
   if (!source) return "N";
-  return source
-    .split(/[.@\s_-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "N";
+  return (
+    source
+      .split(/[.@\s_-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "N"
+  );
 }
+
+// ─── Component ───────────────────────────────────────────────
 
 export function DashboardSidebar({
   collapsed,
@@ -75,119 +109,179 @@ export function DashboardSidebar({
   folders,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
-  const [profileOpen, setProfileOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
   const displayName = profileName.trim() || userEmail || "Profile";
-
-  useEffect(() => {
-    function onPointerDown(event: PointerEvent) {
-      if (!profileRef.current?.contains(event.target as Node)) {
-        setProfileOpen(false);
-      }
-    }
-
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, []);
+  const userInitials = initials(profileName, userEmail);
 
   return (
-    <aside className="dashboard-sidebar" aria-label="Workspace navigation">
-      <div className="dashboard-sidebar-header">
-        <Link href="/app" className="dashboard-sidebar-brand" aria-label="Nyabag home">
-          <span className="dashboard-sidebar-logo" aria-hidden="true" />
-        </Link>
-        <button
-          type="button"
-          className="sidebar-collapse-btn"
-          onClick={onToggle}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <CaretRightIcon size={17} weight="bold" /> : <CaretLeftIcon size={17} weight="bold" />}
-        </button>
-      </div>
-
-      <nav className="dashboard-sidebar-scroll" aria-label="Primary">
-        <div className="dashboard-sidebar-section">
-          {primaryItems.map((item) => {
-            const Icon = item.icon as Icon;
-            const active = item.isActive(pathname);
-
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`dashboard-sidebar-item ${active ? "active" : ""}`}
-                title={collapsed ? item.label : undefined}
-              >
-                <Icon size={20} weight="regular" />
-                <span className="dashboard-sidebar-item-copy">{item.label}</span>
-              </Link>
-            );
-          })}
+    <TooltipProvider delayDuration={300}>
+      <aside className="dashboard-sidebar" aria-label="App navigation">
+        {/* ── Header ── */}
+        <div className="dashboard-sidebar-header">
+          <Link
+            href="/app"
+            className="dashboard-sidebar-brand"
+            aria-label="Nyabag home"
+          >
+            <span className="dashboard-sidebar-logo" aria-hidden="true" />
+          </Link>
+          <button
+            type="button"
+            className="sidebar-collapse-btn"
+            onClick={onToggle}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? (
+              <CaretRightIcon size={16} weight="bold" />
+            ) : (
+              <CaretLeftIcon size={16} weight="bold" />
+            )}
+          </button>
         </div>
 
-        {/* Folders section */}
-        {!collapsed && (
-          <div className="dashboard-sidebar-folders">
-            <FolderTree folders={folders} collapsed={collapsed} />
-          </div>
-        )}
-      </nav>
-
-      <div className="dashboard-sidebar-profile" ref={profileRef}>
-        {profileOpen && (
-          <div className="profile-menu sidebar-profile-menu" role="menu">
-            <div className="profile-menu-summary">
-              <span className="profile-avatar profile-avatar-lg" aria-hidden="true">
-                {profileAvatarUrl ? (
-                  <span className="profile-avatar-image" style={{ backgroundImage: `url(${profileAvatarUrl})` }} />
-                ) : (
-                  initials(profileName, userEmail)
-                )}
-              </span>
-              <div>
-                <strong>{displayName}</strong>
-                <span>{userEmail}</span>
-              </div>
-            </div>
-
-            <Link href="/app/profile" className="profile-menu-item" role="menuitem" onClick={() => setProfileOpen(false)}>
-              <UserIcon size={15} />
-              Profile
-            </Link>
-
-            <form action={signOut}>
-              <button type="submit" className="profile-menu-item profile-menu-danger" role="menuitem">
-                <SignOutIcon size={15} />
-                Log out
-              </button>
-            </form>
-          </div>
-        )}
-
-        <button
-          type="button"
-          className="sidebar-profile-trigger"
-          aria-haspopup="menu"
-          aria-expanded={profileOpen}
-          onClick={() => setProfileOpen((value) => !value)}
-          title={collapsed ? displayName : undefined}
+        {/* ── Nav ── */}
+        <nav
+          className="dashboard-sidebar-scroll"
+          aria-label="Primary navigation"
         >
-          <span className="profile-avatar" aria-hidden="true">
-            {profileAvatarUrl ? (
-              <span className="profile-avatar-image" style={{ backgroundImage: `url(${profileAvatarUrl})` }} />
-            ) : (
-              initials(profileName, userEmail)
+          <div className="dashboard-sidebar-section">
+            {!collapsed && (
+              <p className="dashboard-sidebar-label">Workspace</p>
             )}
-          </span>
-          <span className="sidebar-profile-copy">
-            <strong>{displayName}</strong>
-            <small>{userEmail || "Personal"}</small>
-          </span>
-          <GearSixIcon size={17} className="sidebar-profile-settings" aria-hidden="true" />
-        </button>
-      </div>
-    </aside>
+
+            {NAV_ITEMS.map((item) => {
+              const ItemIcon = item.icon;
+              const active = item.match(pathname);
+
+              const linkEl = (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={`dashboard-sidebar-item${active ? " active" : ""}`}
+                  aria-label={collapsed ? item.label : undefined}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <ItemIcon
+                    size={18}
+                    weight={active ? "duotone" : "regular"}
+                    className="dashboard-sidebar-item-icon"
+                    aria-hidden="true"
+                  />
+                  <span className="dashboard-sidebar-item-copy">
+                    {item.label}
+                  </span>
+                </Link>
+              );
+
+              if (collapsed) {
+                return (
+                  <Tooltip key={item.label}>
+                    <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={10}>
+                      {item.label}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              return linkEl;
+            })}
+          </div>
+
+          {/* Folders section — only shown expanded */}
+          {!collapsed && (
+            <div className="dashboard-sidebar-folders">
+              <FolderTree folders={folders} collapsed={collapsed} />
+            </div>
+          )}
+        </nav>
+
+        {/* ── Profile footer ── */}
+        <div className="dashboard-sidebar-profile">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="sidebar-profile-trigger"
+                aria-label={
+                  collapsed ? `Open menu for ${displayName}` : undefined
+                }
+                title={collapsed ? displayName : undefined}
+              >
+                <span className="profile-avatar" aria-hidden="true">
+                  {profileAvatarUrl ? (
+                    <span
+                      className="profile-avatar-image"
+                      style={{
+                        backgroundImage: `url(${profileAvatarUrl})`,
+                      }}
+                    />
+                  ) : (
+                    userInitials
+                  )}
+                </span>
+                <span className="sidebar-profile-copy">
+                  <strong>{displayName}</strong>
+                  <small>{userEmail || "Personal"}</small>
+                </span>
+                <CaretUpDownIcon
+                  size={15}
+                  className="sidebar-profile-settings"
+                  aria-hidden="true"
+                />
+              </button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              side={collapsed ? "right" : "top"}
+              align={collapsed ? "start" : "start"}
+              sideOffset={8}
+              className="sidebar-profile-menu-content"
+            >
+              {/* Account summary */}
+              <DropdownMenuLabel className="sidebar-profile-menu-summary">
+                <span className="profile-avatar profile-avatar-lg" aria-hidden="true">
+                  {profileAvatarUrl ? (
+                    <span
+                      className="profile-avatar-image"
+                      style={{ backgroundImage: `url(${profileAvatarUrl})` }}
+                    />
+                  ) : (
+                    userInitials
+                  )}
+                </span>
+                <div className="sidebar-profile-menu-info">
+                  <strong>{displayName}</strong>
+                  <span>{userEmail}</span>
+                </div>
+              </DropdownMenuLabel>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem asChild>
+                <Link href="/app/profile" className="sidebar-profile-menu-link">
+                  <UserIcon size={15} aria-hidden="true" />
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem asChild>
+                <form action={signOut} className="sidebar-profile-menu-form">
+                  <button
+                    type="submit"
+                    className="sidebar-profile-menu-danger"
+                  >
+                    <SignOutIcon size={15} aria-hidden="true" />
+                    Log out
+                  </button>
+                </form>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </aside>
+    </TooltipProvider>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FolderPlusIcon, PencilSimpleIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
+import { FolderPlusIcon, PencilSimpleIcon, PlusIcon, TrashIcon, TrayIcon } from "@phosphor-icons/react";
 import { FolderCreateDialog } from "./FolderCreateDialog";
 import { FolderRenameDialog } from "./FolderRenameDialog";
 import { FolderDeleteDialog } from "./FolderDeleteDialog";
@@ -9,19 +9,21 @@ import type { BookmarkFolder } from "@/lib/types";
 
 type FolderDetailHeaderProps = {
   folder: BookmarkFolder | null;
-  isUncategorized: boolean;
+  isInbox: boolean;
   bookmarkCount: number;
   subfolderCount: number;
   allFolders: BookmarkFolder[];
   onAddBookmark?: () => void;
+  viewToggleNode?: React.ReactNode;
 };
 
 export function FolderDetailHeader({
   folder,
-  isUncategorized,
+  isInbox,
   bookmarkCount,
   subfolderCount,
   onAddBookmark,
+  viewToggleNode,
 }: FolderDetailHeaderProps) {
   const [createSubfolderOpen, setCreateSubfolderOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -29,23 +31,19 @@ export function FolderDetailHeader({
 
   const metaParts: string[] = [];
   if (bookmarkCount > 0) metaParts.push(`${bookmarkCount} bookmark${bookmarkCount !== 1 ? "s" : ""}`);
-  if (!isUncategorized && subfolderCount > 0)
+  if (!isInbox && subfolderCount > 0)
     metaParts.push(`${subfolderCount} subfolder${subfolderCount !== 1 ? "s" : ""}`);
 
-  if (isUncategorized) {
+  if (isInbox) {
     return (
-      <div className="folder-detail-header">
-        <div className="folder-detail-header-top">
-          <div>
-            <h1 className="folder-detail-title">Uncategorized</h1>
-            <p className="folder-detail-meta">
-              {bookmarkCount > 0
-                ? `${bookmarkCount} bookmark${bookmarkCount !== 1 ? "s" : ""} without a folder`
-                : "Bookmarks without a folder"}
-            </p>
-          </div>
+      <div className="folder-header-row">
+        <h1 className="folder-header-heading">Inbox</h1>
+        {viewToggleNode}
+        
+        <div style={{ flex: 1 }} />
+
+        <div className="folder-detail-actions">
           {onAddBookmark && (
-            <div className="folder-detail-actions">
               <button
                 type="button"
                 className="folder-action-btn folder-action-btn-primary"
@@ -55,7 +53,6 @@ export function FolderDetailHeader({
                 <PlusIcon size={14} weight="bold" />
                 <span>Add bookmark</span>
               </button>
-            </div>
           )}
         </div>
       </div>
@@ -65,24 +62,20 @@ export function FolderDetailHeader({
   if (!folder) return null;
 
   return (
-    <div className="folder-detail-header">
-      <div className="folder-detail-header-top">
-        <div>
-          <h1
-            className="folder-detail-title"
-            style={folder.color ? { color: folder.color } : undefined}
-          >
-            {folder.name}
-          </h1>
-          {metaParts.length > 0 && (
-            <p className="folder-detail-meta">{metaParts.join(" · ")}</p>
-          )}
-          {folder.description && (
-            <p className="folder-detail-description">{folder.description}</p>
-          )}
-        </div>
+    <>
+      <div className="folder-header-row">
+      <h1
+        className="folder-header-heading"
+        style={folder.color ? { color: folder.color } : undefined}
+      >
+        {folder.name}
+      </h1>
+      
+      {viewToggleNode}
+      
+      <div style={{ flex: 1 }} />
 
-        <div className="folder-detail-actions">
+      <div className="folder-detail-actions">
           {onAddBookmark && (
             <button
               type="button"
@@ -146,6 +139,6 @@ export function FolderDetailHeader({
           />
         </>
       )}
-    </div>
+    </>
   );
 }

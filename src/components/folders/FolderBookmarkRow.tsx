@@ -13,6 +13,25 @@ import { getBookmarkFolders } from "@/lib/folder-actions";
 import { MoveToFolderMenu } from "@/components/folders/MoveToFolderMenu";
 import type { Bookmark, BookmarkFolder } from "@/lib/types";
 
+function getInitials(str: string) {
+  return str
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+const AVATAR_COLORS = [
+  "#7c6af7", "#f97316", "#10b981", "#3b82f6",
+  "#e11d48", "#8b5cf6", "#06b6d4", "#f59e0b",
+];
+function avatarColor(str: string) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 type Props = {
   bookmark: Bookmark;
   onEdit: (bookmark: Bookmark) => void;
@@ -59,9 +78,12 @@ export function FolderBookmarkRow({ bookmark, onEdit, onDelete }: Props) {
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [moveFolderOpen]);
 
+  const initials = getInitials(domain);
+  const bg = avatarColor(domain);
+
   return (
     <div
-      className="folder-bm-row"
+      className="folder-table-row"
       role="button"
       tabIndex={0}
       onClick={() => router.push(`/app/bookmarks/${bookmark.id}`)}
@@ -70,45 +92,26 @@ export function FolderBookmarkRow({ bookmark, onEdit, onDelete }: Props) {
       }}
       aria-label={`Open ${bookmark.title}`}
     >
-      {/* Favicon */}
-      <div className="folder-bm-favicon" aria-hidden="true">
-        {favicon && !faviconError ? (
-          <img
-            src={favicon}
-            alt=""
-            width={14}
-            height={14}
-            style={{ borderRadius: 3, display: "block" }}
-            onError={() => setFaviconError(true)}
-          />
-        ) : (
-          <span className="folder-bm-favicon-fallback">
-            {domain.charAt(0).toUpperCase()}
-          </span>
-        )}
+      <div className="folder-table-td-check">
+        <div className="folder-ui-checkbox"><span className="folder-ui-checkmark" style={{ opacity: 0 }}>✓</span></div>
+      </div>
+      
+      <div className="folder-table-td" style={{ flex: 1 }}>
+        <span className="folder-table-row-title">{bookmark.title}</span>
       </div>
 
-      {/* Title + domain */}
-      <div className="folder-bm-info">
-        <span className="folder-bm-title">{bookmark.title}</span>
-        <span className="folder-bm-domain">{domain}</span>
-      </div>
-
-      {/* Tags (max 3) */}
-      {bookmark.tags.length > 0 && (
-        <div className="folder-bm-tags" aria-label="Tags">
-          {bookmark.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="folder-bm-tag">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Date */}
-      <time className="folder-bm-date" dateTime={bookmark.created_at}>
+      <div className="folder-table-td" style={{ width: 200, color: "#888", fontSize: 14 }}>
         {formattedDate}
-      </time>
+      </div>
+
+      <div className="folder-table-td" style={{ width: 160 }}>
+        <div className="folder-avatar-wrap">
+          <span className="folder-avatar" style={{ background: bg }}>
+            {initials}
+          </span>
+          <span className="folder-avatar-name">{domain}</span>
+        </div>
+      </div>
 
       {/* Hover actions — stop propagation so row click doesn't fire */}
       <div

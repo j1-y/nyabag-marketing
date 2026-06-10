@@ -129,7 +129,7 @@ export async function getBookmarksByFolder(folderId: string): Promise<ActionResu
   return { success: true, data: (data ?? []) as Bookmark[] };
 }
 
-export async function getUncategorizedBookmarks(): Promise<ActionResult<Bookmark[]>> {
+export async function getInboxBookmarks(): Promise<ActionResult<Bookmark[]>> {
   const { supabase, user } = await getAuthUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
@@ -338,7 +338,7 @@ export async function deleteBookmarkFolder(folderId: string): Promise<ActionResu
   if (deleteError) return { success: false, error: deleteError.message };
 
   revalidatePath("/app");
-  revalidatePath("/app/folders/uncategorized");
+  revalidatePath("/app/folders/inbox");
   if (targetFolder.parent_id) revalidatePath(`/app/folders/${targetFolder.parent_id}`);
 
   return { success: true, data: undefined };
@@ -393,7 +393,7 @@ export async function moveBookmarkToFolder(
 
   revalidatePath("/app");
   revalidatePath(`/app/bookmarks/${bookmarkId}`);
-  revalidatePath("/app/folders/uncategorized");
+  revalidatePath("/app/folders/inbox");
   if (folderId) revalidatePath(`/app/folders/${folderId}`);
   if (bookmark.folder_id) revalidatePath(`/app/folders/${bookmark.folder_id}`);
 
@@ -431,7 +431,7 @@ export async function bulkMoveBookmarksToFolder(
 
   revalidatePath("/app");
   if (folderId) revalidatePath(`/app/folders/${folderId}`);
-  revalidatePath("/app/folders/uncategorized");
+  revalidatePath("/app/folders/inbox");
 
   return { success: true, data: { count: bookmarkIds.length } };
 }
