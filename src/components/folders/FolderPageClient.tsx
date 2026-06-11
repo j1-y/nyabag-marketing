@@ -1,7 +1,8 @@
 "use client";
 
+import { List, Grid } from "lucide-react";
 import { useMemo, useState } from "react";
-import { ListIcon, SquaresFourIcon } from "@phosphor-icons/react";
+;
 import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
 import { AddBookmarkModal } from "@/components/bookmarks/AddBookmarkModal";
 import { EditBookmarkModal } from "@/components/bookmarks/EditBookmarkModal";
@@ -105,7 +106,7 @@ function FolderPageInner({
               aria-label="Switch to list view"
               title="List view"
             >
-              <ListIcon size={16} aria-hidden="true" />
+              <List size={16} aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -115,7 +116,7 @@ function FolderPageInner({
               aria-label="Switch to grid view"
               title="Grid view"
             >
-              <SquaresFourIcon size={16} aria-hidden="true" />
+              <Grid size={16} aria-hidden="true" />
             </button>
           </div>
         }

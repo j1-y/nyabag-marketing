@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  CaretDownIcon,
-  CheckIcon,
-  CheckSquareIcon,
-  LinkSimpleIcon,
-  ListBulletsIcon,
-  ListNumbersIcon,
-  TextTIcon,
-  TrashIcon,
-} from "@phosphor-icons/react";
+import { ArrowDown, Check, CheckSquare, List, ListOrdered, Type, Trash2, Link as LinkIcon } from "lucide-react";
+;
 import {
   useCallback,
   useEffect,
@@ -37,15 +29,15 @@ const FORMAT_BUTTONS: Array<{
   title: string;
   icon?: ReactNode;
 }> = [
-  { action: "heading", label: "H", title: "Heading", icon: <TextTIcon size={16} /> },
+  { action: "heading", label: "H", title: "Heading", icon: <Type size={16} /> },
   { action: "bold", label: "B", title: "Bold" },
   { action: "italic", label: "I", title: "Italic" },
   { action: "underline", label: "U", title: "Underline" },
   { action: "strike", label: "S", title: "Strikethrough" },
-  { action: "bullet", label: "List", title: "Bulleted list", icon: <ListBulletsIcon size={16} /> },
-  { action: "ordered", label: "1", title: "Ordered list", icon: <ListNumbersIcon size={16} /> },
-  { action: "todo", label: "Todo", title: "Todo list", icon: <CheckSquareIcon size={16} /> },
-  { action: "link", label: "Link", title: "Link", icon: <LinkSimpleIcon size={16} /> },
+  { action: "bullet", label: "List", title: "Bulleted list", icon: <List size={16} /> },
+  { action: "ordered", label: "1", title: "Ordered list", icon: <ListOrdered size={16} /> },
+  { action: "todo", label: "Todo", title: "Todo list", icon: <CheckSquare size={16} /> },
+  { action: "link", label: "Link", title: "Link", icon: <LinkIcon size={16} /> },
 ];
 
 export function StickyNoteToolbar({
@@ -115,7 +107,7 @@ export function StickyNoteToolbar({
           }}
         >
           <span className="sticky-note-current-color" style={{ background: note.color }} />
-          <CaretDownIcon size={12} />
+          <ArrowDown size={12} />
         </button>
 
         {colorOpen && (
@@ -139,7 +131,7 @@ export function StickyNoteToolbar({
                       formatRef.current?.focus();
                     }}
                   >
-                    {isActive && <CheckIcon size={12} />}
+                    {isActive && <Check size={12} />}
                   </button>
                 );
               })}
@@ -188,7 +180,7 @@ export function StickyNoteToolbar({
           void deleteNote(note.id);
         }}
       >
-        <TrashIcon size={16} />
+        <Trash2 size={16} />
       </IconButton>
     </div>
   );

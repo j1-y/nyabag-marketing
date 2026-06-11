@@ -1,9 +1,10 @@
 "use client";
 
+import { Folder, Loader2 } from "lucide-react";
 import * as React from "react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FolderIcon, SpinnerGap } from "@phosphor-icons/react";
+;
 import { moveBookmarkToFolder, getBookmarkFolders } from "@/lib/folder-actions";
 import { buildFolderTree, flattenFolderTree } from "@/lib/folders";
 import type { BookmarkFolder } from "@/lib/types";
@@ -78,7 +79,7 @@ export function MoveToFolderMenu({
         
         {isLoading ? (
           <div className="px-2 py-4 flex items-center justify-center text-muted-foreground text-sm gap-2">
-            <SpinnerGap className="animate-spin" size={16} /> Loading...
+            <Loader2 className="animate-spin" size={16} /> Loading...
           </div>
         ) : (
           <>
@@ -87,7 +88,7 @@ export function MoveToFolderMenu({
               disabled={isMoving || !currentFolderId}
               className="gap-2 cursor-pointer"
             >
-              <FolderIcon size={14} aria-hidden="true" />
+              <Folder size={14} aria-hidden="true" />
               Inbox
               {!currentFolderId && <span className="ml-auto text-xs text-muted-foreground">(current)</span>}
             </DropdownMenuItem>
@@ -103,7 +104,7 @@ export function MoveToFolderMenu({
                   style={{ paddingLeft: `${0.5 + depth * 0.75}rem` }}
                   className="gap-2 cursor-pointer"
                 >
-                  <FolderIcon
+                  <Folder
                     size={14}
                     aria-hidden="true"
                     style={folder.color ? { color: folder.color } : undefined}

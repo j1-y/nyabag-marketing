@@ -1,8 +1,9 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckIcon } from "@phosphor-icons/react";
+;
 import { updateBookmarkFolder } from "@/lib/folder-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,7 +93,7 @@ export function FolderRenameDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isPending || !name.trim() || name === folder.name}>
-              <CheckIcon />
+              <Check />
               {isPending ? "Saving..." : "Rename"}
             </Button>
           </DialogFooter>

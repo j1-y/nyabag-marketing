@@ -1,4 +1,5 @@
-import { BookmarksIcon, NoteIcon, SpinnerIcon } from "@phosphor-icons/react/dist/ssr";
+import { Bookmark, FileText, Loader2 } from "lucide-react";
+;
 
 type DashboardRouteSkeletonProps = {
   variant: "bookmarks" | "canvas";
@@ -7,7 +8,7 @@ type DashboardRouteSkeletonProps = {
 function SkeletonPreviewStatus({ label }: { label: string }) {
   return (
     <div className="skeleton-preview-status">
-      <SpinnerIcon size={14} />
+      <Loader2 size={14} />
       <span>{label}</span>
     </div>
   );
@@ -66,7 +67,7 @@ export function CanvasBoardSkeleton() {
   return (
     <div className="dashboard-route-skeleton canvas-board-skeleton" role="status" aria-live="polite">
       <div className="canvas-loading-pill canvas-loading-pill-floating">
-        <SpinnerIcon size={16} />
+        <Loader2 size={16} />
         <span>Loading canvas...</span>
       </div>
     </div>
@@ -80,5 +81,5 @@ export function DashboardRouteSkeleton({ variant }: DashboardRouteSkeletonProps)
 }
 
 export function DashboardRouteSkeletonIcon({ variant }: DashboardRouteSkeletonProps) {
-  return variant === "canvas" ? <NoteIcon size={14} /> : <BookmarksIcon size={14} />;
+  return variant === "canvas" ? <FileText size={14} /> : <Bookmark size={14} />;
 }

@@ -1,14 +1,9 @@
 "use client";
 
+import { ArrowUpRight, ArrowDown, Folder, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowSquareOutIcon,
-  CaretDownIcon,
-  FolderSimpleIcon,
-  PencilSimpleIcon,
-  TrashIcon,
-} from "@phosphor-icons/react";
+;
 import { getDomain, getFaviconUrl } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { MoveToFolderMenu } from "@/components/folders/MoveToFolderMenu";
@@ -93,7 +88,7 @@ export function FolderBookmarkRow({ bookmark, onEdit, onDelete, isInbox }: Props
             }}
           >
             <Button variant="outline" size="sm" className="gap-2 text-xs h-8 px-2.5">
-              Move To <CaretDownIcon size={12} weight="bold" />
+              Move To <ArrowDown size={12} weight="bold" />
             </Button>
           </MoveToFolderMenu>
         </div>
@@ -113,7 +108,7 @@ export function FolderBookmarkRow({ bookmark, onEdit, onDelete, isInbox }: Props
               window.open(bookmark.url, "_blank", "noopener,noreferrer")
             }
           >
-            <ArrowSquareOutIcon size={13} />
+            <ArrowUpRight size={13} />
           </button>
           <button
             type="button"
@@ -122,7 +117,7 @@ export function FolderBookmarkRow({ bookmark, onEdit, onDelete, isInbox }: Props
             aria-label="Edit bookmark"
             onClick={() => onEdit(bookmark)}
           >
-            <PencilSimpleIcon size={13} />
+            <Pencil size={13} />
           </button>
 
           <button
@@ -132,7 +127,7 @@ export function FolderBookmarkRow({ bookmark, onEdit, onDelete, isInbox }: Props
             aria-label="Delete bookmark"
             onClick={() => onDelete(bookmark)}
           >
-            <TrashIcon size={13} />
+            <Trash2 size={13} />
           </button>
         </div>
       </div>

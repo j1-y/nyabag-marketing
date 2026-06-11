@@ -1,17 +1,8 @@
 "use client";
 
+import { ArrowUpRight, Maximize, Image, FileText, Palette, Pencil, Tag, Type, Trash2 } from "lucide-react";
 import { useState } from "react";
-import {
-  ArrowSquareOutIcon,
-  CornersOutIcon,
-  ImageIcon,
-  NoteIcon,
-  PaletteIcon,
-  PencilSimpleIcon,
-  TagIcon,
-  TextTIcon,
-  TrashIcon,
-} from "@phosphor-icons/react";
+;
 import { getDomain, getTagColor } from "@/lib/data";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
@@ -58,13 +49,13 @@ export function DetailModal() {
                 />
               ) : (
                 <div className="preview-fallback" style={{ position: "absolute", inset: 0, display: "flex" }}>
-                  <ImageIcon size={36} weight="light" />
+                  <Image size={36} weight="light" />
                   <span style={{ fontSize: 12, color: "var(--text3)" }}>{domain}</span>
                 </div>
               )
             ) : (
               <div className="preview-fallback" style={{ position: "absolute", inset: 0, display: "flex" }}>
-                <ImageIcon size={36} weight="light" />
+                <Image size={36} weight="light" />
                 <span style={{ fontSize: 12, color: "var(--text3)" }}>{domain}</span>
               </div>
             )}
@@ -72,12 +63,12 @@ export function DetailModal() {
           <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button size="sm" variant="secondary" className="h-8 px-4 text-xs shadow-md" asChild>
               <a href={b.screenshot_url ?? b.url} target="_blank" rel="noopener noreferrer">
-                <CornersOutIcon className="mr-2 h-3 w-3" /> Expand
+                <Maximize className="mr-2 h-3 w-3" /> Expand
               </a>
             </Button>
             <Button size="sm" variant="default" className="h-8 px-4 text-xs shadow-md" asChild>
               <a href={b.url} target="_blank" rel="noopener noreferrer">
-                <ArrowSquareOutIcon className="mr-2 h-3 w-3" /> Open site
+                <ArrowUpRight className="mr-2 h-3 w-3" /> Open site
               </a>
             </Button>
           </div>
@@ -85,7 +76,7 @@ export function DetailModal() {
 
         <div className="detail-meta">
           <div className="meta-block">
-            <p className="meta-label"><PaletteIcon /> Extracted colors</p>
+            <p className="meta-label"><Palette /> Extracted colors</p>
             <div className="palette-row">
               {b.palette.map((c) => (
                 <div key={c} className="palette-swatch">
@@ -97,7 +88,7 @@ export function DetailModal() {
           </div>
 
           <div className="meta-block">
-            <p className="meta-label"><TextTIcon /> Detected fonts</p>
+            <p className="meta-label"><Type /> Detected fonts</p>
             <div className="font-row">
               {b.fonts.map((f) => <span key={f} className="font-badge">{f}</span>)}
             </div>
@@ -105,13 +96,13 @@ export function DetailModal() {
 
           {b.note && (
             <div className="meta-block">
-              <p className="meta-label"><NoteIcon /> Note</p>
+              <p className="meta-label"><FileText /> Note</p>
               <p className="meta-note">{b.note}</p>
             </div>
           )}
 
           <div className="meta-block">
-            <p className="meta-label"><TagIcon /> Tags</p>
+            <p className="meta-label"><Tag /> Tags</p>
             <div className="tag-row">
               {b.tags.length ? b.tags.map((t) => (
                 <span key={t} className="ctag" style={{ borderColor: `${getTagColor(t)}33`, color: getTagColor(t) }}>
@@ -124,14 +115,14 @@ export function DetailModal() {
 
         <DialogFooter>
           <Button variant="destructive" onClick={handleDelete}>
-            <TrashIcon /> Delete
+            <Trash2 /> Delete
           </Button>
           <Button variant="outline" onClick={() => { closeDetail(); openEdit(b); }}>
-            <PencilSimpleIcon /> Edit
+            <Pencil /> Edit
           </Button>
           <Button asChild>
             <a href={b.url} target="_blank" rel="noopener noreferrer">
-              <ArrowSquareOutIcon /> Visit site
+              <ArrowUpRight /> Visit site
             </a>
           </Button>
         </DialogFooter>

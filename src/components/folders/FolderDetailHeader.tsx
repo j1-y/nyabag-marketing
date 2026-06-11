@@ -1,7 +1,8 @@
 "use client";
 
+import { FolderPlus, Pencil, Plus, Trash2, Inbox } from "lucide-react";
 import { useState } from "react";
-import { FolderPlusIcon, PencilSimpleIcon, PlusIcon, TrashIcon, TrayIcon } from "@phosphor-icons/react";
+;
 import { FolderCreateDialog } from "./FolderCreateDialog";
 import { FolderRenameDialog } from "./FolderRenameDialog";
 import { FolderDeleteDialog } from "./FolderDeleteDialog";
@@ -50,7 +51,7 @@ export function FolderDetailHeader({
                 onClick={onAddBookmark}
                 aria-label="Add bookmark"
               >
-                <PlusIcon size={14} weight="bold" />
+                <Plus size={14} weight="bold" />
                 <span>Add bookmark</span>
               </button>
           )}
@@ -83,7 +84,7 @@ export function FolderDetailHeader({
               onClick={onAddBookmark}
               aria-label="Add bookmark"
             >
-              <PlusIcon size={14} weight="bold" />
+              <Plus size={14} weight="bold" />
               <span>Add bookmark</span>
             </button>
           )}
@@ -94,7 +95,7 @@ export function FolderDetailHeader({
             aria-label="Create subfolder"
             title="New subfolder"
           >
-            <FolderPlusIcon size={15} />
+            <FolderPlus size={15} />
             <span>New subfolder</span>
           </button>
           <button
@@ -104,7 +105,7 @@ export function FolderDetailHeader({
             aria-label="Rename folder"
             title="Rename"
           >
-            <PencilSimpleIcon size={15} />
+            <Pencil size={15} />
             <span>Rename</span>
           </button>
           <button
@@ -114,7 +115,7 @@ export function FolderDetailHeader({
             aria-label="Delete folder"
             title="Delete"
           >
-            <TrashIcon size={15} />
+            <Trash2 size={15} />
             <span>Delete</span>
           </button>
         </div>

@@ -1,5 +1,6 @@
+import { Copy } from "lucide-react";
 import Link from "next/link";
-import { CopyIcon } from "@phosphor-icons/react/dist/ssr";
+;
 import type { BookmarkFolder } from "@/lib/types";
 
 type FolderBreadcrumbsProps = {

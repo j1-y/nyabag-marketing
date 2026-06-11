@@ -1,15 +1,9 @@
 "use client";
 
+import { ArrowUpRight, Folder, Image, Pencil, Loader2, Trash2 } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowSquareOutIcon,
-  FolderSimpleIcon,
-  ImageIcon,
-  PencilSimpleIcon,
-  SpinnerIcon,
-  TrashIcon,
-} from "@phosphor-icons/react";
+;
 import { retryBookmarkProcessing } from "@/lib/actions";
 import { getBookmarkFolders } from "@/lib/folder-actions";
 import { getDomain, getFaviconUrl } from "@/lib/data";
@@ -151,7 +145,7 @@ function BookmarkCardComponent({
                       <div className="preview-loading-line preview-loading-line-mid" />
                     </div>
                     <div className="skeleton-preview-status">
-                      <SpinnerIcon />
+                      <Loader2 />
                       <span>Loading preview...</span>
                     </div>
                   </div>
@@ -170,7 +164,7 @@ function BookmarkCardComponent({
                 />
                 {imageError && (
                   <div className="preview-fallback">
-                    <ImageIcon />
+                    <Image />
                     <span>{domain}</span>
                     <button
                       type="button"
@@ -184,12 +178,12 @@ function BookmarkCardComponent({
               </>
             ) : isPendingPreview ? (
               <div className="preview-fallback">
-                <ImageIcon />
+                <Image />
                 <span>{pendingLabel}</span>
               </div>
             ) : isFailed ? (
               <div className="preview-fallback">
-                <ImageIcon />
+                <Image />
                 <span>Preview failed</span>
                 <button
                   type="button"
@@ -203,7 +197,7 @@ function BookmarkCardComponent({
               </div>
             ) : (
               <div className="preview-fallback">
-                <ImageIcon />
+                <Image />
                 <span>{domain}</span>
               </div>
             )}
@@ -244,7 +238,7 @@ function BookmarkCardComponent({
                 aria-label={`Open ${bookmark.title}`}
                 onClick={(e) => { e.stopPropagation(); window.open(bookmark.url, "_blank", "noopener,noreferrer"); }}
               >
-                <ArrowSquareOutIcon className="h-3.5 w-3.5" />
+                <ArrowUpRight className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost" size="icon" className="moodboard-action"
@@ -252,7 +246,7 @@ function BookmarkCardComponent({
                 aria-label={`Edit ${bookmark.title}`}
                 onClick={(e) => { e.stopPropagation(); onEdit(bookmark); }}
               >
-                <PencilSimpleIcon className="h-3.5 w-3.5" />
+                <Pencil className="h-3.5 w-3.5" />
               </Button>
               {/* Move to folder */}
               <div className="moodboard-move-folder-wrap" onClick={(e) => e.stopPropagation()}>
@@ -265,7 +259,7 @@ function BookmarkCardComponent({
                     title="Move to folder"
                     aria-label={`Move ${bookmark.title} to folder`}
                   >
-                    <FolderSimpleIcon className="h-3.5 w-3.5" />
+                    <Folder className="h-3.5 w-3.5" />
                   </Button>
                 </MoveToFolderMenu>
               </div>
@@ -275,7 +269,7 @@ function BookmarkCardComponent({
                 aria-label={`Delete ${bookmark.title}`}
                 onClick={handleDelete}
               >
-                <TrashIcon className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>

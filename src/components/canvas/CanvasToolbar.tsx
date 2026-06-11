@@ -1,30 +1,21 @@
 "use client";
 
+import { MousePointer2, Hand, Image, Share2, Sticker, Type, Video, Link as LinkIcon } from "lucide-react";
 import { useState } from "react";
-import {
-  CursorIcon,
-  HandPalmIcon,
-  ImageIcon,
-  LinkSimpleIcon,
-  ShareNetworkIcon,
-  StickerIcon,
-  TextTIcon,
-  VideoCameraIcon,
-  type Icon,
-} from "@phosphor-icons/react";
 import { useNotes } from "@/hooks/useNotes";
 import { IconButton } from "@/components/ui/icon-button";
 import type { NoteType } from "@/lib/types";
+import type { LucideIcon } from "lucide-react";
 import { MediaNoteDialog } from "./MediaNoteDialog";
 import { SocialNoteDialog } from "./SocialNoteDialog";
 
-const NOTE_TYPES: { type: NoteType; icon: Icon; label: string; size: number }[] = [
-  { type: "text", icon: StickerIcon, label: "Sticky note", size: 20 },
-  { type: "text_frame", icon: TextTIcon, label: "Text frame", size: 20 },
-  { type: "link", icon: LinkSimpleIcon, label: "Link note", size: 20 },
-  { type: "image", icon: ImageIcon, label: "Image note", size: 20 },
-  { type: "video", icon: VideoCameraIcon, label: "Video note", size: 20 },
-  { type: "social", icon: ShareNetworkIcon, label: "Social post", size: 20 },
+const NOTE_TYPES: { type: NoteType; icon: LucideIcon; label: string; size: number }[] = [
+  { type: "text", icon: Sticker, label: "Sticky note", size: 20 },
+  { type: "text_frame", icon: Type, label: "Text frame", size: 20 },
+  { type: "link", icon: LinkIcon, label: "Link note", size: 20 },
+  { type: "image", icon: Image, label: "Image note", size: 20 },
+  { type: "video", icon: Video, label: "Video note", size: 20 },
+  { type: "social", icon: Share2, label: "Social post", size: 20 },
 ];
 
 export function CanvasToolbar() {
@@ -58,7 +49,7 @@ export function CanvasToolbar() {
               setPendingMediaNote(null);
             }}
           >
-            <CursorIcon size={20} style={{ width: 20, height: 20 }} weight="regular" />
+            <MousePointer2 size={20} style={{ width: 20, height: 20 }} />
           </IconButton>
           <IconButton
             type="button"
@@ -74,7 +65,7 @@ export function CanvasToolbar() {
               setPendingMediaNote(null);
             }}
           >
-            <HandPalmIcon size={20} style={{ width: 20, height: 20 }} weight="regular" />
+            <Hand size={20} style={{ width: 20, height: 20 }} />
           </IconButton>
         </div>
 
@@ -119,7 +110,6 @@ export function CanvasToolbar() {
               <Icon
                 size={size}
                 style={{ width: size, height: size }}
-                weight="regular"
               />
             </IconButton>
           );

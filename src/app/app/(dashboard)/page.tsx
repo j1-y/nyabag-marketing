@@ -21,6 +21,7 @@ export default async function DashboardPage() {
 
     const [bookmarksResult, profile] = await Promise.all([
       timeAsync("dashboard: load bookmarks", async () => {
+        if (!user) return { data: [], error: null };
         return supabase
           .from("bookmarks")
           .select("*")

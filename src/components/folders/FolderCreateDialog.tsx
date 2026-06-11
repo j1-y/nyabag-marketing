@@ -1,8 +1,9 @@
 "use client";
 
+import { Save } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FloppyDiskIcon } from "@phosphor-icons/react";
+;
 import { createBookmarkFolder } from "@/lib/folder-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -152,7 +153,7 @@ export function FolderCreateDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isPending || !name.trim()}>
-              <FloppyDiskIcon />
+              <Save />
               {isPending ? "Creating..." : "Create folder"}
             </Button>
           </DialogFooter>

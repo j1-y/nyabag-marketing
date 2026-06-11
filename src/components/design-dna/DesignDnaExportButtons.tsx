@@ -1,7 +1,8 @@
 "use client";
 
+import { FileDown, Printer, Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
-import { FileArrowDownIcon, PrinterIcon, SpinnerIcon } from "@phosphor-icons/react";
+;
 import { exportDesignDnaMarkdown } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 
@@ -33,11 +34,11 @@ export function DesignDnaExportButtons({ designDnaId }: { designDnaId: string })
   return (
     <div className="design-dna-export-actions">
       <Button type="button" variant="outline" onClick={() => window.print()}>
-        <PrinterIcon />
+        <Printer />
         Export PDF
       </Button>
       <Button type="button" variant="outline" onClick={downloadMarkdown} disabled={isPending}>
-        {isPending ? <SpinnerIcon className="animate-spin" /> : <FileArrowDownIcon />}
+        {isPending ? <Loader2 className="animate-spin" /> : <FileDown />}
         Export Design.md
       </Button>
       {error && <p role="alert">{error}</p>}

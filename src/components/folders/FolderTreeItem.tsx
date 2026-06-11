@@ -1,17 +1,10 @@
 "use client";
 
+import { ArrowDown, MoreHorizontal, FolderOpen, FolderPlus, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  CaretDownIcon,
-  CaretRightIcon,
-  DotsThreeIcon,
-  FolderOpenIcon,
-  FolderPlusIcon,
-  PencilSimpleIcon,
-  TrashIcon,
-} from "@phosphor-icons/react";
+;
 import { FolderCreateDialog } from "./FolderCreateDialog";
 import { FolderRenameDialog } from "./FolderRenameDialog";
 import { FolderDeleteDialog } from "./FolderDeleteDialog";
@@ -19,16 +12,10 @@ import type { BookmarkFolderTreeNode } from "@/lib/types";
 
 type FolderTreeItemProps = {
   node: BookmarkFolderTreeNode;
-  depth?: number;
-  expandedIds: Set<string>;
-  onToggleExpand: (id: string) => void;
 };
 
 export function FolderTreeItem({
   node,
-  depth = 0,
-  expandedIds,
-  onToggleExpand,
 }: FolderTreeItemProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -38,9 +25,6 @@ export function FolderTreeItem({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isActive = pathname === `/app/folders/${node.id}`;
-  const isExpanded = expandedIds.has(node.id);
-  const hasChildren = node.children.length > 0;
-  const isSubfolder = depth > 0;
 
   function handleMenuToggle(e: React.MouseEvent) {
     e.preventDefault();
@@ -55,47 +39,29 @@ export function FolderTreeItem({
   }
 
   return (
-    <li className={`folder-tree-item-wrapper folder-tree-item-depth-${depth}`}>
-      <div className={`folder-tree-item ${isActive ? "active" : ""}`}>
-        {/* Chevron — hidden by default, revealed on hover via CSS */}
-        <button
-          type="button"
-          className="folder-tree-chevron"
-          onClick={(e) => {
-            e.preventDefault();
-            onToggleExpand(node.id);
-          }}
-          aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
-          aria-expanded={isExpanded}
-          tabIndex={hasChildren ? 0 : -1}
-          style={{ visibility: hasChildren || depth === 0 ? "visible" : "hidden" }}
-        >
-          {isExpanded ? (
-            <CaretDownIcon size={11} weight="bold" />
-          ) : (
-            <CaretRightIcon size={11} weight="bold" />
-          )}
-        </button>
-
-        {/* Folder link */}
+    <li className={`folder-tree-item-wrapper folder-tree-item-depth-0`}>
+      <div
+        className={[
+          "folder-tree-item",
+          isActive ? "active" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <Link
           href={`/app/folders/${node.id}`}
-          className={`folder-tree-item-link${isSubfolder ? " folder-tree-subfolder-link" : ""}`}
+          className={`folder-tree-item-link`}
           title={node.name}
         >
-          {/* Only root-level folders show the folder icon */}
-          {!isSubfolder && (
-            <FolderOpenIcon
-              size={17}
-              weight="regular"
-              aria-hidden="true"
-              style={node.color ? { color: node.color } : undefined}
-            />
-          )}
+          <FolderOpen
+            size={17}
+            
+            aria-hidden="true"
+            style={node.color ? { color: node.color } : undefined}
+          />
           <span className="folder-tree-item-name">{node.name}</span>
         </Link>
 
-        {/* Context menu */}
         <div className="folder-tree-actions" ref={menuRef} onBlur={handleMenuBlur}>
           <button
             type="button"
@@ -105,7 +71,7 @@ export function FolderTreeItem({
             aria-expanded={menuOpen}
             aria-label={`More options for ${node.name}`}
           >
-            <DotsThreeIcon size={15} weight="bold" />
+            <MoreHorizontal size={15} weight="bold" />
           </button>
 
           {menuOpen && (
@@ -119,7 +85,7 @@ export function FolderTreeItem({
                   setCreateSubfolderOpen(true);
                 }}
               >
-                <FolderPlusIcon size={13} />
+                <FolderPlus size={13} />
                 New subfolder
               </button>
               <button
@@ -131,7 +97,7 @@ export function FolderTreeItem({
                   setRenameOpen(true);
                 }}
               >
-                <PencilSimpleIcon size={13} />
+                <Pencil size={13} />
                 Rename
               </button>
               <button
@@ -143,7 +109,7 @@ export function FolderTreeItem({
                   setDeleteOpen(true);
                 }}
               >
-                <TrashIcon size={13} />
+                <Trash2 size={13} />
                 Delete
               </button>
             </div>
@@ -151,22 +117,6 @@ export function FolderTreeItem({
         </div>
       </div>
 
-      {/* Children */}
-      {hasChildren && isExpanded && (
-        <ul className="folder-tree-children" role="group">
-          {node.children.map((child) => (
-            <FolderTreeItem
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              expandedIds={expandedIds}
-              onToggleExpand={onToggleExpand}
-            />
-          ))}
-        </ul>
-      )}
-
-      {/* Dialogs */}
       <FolderCreateDialog
         open={createSubfolderOpen}
         onOpenChange={setCreateSubfolderOpen}

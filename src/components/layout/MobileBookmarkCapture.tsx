@@ -1,19 +1,10 @@
 "use client";
 
+import { ArrowUpRight, ArrowRight, CheckCircle, Upload, LogOut, Loader2, User, X, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState, useTransition } from "react";
-import {
-  ArrowUpRightIcon,
-  CaretRightIcon,
-  CheckCircleIcon,
-  FileArrowUpIcon,
-  LinkSimpleIcon,
-  SignOutIcon,
-  SpinnerIcon,
-  UserIcon,
-  XIcon,
-} from "@phosphor-icons/react";
+;
 import { createBookmark, signOut } from "@/lib/actions";
 
 type MobileBookmarkCaptureProps = {
@@ -175,7 +166,7 @@ export function MobileBookmarkCapture({
               <div className="mobile-capture-profile-separator" />
               <form action={signOut}>
                 <button type="submit" className="mobile-capture-profile-item mobile-capture-profile-danger" role="menuitem">
-                  <SignOutIcon size={16} />
+                  <LogOut size={16} />
                   Sign out
                 </button>
               </form>
@@ -209,7 +200,7 @@ export function MobileBookmarkCapture({
 
         <div className="mobile-capture-textarea-wrap">
           <div className="mobile-capture-textarea-label">
-            <LinkSimpleIcon size={12} aria-hidden="true" />
+            <LinkIcon size={12} aria-hidden="true" />
             <span>URLs</span>
           </div>
           <textarea
@@ -243,13 +234,13 @@ export function MobileBookmarkCapture({
           type="button"
         >
           <span className="mobile-capture-file-icon">
-            <FileArrowUpIcon size={18} aria-hidden="true" />
+            <Upload size={18} aria-hidden="true" />
           </span>
           <span className="mobile-capture-file-copy">
             <span className="mobile-capture-file-title">Upload a file</span>
             <span className="mobile-capture-file-hint">TXT, CSV or Markdown</span>
           </span>
-          <CaretRightIcon className="mobile-capture-file-chevron" size={18} aria-hidden="true" />
+          <ArrowRight className="mobile-capture-file-chevron" size={18} aria-hidden="true" />
         </button>
 
         <input
@@ -268,9 +259,9 @@ export function MobileBookmarkCapture({
             type="button"
           >
             {isPending ? (
-              <SpinnerIcon size={16} style={{ animation: "spin 1s linear infinite" }} />
+              <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
             ) : (
-              <ArrowUpRightIcon size={17} />
+              <ArrowUpRight size={17} />
             )}
             {isPending ? "Saving..." : "Save to bookmarks"}
           </button>
@@ -281,13 +272,13 @@ export function MobileBookmarkCapture({
             type="button"
             aria-label="Clear"
           >
-            <XIcon size={19} aria-hidden="true" />
+            <X size={19} aria-hidden="true" />
           </button>
         </div>
 
         {savedCount > 0 && (
           <div className="mobile-capture-success" role="status">
-            <CheckCircleIcon size={16} weight="fill" />
+            <CheckCircle size={16} fill="currentColor" />
             {savedCount} bookmark{savedCount === 1 ? "" : "s"} saved - ready on your desktop.
           </div>
         )}

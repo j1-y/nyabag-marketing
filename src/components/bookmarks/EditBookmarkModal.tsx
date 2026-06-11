@@ -1,7 +1,8 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
-import { CheckIcon } from "@phosphor-icons/react";
+;
 import { updateBookmark } from "@/lib/actions";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
@@ -101,7 +102,7 @@ export function EditBookmarkModal() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => { setSelectedFolderId(undefined); closeEdit(); }}>Cancel</Button>
               <Button type="submit" disabled={isPending}>
-                <CheckIcon /> {isPending ? "Saving..." : "Update"}
+                <Check /> {isPending ? "Saving..." : "Update"}
               </Button>
             </DialogFooter>
           </form>

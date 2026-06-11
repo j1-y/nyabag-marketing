@@ -1,8 +1,9 @@
 "use client";
 
+import { Bookmark, Download, Upload, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookmarksIcon, DownloadSimpleIcon, FileArrowUpIcon, PlusIcon } from "@phosphor-icons/react";
+;
 import { BookmarksProvider, useBookmarks } from "@/hooks/useBookmarks";
 import { BookmarkCard } from "./BookmarkCard";
 import { PendingBookmarkCard } from "./PendingBookmarkCard";
@@ -60,12 +61,12 @@ function DashboardGreeting({
       <div className="dashboard-greeting-actions">
         <button type="button" className="dashboard-new-bookmark-btn" onClick={onNewBookmark}>
           <span className="dashboard-new-bookmark-inner">
-            <PlusIcon size={17} weight="bold" />
+            <Plus size={17} weight="bold" />
             New bookmark
           </span>
         </button>
         <button type="button" className="dashboard-import-btn" onClick={onImportReferences}>
-          <DownloadSimpleIcon size={17} weight="bold" />
+          <Download size={17} weight="bold" />
           Import references
         </button>
       </div>
@@ -110,7 +111,7 @@ function GridInner({
         {filtered.length === 0 && pendingBookmarks.length === 0 ? (
           <div className="empty-state dashboard-enter dashboard-enter-delayed">
             <div className="empty-state-icon" aria-hidden="true">
-              <BookmarksIcon size={24} weight="duotone" />
+              <Bookmark size={24} weight="duotone" />
             </div>
             <h2>No bookmarks yet</h2>
             <p>Save websites, references, and ideas into a visual board.</p>

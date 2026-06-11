@@ -1,9 +1,10 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SpinnerIcon } from "@phosphor-icons/react";
+;
 import { createClient } from "@/lib/supabase/client";
 import { timeAsync } from "@/lib/perf";
 import { getSafeInternalPath } from "@/lib/security/redirect-safety";
@@ -114,7 +115,7 @@ function LoginForm() {
             disabled={loading}
           >
             {loading && (
-              <SpinnerIcon
+              <Loader2
                 size={15}
                 className="phosphor"
                 style={{ animation: "spin 1s linear infinite" }}

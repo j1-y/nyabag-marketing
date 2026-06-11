@@ -1,6 +1,7 @@
 "use client";
 
-import { TrashIcon } from "@phosphor-icons/react";
+import { Trash2 } from "lucide-react";
+;
 import { useNotes } from "@/hooks/useNotes";
 import { IconButton } from "@/components/ui/icon-button";
 import { ColorPicker } from "./ColorPicker";
@@ -32,7 +33,7 @@ export function NoteToolbar({ note, isVisible }: Props) {
         title="Delete note"
         onPointerDown={(e) => { e.stopPropagation(); deleteNote(note.id); }}
       >
-        <TrashIcon size={12} />
+        <Trash2 size={12} />
       </IconButton>
     </div>
   );

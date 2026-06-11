@@ -1,7 +1,8 @@
 "use client";
 
+import { Camera, Save } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { CameraIcon, FloppyDiskIcon } from "@phosphor-icons/react";
+;
 import { updateProfile } from "@/lib/actions";
 import type { UserProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -84,7 +85,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           <p>JPG, PNG, WEBP, or GIF. Up to 5MB.</p>
           <Button variant="outline" asChild className="profile-upload-button">
             <label>
-            <CameraIcon size={14} />
+            <Camera size={14} />
             Choose image
             <input name="avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={onAvatarChange} />
             </label>
@@ -120,7 +121,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
 
         <div className="profile-actions">
           <Button type="submit" disabled={isPending}>
-            <FloppyDiskIcon size={14} />
+            <Save size={14} />
             {isPending ? "Saving..." : "Save profile"}
           </Button>
         </div>

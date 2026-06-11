@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowsOutSimpleIcon, MinusIcon, PlusIcon } from "@phosphor-icons/react";
+import { Maximize2, Minus, Plus } from "lucide-react";
+;
 import { useNotes } from "@/hooks/useNotes";
 import { IconButton } from "@/components/ui/icon-button";
 
@@ -20,13 +21,13 @@ export function CanvasStatusBar() {
   return (
     <div className="canvas-zoom-controls">
       <IconButton type="button" variant="ghost" size="icon-sm" title="Zoom out" aria-label="Zoom out" onClick={() => zoom(-0.1)}>
-        <MinusIcon size={18} weight="regular" />
+        <Minus size={18}  />
       </IconButton>
       <IconButton type="button" variant="ghost" size="icon-sm" title="Reset zoom" aria-label={`Reset zoom, current ${pct}%`} onClick={resetView}>
-        <ArrowsOutSimpleIcon size={17} weight="regular" />
+        <Maximize2 size={17}  />
       </IconButton>
       <IconButton type="button" variant="ghost" size="icon-sm" title="Zoom in" aria-label="Zoom in" onClick={() => zoom(0.1)}>
-        <PlusIcon size={18} weight="regular" />
+        <Plus size={18}  />
       </IconButton>
     </div>
   );

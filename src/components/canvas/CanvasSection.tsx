@@ -1,7 +1,8 @@
 "use client";
 
+import { Pencil, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
+;
 import { useNotes } from "@/hooks/useNotes";
 import { maybeSnap } from "@/lib/canvas-grid";
 import { IconButton } from "@/components/ui/icon-button";
@@ -213,10 +214,10 @@ export function CanvasSection({ section, viewport }: Props) {
         )}
         <div className="canvas-section-actions" onPointerDown={(e) => e.stopPropagation()}>
           <IconButton variant="ghost" size="icon-sm" title="Rename section" onClick={() => setIsEditing(true)}>
-            <PencilSimpleIcon size={12} />
+            <Pencil size={12} />
           </IconButton>
           <IconButton variant="ghost" size="icon-sm" title="Delete section" onClick={() => deleteSection(section.id)}>
-            <TrashIcon size={12} />
+            <Trash2 size={12} />
           </IconButton>
         </div>
       </div>

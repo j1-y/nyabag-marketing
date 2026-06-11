@@ -1,7 +1,8 @@
 "use client";
 
+import { Upload, Link as LinkIcon } from "lucide-react";
 import { useRef, useState } from "react";
-import { FileArrowUpIcon, LinkSimpleIcon } from "@phosphor-icons/react";
+;
 import type { PendingMediaNote } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -160,11 +161,11 @@ export function MediaNoteDialog({
           }}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="upload" className="gap-2">
-                <FileArrowUpIcon size={16} weight="regular" />
+                <Upload size={16}  />
                 Upload
               </TabsTrigger>
               <TabsTrigger value="url" className="gap-2">
-                <LinkSimpleIcon size={16} weight="regular" />
+                <LinkIcon size={16}  />
                 Link
               </TabsTrigger>
             </TabsList>
@@ -189,7 +190,7 @@ export function MediaNoteDialog({
                   accept={accept}
                   onChange={(e) => void selectFile(e.target.files?.[0])}
                 />
-                <FileArrowUpIcon size={28} weight="regular" />
+                <Upload size={28}  />
                 <strong>{file ? file.name : `Drop a ${type} file here`}</strong>
                 <span>
                   {file

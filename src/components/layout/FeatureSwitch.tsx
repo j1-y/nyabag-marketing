@@ -1,9 +1,10 @@
 "use client";
 
+import { FileText, Loader2, Grid } from "lucide-react";
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { NoteIcon, SpinnerIcon, SquaresFourIcon } from "@phosphor-icons/react";
+;
 
 function FeatureSwitchLink({
   href,
@@ -27,7 +28,7 @@ function FeatureSwitchLinkInner({ children }: { children: React.ReactNode }) {
   return (
     <>
       <span className="feature-switch-copy">{children}</span>
-      {pending && <SpinnerIcon className="feature-switch-spinner" size={13} weight="bold" aria-hidden="true" />}
+      {pending && <Loader2 className="feature-switch-spinner" size={13} weight="bold" aria-hidden="true" />}
     </>
   );
 }
@@ -39,11 +40,11 @@ export function FeatureSwitch() {
   return (
     <nav className="feature-switch" aria-label="Primary">
       <FeatureSwitchLink href="/app" active={!isNotes}>
-        <SquaresFourIcon size={14} weight="bold" />
+        <Grid size={14} weight="bold" />
         Bookmarks
       </FeatureSwitchLink>
       <FeatureSwitchLink href="/app/canvas" active={isNotes}>
-        <NoteIcon size={14} weight="bold" />
+        <FileText size={14} weight="bold" />
         Canvas
       </FeatureSwitchLink>
     </nav>

@@ -1,7 +1,8 @@
 "use client";
 
+import { Palette } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { PaletteIcon } from "@phosphor-icons/react";
+;
 import { NOTE_COLORS } from "@/hooks/useNotes";
 import { IconButton } from "@/components/ui/icon-button";
 
@@ -33,7 +34,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
         title="Change color"
         onPointerDown={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
       >
-        <PaletteIcon size={12} />
+        <Palette size={12} />
       </IconButton>
       {open && (
         <div className="color-picker-popover" onPointerDown={(e) => e.stopPropagation()}>

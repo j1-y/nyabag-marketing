@@ -1,6 +1,7 @@
 "use client";
 
-import { TrashIcon } from "@phosphor-icons/react";
+import { Trash2 } from "lucide-react";
+;
 import { useNotes } from "@/hooks/useNotes";
 import { IconButton } from "@/components/ui/icon-button";
 import type { CanvasNote } from "@/lib/types";
@@ -38,7 +39,7 @@ export function SocialNoteToolbar({ note, viewportScale, placement }: SocialNote
           void deleteNote(note.id);
         }}
       >
-        <TrashIcon size={16} />
+        <Trash2 size={16} />
       </IconButton>
     </div>
   );

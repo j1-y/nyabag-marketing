@@ -1,8 +1,9 @@
 "use client";
 
+import { Clock, FileText, Plus, Grid } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
-import { ClockIcon, NoteIcon, PlusIcon, SquaresFourIcon } from "@phosphor-icons/react";
+;
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { getTagColor } from "@/lib/data";
 
@@ -30,18 +31,18 @@ export function Sidebar() {
           className={`nav-item ${activeFilter === "all" && activeTag === "All" ? "active" : ""}`}
           onClick={() => { setActiveFilter("all"); setActiveTag("All"); }}
         >
-          <SquaresFourIcon size={13} />
+          <Grid size={13} />
           All bookmarks
         </button>
         <button
           className={`nav-item ${activeFilter === "recent" ? "active" : ""}`}
           onClick={() => setActiveFilter("recent")}
         >
-          <ClockIcon size={13} />
+          <Clock size={13} />
           Recent
         </button>
         <Link href="/app/canvas" className="nav-item">
-          <NoteIcon size={13} />
+          <FileText size={13} />
           Notes
         </Link>
       </nav>
@@ -68,7 +69,7 @@ export function Sidebar() {
 
       <div className="sidebar-footer">
         <button className="add-btn-sidebar" onClick={openAdd}>
-          <PlusIcon size={14} weight="bold" /> New bookmark
+          <Plus size={14} weight="bold" /> New bookmark
         </button>
       </div>
     </aside>

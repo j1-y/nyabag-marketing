@@ -1,7 +1,8 @@
 "use client";
 
+import { ArrowUpRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowSquareOutIcon } from "@phosphor-icons/react";
+;
 import { getXPostEmbedHtml } from "@/lib/canvas-actions";
 import {
   getSocialNoteUrl,
@@ -109,7 +110,7 @@ function SocialFallback({ url, label, message }: { url: string; label: string; m
       </div>
       <a href={url} target="_blank" rel="noopener noreferrer" onPointerDown={(e) => e.stopPropagation()}>
         Open post
-        <ArrowSquareOutIcon size={13} />
+        <ArrowUpRight size={13} />
       </a>
     </div>
   );

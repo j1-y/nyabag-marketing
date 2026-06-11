@@ -1,8 +1,9 @@
 "use client";
 
+import { FileText, Grid } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NoteIcon, SquaresFourIcon } from "@phosphor-icons/react";
+;
 
 export function CanvasSidebar() {
   const pathname = usePathname();
@@ -19,14 +20,14 @@ export function CanvasSidebar() {
           href="/app"
           className={`nav-item ${pathname === "/app" ? "active" : ""}`}
         >
-          <SquaresFourIcon size={13} />
+          <Grid size={13} />
           All bookmarks
         </Link>
         <Link
           href="/app/canvas"
           className={`nav-item ${pathname === "/app/canvas" ? "active" : ""}`}
         >
-          <NoteIcon size={13} />
+          <FileText size={13} />
           Canvas
         </Link>
       </nav>

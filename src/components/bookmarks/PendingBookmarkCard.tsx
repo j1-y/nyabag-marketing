@@ -1,6 +1,7 @@
 "use client";
 
-import { SpinnerIcon } from "@phosphor-icons/react";
+import { Loader2 } from "lucide-react";
+;
 import { getDomain } from "@/lib/data";
 import type { PendingBookmark } from "@/hooks/useBookmarks";
 
@@ -29,7 +30,7 @@ export function PendingBookmarkCard({ bookmark }: { bookmark: PendingBookmark })
           </div>
         </div>
         <div className="pending-status">
-          <SpinnerIcon size={14} className="animate-spin" />
+          <Loader2 size={14} className="animate-spin" />
           <span>Capturing moodboard preview...</span>
         </div>
       </div>

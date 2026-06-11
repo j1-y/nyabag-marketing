@@ -1,6 +1,7 @@
 "use client";
 
-import { SparkleIcon } from "@phosphor-icons/react";
+import { Sparkles } from "lucide-react";
+;
 
 export function AIIcon({
   size = 16,
@@ -9,5 +10,5 @@ export function AIIcon({
   size?: number;
   className?: string;
 }) {
-  return <SparkleIcon size={size} weight="duotone" className={className} aria-hidden="true" />;
+  return <Sparkles size={size} weight="duotone" className={className} aria-hidden="true" />;
 }

@@ -1,8 +1,9 @@
 "use client";
 
+import { Search, Send } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MagnifyingGlassIcon, PaperPlaneRightIcon } from "@phosphor-icons/react";
+;
 import { useBookmarks } from "@/hooks/useBookmarks";
 
 export function BookmarkSearchBar() {
@@ -54,7 +55,7 @@ export function BookmarkSearchBar() {
       }}
     >
       <div className="search-wrap">
-        <MagnifyingGlassIcon size={16} weight="bold" />
+        <Search size={16} weight="bold" />
         <input
           ref={inputRef}
           type="text"
@@ -65,7 +66,7 @@ export function BookmarkSearchBar() {
         />
         <kbd suppressHydrationWarning>{shortcutLabel}</kbd>
         <button type="submit" className="search-submit-btn" aria-label="Submit search">
-          <PaperPlaneRightIcon size={15} weight="fill" />
+          <Send size={15} fill="currentColor" />
         </button>
       </div>
     </form>

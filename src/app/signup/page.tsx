@@ -1,9 +1,10 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SpinnerIcon } from "@phosphor-icons/react";
+;
 import { createClient } from "@/lib/supabase/client";
 import { timeAsync } from "@/lib/perf";
 
@@ -98,7 +99,7 @@ export default function SignupPage() {
             disabled={loading}
           >
             {loading && (
-              <SpinnerIcon
+              <Loader2
                 size={15}
                 className="phosphor"
                 style={{ animation: "spin 1s linear infinite" }}

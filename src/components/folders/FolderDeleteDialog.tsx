@@ -1,8 +1,9 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { TrashIcon } from "@phosphor-icons/react";
+;
 import { deleteBookmarkFolder } from "@/lib/folder-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,7 +79,7 @@ export function FolderDeleteDialog({
             onClick={handleDelete}
             disabled={isPending}
           >
-            <TrashIcon />
+            <Trash2 />
             {isPending ? "Deleting..." : "Delete folder"}
           </Button>
         </DialogFooter>

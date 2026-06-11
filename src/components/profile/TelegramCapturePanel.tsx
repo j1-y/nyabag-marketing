@@ -1,7 +1,8 @@
 "use client";
 
+import { ArrowUpRight, Link2, Send, Plug } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowSquareOutIcon, LinkBreakIcon, PaperPlaneTiltIcon, PlugsConnectedIcon } from "@phosphor-icons/react";
+;
 import { createTelegramConnectionCode, disconnectTelegram, getTelegramConnection } from "@/lib/actions";
 import type { TelegramConnection } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -196,7 +197,7 @@ export function TelegramCapturePanel({ initial }: TelegramCapturePanelProps) {
       ) : connection?.status === "connected" ? (
         <div className="telegram-capture-state">
           <div className="telegram-capture-detail">
-            <PlugsConnectedIcon size={18} />
+            <Plug size={18} />
             <div>
               <strong>Connected as {displayName(connection)}</strong>
               <span>{connection.connected_at ? `Connected ${formatDate(connection.connected_at)}` : "Ready to save links"}</span>
@@ -224,7 +225,7 @@ export function TelegramCapturePanel({ initial }: TelegramCapturePanelProps) {
       <div className="telegram-capture-actions">
         {state.configured && connection?.status !== "connected" && (
           <Button type="button" onClick={generateCode} disabled={isPending}>
-            <PaperPlaneTiltIcon size={14} />
+            <Send size={14} />
             {connection?.status === "pending" || code ? "Regenerate code" : "Generate code"}
           </Button>
         )}
@@ -232,7 +233,7 @@ export function TelegramCapturePanel({ initial }: TelegramCapturePanelProps) {
         {state.botUrl && state.configured && (
           <Button type="button" variant="outline" asChild>
             <a href={state.botUrl} target="_blank" rel="noreferrer">
-              <ArrowSquareOutIcon size={14} />
+              <ArrowUpRight size={14} />
               Open Telegram bot
             </a>
           </Button>
@@ -240,7 +241,7 @@ export function TelegramCapturePanel({ initial }: TelegramCapturePanelProps) {
 
         {connection?.status === "connected" && (
           <Button type="button" variant="outline" onClick={disconnect} disabled={isPending}>
-            <LinkBreakIcon size={14} />
+            <Link2 size={14} />
             Disconnect Telegram
           </Button>
         )}

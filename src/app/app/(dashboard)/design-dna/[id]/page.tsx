@@ -1,6 +1,7 @@
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeftIcon, ArrowSquareOutIcon } from "@phosphor-icons/react/dist/ssr";
+;
 import { createClient } from "@/lib/supabase/server";
 import { getDesignDnaById } from "@/lib/design-dna/data";
 import { DesignDnaExportButtons } from "@/components/design-dna/DesignDnaExportButtons";
@@ -38,7 +39,7 @@ export default async function DesignDnaDetailPage({
       <article className="design-dna-print-surface">
         <div className="design-dna-hero__nav">
           <Link href="/app/design-dna">
-            <ArrowLeftIcon size={15} />
+            <ArrowLeft size={15} />
             Back to Design DNA
           </Link>
           <span>{designDna.source_domain}</span>
@@ -50,7 +51,7 @@ export default async function DesignDnaDetailPage({
           <div className="design-dna-hero-meta">
             <span className="design-dna-method-badge">HTML/CSS inferred</span>
             <a className="design-dna-source-link" href={designDna.source_url} target="_blank" rel="noopener noreferrer">
-              <ArrowSquareOutIcon size={14} />
+              <ArrowUpRight size={14} />
               Source link
             </a>
             <DesignDnaExportButtons designDnaId={designDna.id} />
@@ -129,7 +130,7 @@ export default async function DesignDnaDetailPage({
               <h2>{designDna.source_title || designDna.source_domain}</h2>
               <p>{designDna.source_url}</p>
               <a href={designDna.source_url} target="_blank" rel="noopener noreferrer">
-                <ArrowSquareOutIcon size={14} />
+                <ArrowUpRight size={14} />
                 Visit website
               </a>
             </div>

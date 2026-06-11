@@ -1,6 +1,7 @@
 "use client";
 
-import { TrashIcon } from "@phosphor-icons/react";
+import { Trash2 } from "lucide-react";
+;
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,7 +45,7 @@ export function DeleteBookmarkDialog({
               onOpenChange(false);
             }}
           >
-            <TrashIcon className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" />
             Delete
           </Button>
         </DialogFooter>

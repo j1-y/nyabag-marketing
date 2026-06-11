@@ -1,19 +1,9 @@
 "use client";
 
+import { ArrowLeft, ArrowUpRight, FileText, Palette, Loader2, RotateCw, Tag, Type, Trash2, MessageCircle } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeftIcon,
-  ArrowSquareOutIcon,
-  NoteIcon,
-  PaletteIcon,
-  SpinnerIcon,
-  ArrowsClockwiseIcon,
-  TagIcon,
-  TextTIcon,
-  TrashIcon,
-  TelegramLogoIcon,
-} from "@phosphor-icons/react";
+;
 import { deleteBookmark, getProcessingBookmarks, refreshBookmarkScreenshot, retryBookmarkProcessing } from "@/lib/actions";
 import { getDomain } from "@/lib/data";
 import type { Bookmark } from "@/lib/types";
@@ -102,7 +92,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
       <main className="bookmark-detail-shell">
         <section className="bookmark-detail-info">
           <button className="detail-back" onClick={() => router.push("/app")}>
-            <ArrowLeftIcon size={15} />
+            <ArrowLeft size={15} />
             Back to bookmarks
           </button>
 
@@ -132,14 +122,14 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
 
           {currentBookmark.note && (
             <div className="detail-note-card">
-              <TelegramLogoIcon size={16} />
+              <MessageCircle size={16} />
               <p>{currentBookmark.note}</p>
             </div>
           )}
 
           <a className="detail-visit" href={currentBookmark.url} target="_blank" rel="noopener noreferrer">
             Visit website
-            <ArrowSquareOutIcon size={14} />
+            <ArrowUpRight size={14} />
           </a>
 
           <DesignDnaBookmarkPanel
@@ -148,19 +138,19 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
           />
 
           <div className="detail-section">
-            <h2><PaletteIcon size={15} /> Extracted colors</h2>
+            <h2><Palette size={15} /> Extracted colors</h2>
             <BookmarkColorPalette colors={currentBookmark.palette} designDna={bookmark.design_dna ?? null} />
           </div>
 
           <div className="detail-section">
-            <h2><TextTIcon size={15} /> Detected fonts</h2>
+            <h2><Type size={15} /> Detected fonts</h2>
             <div className="detail-chip-list">
               {currentBookmark.fonts.map((font) => <span key={font}>{font}</span>)}
             </div>
           </div>
 
           <div className="detail-section">
-            <h2><TagIcon size={15} /> Tags</h2>
+            <h2><Tag size={15} /> Tags</h2>
             <div className="detail-chip-list">
               {currentBookmark.tags.length
                 ? currentBookmark.tags.map((tag) => <span key={tag}>{tag}</span>)
@@ -170,15 +160,15 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
 
           <div className="detail-actions">
             <Button className="detail-action-btn detail-action-btn-danger" variant="destructive" onClick={() => setDeleteOpen(true)} disabled={isPending}>
-              <TrashIcon /> Delete
+              <Trash2 /> Delete
             </Button>
             <Button className="detail-action-btn" variant="outline" onClick={handleRefreshScreenshot} disabled={isRefreshing}>
-              {isRefreshing ? <SpinnerIcon className="animate-spin" /> : <ArrowsClockwiseIcon />}
+              {isRefreshing ? <Loader2 className="animate-spin" /> : <RotateCw />}
               {isRefreshing ? "Queueing..." : "Refresh preview"}
             </Button>
             {currentBookmark.processing_status === "failed" && (
               <Button className="detail-action-btn" variant="outline" onClick={handleRetryProcessing} disabled={isRetrying}>
-                {isRetrying ? <SpinnerIcon className="animate-spin" /> : <ArrowsClockwiseIcon />}
+                {isRetrying ? <Loader2 className="animate-spin" /> : <RotateCw />}
                 {isRetrying ? "Retrying..." : "Retry preview"}
               </Button>
             )}
@@ -194,7 +184,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
               <span />
               <strong>{domain}</strong>
               <a href={currentBookmark.url} target="_blank" rel="noopener noreferrer" aria-label="Open site">
-                <ArrowSquareOutIcon size={14} />
+                <ArrowUpRight size={14} />
               </a>
             </div>
             <div className="browser-shot">

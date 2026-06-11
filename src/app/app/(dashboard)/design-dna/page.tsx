@@ -1,6 +1,7 @@
+import { Palette, Type, Grid, Calendar } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PaletteIcon, TextTIcon, SquaresFourIcon, CalendarBlankIcon } from "@phosphor-icons/react/dist/ssr";
+;
 import { createClient } from "@/lib/supabase/server";
 import { getDesignDnaList } from "@/lib/design-dna/data";
 
@@ -43,7 +44,7 @@ export default async function DesignDnaPage() {
       {items.length === 0 ? (
         <section className="design-dna-empty" aria-label="No Design DNA yet">
           <div className="design-dna-empty__icon" aria-hidden="true">
-            <PaletteIcon size={22} />
+            <Palette size={22} />
           </div>
           <h2>No Design DNA yet</h2>
           <p>Generate one from a bookmark to save typography, colors, and UI patterns.</p>
@@ -58,7 +59,7 @@ export default async function DesignDnaPage() {
                   <img src={item.screenshot_url} alt="" />
                 ) : (
                   <div className="design-dna-card__fallback" aria-hidden="true">
-                    <PaletteIcon size={24} />
+                    <Palette size={24} />
                   </div>
                 )}
               </div>
@@ -92,16 +93,16 @@ export default async function DesignDnaPage() {
                 <div className="design-dna-card__meta">
                   {item.typography[0]?.fontFamily && (
                     <span className="design-dna-meta-item">
-                      <TextTIcon size={12} aria-hidden="true" />
+                      <Type size={12} aria-hidden="true" />
                       {item.typography[0].fontFamily}
                     </span>
                   )}
                   <span className="design-dna-meta-item">
-                    <SquaresFourIcon size={12} aria-hidden="true" />
+                    <Grid size={12} aria-hidden="true" />
                     {item.components.length} components
                   </span>
                   <span className="design-dna-meta-item">
-                    <CalendarBlankIcon size={12} aria-hidden="true" />
+                    <Calendar size={12} aria-hidden="true" />
                     {formatDate(item.created_at)}
                   </span>
                 </div>

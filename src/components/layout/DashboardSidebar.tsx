@@ -1,20 +1,9 @@
 "use client";
 
+import { Bookmark, Camera, ChevronLeft, ArrowRight, ChevronsUpDown, Settings, FileText, Palette, LogOut, User, LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BookmarkSimpleIcon,
-  CameraIcon,
-  CaretLeftIcon,
-  CaretRightIcon,
-  CaretUpDownIcon,
-  GearSixIcon,
-  NoteIcon,
-  PaletteIcon,
-  SignOutIcon,
-  UserIcon,
-  type Icon,
-} from "@phosphor-icons/react";
+;
 import { signOut } from "@/lib/actions";
 import { FolderTree } from "@/components/folders/FolderTree";
 import type { BookmarkFolder } from "@/lib/types";
@@ -47,7 +36,7 @@ type DashboardSidebarProps = {
 type NavItem = {
   href: string;
   label: string;
-  icon: Icon;
+  icon: LucideIcon;
   match: (pathname: string) => boolean;
 };
 
@@ -57,7 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/app",
     label: "Bookmarks",
-    icon: BookmarkSimpleIcon,
+    icon: Bookmark,
     match: (p) =>
       p === "/app" ||
       p.startsWith("/app/bookmarks") ||
@@ -66,19 +55,19 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/app/canvas",
     label: "Canvas",
-    icon: NoteIcon,
+    icon: FileText,
     match: (p) => p.startsWith("/app/canvas"),
   },
   {
     href: "/app/design-dna",
     label: "Design DNA",
-    icon: PaletteIcon,
+    icon: Palette,
     match: (p) => p.startsWith("/app/design-dna"),
   },
   {
     href: "/app/captures",
     label: "Captures",
-    icon: CameraIcon,
+    icon: Camera,
     match: (p) => p.startsWith("/app/captures"),
   },
 ];
@@ -132,9 +121,9 @@ export function DashboardSidebar({
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? (
-              <CaretRightIcon size={16} weight="bold" />
+              <ArrowRight size={16} weight="bold" />
             ) : (
-              <CaretLeftIcon size={16} weight="bold" />
+              <ChevronLeft size={16} weight="bold" />
             )}
           </button>
         </div>
@@ -224,7 +213,7 @@ export function DashboardSidebar({
                   <strong>{displayName}</strong>
                   <small>{userEmail || "Personal"}</small>
                 </span>
-                <CaretUpDownIcon
+                <ChevronsUpDown
                   size={15}
                   className="sidebar-profile-settings"
                   aria-hidden="true"
@@ -260,7 +249,7 @@ export function DashboardSidebar({
 
               <DropdownMenuItem asChild>
                 <Link href="/app/profile" className="sidebar-profile-menu-link">
-                  <UserIcon size={15} aria-hidden="true" />
+                  <User size={15} aria-hidden="true" />
                   Profile
                 </Link>
               </DropdownMenuItem>
@@ -273,7 +262,7 @@ export function DashboardSidebar({
                     type="submit"
                     className="sidebar-profile-menu-danger"
                   >
-                    <SignOutIcon size={15} aria-hidden="true" />
+                    <LogOut size={15} aria-hidden="true" />
                     Log out
                   </button>
                 </form>

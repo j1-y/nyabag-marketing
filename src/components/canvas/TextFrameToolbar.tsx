@@ -1,16 +1,12 @@
 "use client";
 
-import {
-  LinkSimpleIcon,
-  TextTIcon,
-  TrashIcon,
-  type Icon,
-} from "@phosphor-icons/react";
+import { Type, Trash2, Link as LinkIcon } from "lucide-react";
 import type { CSSProperties, RefObject } from "react";
 import { useNotes } from "@/hooks/useNotes";
 import { IconButton } from "@/components/ui/icon-button";
 import type { CanvasNote } from "@/lib/types";
 import type { StickyNoteFormatAction, StickyNoteTextHandle } from "./NoteTextContent";
+import type { LucideIcon } from "lucide-react";
 
 interface TextFrameToolbarProps {
   note: CanvasNote;
@@ -23,13 +19,13 @@ const FRAME_ACTIONS: Array<{
   action: StickyNoteFormatAction;
   label: string;
   title: string;
-  icon?: Icon;
+  icon?: LucideIcon;
 }> = [
-  { action: "heading", label: "H", title: "Heading", icon: TextTIcon },
+  { action: "heading", label: "H", title: "Heading", icon: Type },
   { action: "bold", label: "B", title: "Bold" },
   { action: "italic", label: "I", title: "Italic" },
   { action: "underline", label: "U", title: "Underline" },
-  { action: "link", label: "Link", title: "Link", icon: LinkSimpleIcon },
+  { action: "link", label: "Link", title: "Link", icon: LinkIcon },
 ];
 
 export function TextFrameToolbar({
@@ -83,7 +79,7 @@ export function TextFrameToolbar({
           void deleteNote(note.id);
         }}
       >
-        <TrashIcon size={16} />
+        <Trash2 size={16} />
       </IconButton>
     </div>
   );

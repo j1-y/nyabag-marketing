@@ -1,7 +1,8 @@
 "use client";
 
+import { Folder } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
-import { FolderIcon } from "@phosphor-icons/react";
+;
 import { getBookmarkFolders } from "@/lib/folder-actions";
 import { buildFolderTree, flattenFolderTree } from "@/lib/folders";
 import type { BookmarkFolder } from "@/lib/types";
@@ -46,7 +47,7 @@ export function FolderSelector({
   return (
     <div className={`folder-selector ${className}`}>
       <span className="folder-selector-icon" aria-hidden="true">
-        <FolderIcon size={14} />
+        <Folder size={14} />
       </span>
       <select
         id={id}

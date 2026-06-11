@@ -1,14 +1,10 @@
 "use client";
 
+import { ArrowUpRight, Palette, Loader2, RotateCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import {
-  ArrowSquareOutIcon,
-  PaletteIcon,
-  SpinnerIcon,
-  ArrowsClockwiseIcon,
-} from "@phosphor-icons/react";
+;
 import { generateDesignDnaFromBookmark, regenerateDesignDna } from "@/lib/actions";
 import type { DesignDna } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -72,7 +68,7 @@ export function DesignDnaBookmarkPanel({
     <section className="design-dna-bookmark-panel">
       <div className="design-dna-bookmark-panel__header">
         <span className="design-dna-bookmark-panel__icon">
-          <PaletteIcon size={16} />
+          <Palette size={16} />
         </span>
         <h2>{designDna?.extraction_status === "completed" ? "Design DNA saved" : "Design DNA"}</h2>
         <span className={`design-dna-bookmark-panel__status design-dna-bookmark-panel__status--${status || "missing"}`}>
@@ -84,20 +80,20 @@ export function DesignDnaBookmarkPanel({
         <div className="design-dna-bookmark-panel__state">
           <p>Extract typography, colors, components, and layout patterns from this bookmark.</p>
           <Button type="button" variant="outline" onClick={generate}>
-            <PaletteIcon />
+            <Palette />
             Generate Design DNA
           </Button>
         </div>
       ) : status === "pending" ? (
         <div className="design-dna-bookmark-panel__state">
           <p>Extracting HTML/CSS styles...</p>
-          <SpinnerIcon className="animate-spin" size={16} />
+          <Loader2 className="animate-spin" size={16} />
         </div>
       ) : designDna?.extraction_status === "failed" ? (
         <div className="design-dna-bookmark-panel__state">
           <p>Could not extract styles from this site.</p>
           <Button type="button" variant="outline" onClick={regenerate} disabled={isPending}>
-            {isPending ? <SpinnerIcon className="animate-spin" /> : <ArrowsClockwiseIcon />}
+            {isPending ? <Loader2 className="animate-spin" /> : <RotateCw />}
             Try again
           </Button>
         </div>
@@ -112,12 +108,12 @@ export function DesignDnaBookmarkPanel({
           <div className="design-dna-bookmark-panel__actions">
             <Button asChild>
               <Link href={`/app/design-dna/${designDna.id}`}>
-                <ArrowSquareOutIcon />
+                <ArrowUpRight />
                 Open Design DNA
               </Link>
             </Button>
             <Button type="button" variant="outline" onClick={regenerate} disabled={isPending}>
-              {isPending ? <SpinnerIcon className="animate-spin" /> : <ArrowsClockwiseIcon />}
+              {isPending ? <Loader2 className="animate-spin" /> : <RotateCw />}
               Regenerate
             </Button>
           </div>

@@ -1,7 +1,8 @@
 "use client";
 
+import { Upload, Link as LinkIcon } from "lucide-react";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { FileArrowUpIcon, LinkSimpleIcon } from "@phosphor-icons/react";
+;
 import { importBookmarks } from "@/lib/actions";
 import { extractUrlsFromText, MAX_IMPORT_URLS } from "@/lib/url-extraction";
 import { useBookmarks } from "@/hooks/useBookmarks";
@@ -176,7 +177,7 @@ export function ImportReferencesModal() {
                   accept=".txt,.md,.csv,text/plain,text/markdown,text/csv"
                   onChange={(event) => void addFile(event.target.files?.[0])}
                 />
-                <FileArrowUpIcon size={24} weight="regular" />
+                <Upload size={24}  />
                 <strong>{isDragging ? "Drop it into Nyabag" : "Drop a .txt, .md, or .csv file here"}</strong>
                 <button type="button" onClick={() => fileInputRef.current?.click()}>
                   or choose a file

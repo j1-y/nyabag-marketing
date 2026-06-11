@@ -1,7 +1,8 @@
 "use client";
 
+import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
-import { ArrowSquareOutIcon } from "@phosphor-icons/react";
+;
 import { useNotes } from "@/hooks/useNotes";
 import { getDomain, getFaviconUrl } from "@/lib/data";
 import type { CanvasNote } from "@/lib/types";
@@ -97,7 +98,7 @@ export function NoteLinkContent({ note, isSelected }: { note: CanvasNote; isSele
           style={{ color: "var(--text3)", flexShrink: 0 }}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <ArrowSquareOutIcon size={12} />
+          <ArrowUpRight size={12} />
         </a>
         {isSelected && (
           <button

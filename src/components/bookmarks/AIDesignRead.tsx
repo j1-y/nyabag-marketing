@@ -1,8 +1,9 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import type { ReactNode } from "react";
-import { SpinnerIcon } from "@phosphor-icons/react";
+;
 import { refreshBookmarkAI } from "@/lib/actions";
 import type { BookmarkAiMetadata } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -78,14 +79,14 @@ export function AIDesignRead({
         <div className="ai-state">
           <p className="ai-state__title">AI analysis pending</p>
           <p className="ai-state__description">Nyabag is reading this reference...</p>
-          <SpinnerIcon className="animate-spin" size={16} />
+          <Loader2 className="animate-spin" size={16} />
         </div>
       ) : currentMetadata?.status === "failed" ? (
         <div className="ai-state">
           <p className="ai-state__title">AI analysis unavailable</p>
           <p className="ai-state__description">This reference could not be analyzed right now.</p>
           <Button type="button" variant="outline" onClick={analyze} disabled={isAnalyzing}>
-            {isAnalyzing ? <SpinnerIcon className="animate-spin" /> : <AIIcon size={15} />}
+            {isAnalyzing ? <Loader2 className="animate-spin" /> : <AIIcon size={15} />}
             {isAnalyzing ? "Analyzing..." : "Analyze again"}
           </Button>
         </div>

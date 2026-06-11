@@ -1,7 +1,8 @@
 "use client";
 
+import { Save } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
-import { FloppyDiskIcon } from "@phosphor-icons/react";
+;
 import { createBookmark } from "@/lib/actions";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
@@ -129,7 +130,7 @@ export function AddBookmarkModal() {
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
             <Button type="submit" disabled={isPending}>
-              <FloppyDiskIcon /> {isPending ? "Saving..." : "Save"}
+              <Save /> {isPending ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </form>
