@@ -247,6 +247,9 @@ export async function POST(request: NextRequest) {
       processing_error: null,
       enrichment_started_at: null,
       enrichment_finished_at: null,
+      semantic_status: "pending",
+      semantic_error: null,
+      semantic_processed_at: null,
     })
     .select()
     .single();

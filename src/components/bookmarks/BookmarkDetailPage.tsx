@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowLeft, ArrowUpRight, FileText, Palette, Loader2, RotateCw, Tag, Type, Trash2, MessageCircle } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Palette, Loader2, RotateCw, Sparkles, Tag, Type, Trash2, MessageCircle } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 ;
 import { deleteBookmark, getProcessingBookmarks, refreshBookmarkScreenshot, retryBookmarkProcessing } from "@/lib/actions";
+import { processBookmarkSemanticData } from "@/lib/semantic/actions";
 import { getDomain } from "@/lib/data";
 import type { Bookmark } from "@/lib/types";
 import { BookmarksProvider } from "@/hooks/useBookmarks";
@@ -20,7 +21,9 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
   const [isPending, startTransition] = useTransition();
   const [isRefreshing, startRefreshTransition] = useTransition();
   const [isRetrying, startRetryTransition] = useTransition();
+  const [isMemoryRetrying, startMemoryTransition] = useTransition();
   const [refreshError, setRefreshError] = useState("");
+  const [memoryError, setMemoryError] = useState("");
   const domain = getDomain(currentBookmark.url);
   const aiMetadata =
     currentBookmark.ai_metadata?.status === "completed"
@@ -57,6 +60,19 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
         router.refresh();
       } else {
         setRefreshError(result.error);
+      }
+    });
+  }
+
+  function handleRetryMemory() {
+    setMemoryError("");
+    startMemoryTransition(async () => {
+      const result = await processBookmarkSemanticData(currentBookmark.id);
+      if (result.success) {
+        setCurrentBookmark((current) => ({ ...current, ...result.data }));
+        router.refresh();
+      } else {
+        setMemoryError(result.error);
       }
     });
   }
@@ -136,6 +152,41 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             bookmarkId={currentBookmark.id}
             initialDesignDna={bookmark.design_dna ?? null}
           />
+
+          <div className="detail-section detail-memory-section">
+            <h2><Sparkles size={15} /> Design Memory</h2>
+            {currentBookmark.ai_description || aiMetadata?.design_context ? (
+              <p className="detail-memory-description">
+                {currentBookmark.ai_description || aiMetadata?.design_context}
+              </p>
+            ) : (
+              <p className="detail-memory-description">
+                Nyabag will use this save&apos;s title, tags, notes, colors, fonts, and AI design read for memory search.
+              </p>
+            )}
+            <div className="detail-chip-list">
+              {(currentBookmark.ai_patterns?.length
+                ? currentBookmark.ai_patterns
+                : aiMetadata?.ui_patterns ?? []
+              ).slice(0, 8).map((pattern) => <span key={`pattern-${pattern}`}>{pattern}</span>)}
+              {(currentBookmark.ai_tags?.length
+                ? currentBookmark.ai_tags
+                : aiMetadata?.suggested_tags ?? []
+              ).slice(0, 8).map((tag) => <span key={`ai-tag-${tag}`}>{tag}</span>)}
+              {currentBookmark.semantic_status && <span>{currentBookmark.semantic_status}</span>}
+            </div>
+            {(currentBookmark.semantic_status === "failed" || currentBookmark.semantic_status === "skipped") && (
+              <Button className="detail-action-btn" variant="outline" onClick={handleRetryMemory} disabled={isMemoryRetrying}>
+                {isMemoryRetrying ? <Loader2 className="animate-spin" /> : <RotateCw />}
+                {isMemoryRetrying ? "Retrying..." : "Retry memory processing"}
+              </Button>
+            )}
+            {(memoryError || currentBookmark.semantic_error) && (
+              <p className="detail-refresh-error" role="status">
+                {memoryError || currentBookmark.semantic_error}
+              </p>
+            )}
+          </div>
 
           <div className="detail-section">
             <h2><Palette size={15} /> Extracted colors</h2>

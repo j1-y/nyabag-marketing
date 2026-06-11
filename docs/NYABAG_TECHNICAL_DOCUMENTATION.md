@@ -140,7 +140,7 @@ The app is currently desktop-first. Mobile authenticated users see a small captu
 | Database | Supabase Postgres |
 | Storage | Supabase Storage |
 | Validation | Zod 4 |
-| Icons | Phosphor Icons |
+| Icons | Lucide React |
 | UI primitives | Radix Dialog primitives for some dialogs |
 | Styling | Global CSS in `src/app/globals.css`, Tailwind tooling present |
 | Metadata/screenshot | Microlink API plus custom metadata scraper |

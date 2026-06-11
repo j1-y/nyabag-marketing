@@ -101,7 +101,7 @@ export default function SignupPage() {
             {loading && (
               <Loader2
                 size={15}
-                className="phosphor"
+                className="spin-icon"
                 style={{ animation: "spin 1s linear infinite" }}
               />
             )}

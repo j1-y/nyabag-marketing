@@ -35,6 +35,17 @@ export type Bookmark = {
   processing_error: string | null;
   enrichment_started_at: string | null;
   enrichment_finished_at: string | null;
+  ai_description?: string | null;
+  ai_tags?: string[];
+  ai_patterns?: string[];
+  ai_design_dna?: Record<string, unknown> | null;
+  save_reason?: string | null;
+  semantic_status?: "pending" | "processing" | "ready" | "failed" | "skipped";
+  semantic_error?: string | null;
+  semantic_processed_at?: string | null;
+  last_opened_at?: string | null;
+  semantic_similarity?: number;
+  semantic_match_reasons?: string[];
   created_at: string;
   updated_at: string;
   folder_id?: string | null;

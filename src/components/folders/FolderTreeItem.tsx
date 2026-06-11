@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, MoreHorizontal, FolderOpen, FolderPlus, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, FolderOpen, FolderPlus, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -54,7 +54,6 @@ export function FolderTreeItem({
         >
           <FolderOpen
             size={17}
-            
             aria-hidden="true"
             style={node.color ? { color: node.color } : undefined}
           />

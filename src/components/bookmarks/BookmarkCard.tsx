@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Folder, Image, Pencil, Loader2, Trash2 } from "lucide-react";
+import { ArrowUpRight, Folder, Image, Pencil, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 ;
@@ -57,6 +57,9 @@ function BookmarkCardComponent({
     bookmark.ai_metadata?.status === "completed" && bookmark.ai_metadata.page_type
       ? bookmark.ai_metadata.page_type
       : "";
+  const isMemoryMatch = typeof bookmark.semantic_similarity === "number";
+  const isMemoryPreparing =
+    bookmark.semantic_status === "pending" || bookmark.semantic_status === "processing";
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
@@ -209,6 +212,13 @@ function BookmarkCardComponent({
               showIcon
               className="bookmark-ai-chip"
             />
+          )}
+
+          {(isMemoryMatch || isMemoryPreparing) && (
+            <div className={`bookmark-memory-chip ${isMemoryMatch ? "is-match" : "is-preparing"}`}>
+              {isMemoryMatch ? <Sparkles size={12} /> : <Loader2 size={12} />}
+              <span>{isMemoryMatch ? "Memory match" : "Preparing memory"}</span>
+            </div>
           )}
 
           <div className="moodboard-overlay">

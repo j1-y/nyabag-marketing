@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, Camera, ChevronLeft, ArrowRight, ChevronsUpDown, Settings, FileText, Palette, LogOut, User, LucideIcon } from "lucide-react";
+import { Bookmark, Camera, ChevronLeft, ArrowRight, ChevronsUpDown, FileText, Palette, LogOut, User, LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/actions";

@@ -142,7 +142,7 @@ function FolderPageInner({
 
           {/* Bookmarks */}
           {filtered.length > 0 && (
-            <section className="folder-table-section" style={{ border: "1px solid #ebebeb", borderRadius: "16" }}>
+            <section className="folder-table-section" style={{ border: "1px solid #ebebeb", borderRadius: 8, overflow: "hidden" }}>
               {/* List view */}
               {view === "list" && (
                 <>

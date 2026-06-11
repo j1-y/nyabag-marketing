@@ -1,16 +1,13 @@
 "use client";
 
-import { Inbox, FolderPlus, ArrowDown, ArrowRight, FolderOpen } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Inbox, FolderPlus } from "lucide-react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-;
 import { FolderCreateDialog } from "./FolderCreateDialog";
 import { FolderTreeItem } from "./FolderTreeItem";
 import { buildFolderTree } from "@/lib/folders";
 import type { BookmarkFolder } from "@/lib/types";
-
-
 
 type FolderTreeProps = {
   folders: BookmarkFolder[];
@@ -39,7 +36,7 @@ export function FolderTree({ folders, collapsed }: FolderTreeProps) {
           aria-label="Create design folder"
           title="New folder"
         >
-          <FolderPlus size={16}  />
+          <FolderPlus size={16} />
         </button>
       </div>
 

@@ -9,6 +9,7 @@
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
@@ -49,7 +50,16 @@ ALTER TABLE bookmarks
   ADD COLUMN IF NOT EXISTS processing_status TEXT NOT NULL DEFAULT 'ready',
   ADD COLUMN IF NOT EXISTS processing_error TEXT,
   ADD COLUMN IF NOT EXISTS enrichment_started_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS enrichment_finished_at TIMESTAMPTZ;
+  ADD COLUMN IF NOT EXISTS enrichment_finished_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS ai_description TEXT,
+  ADD COLUMN IF NOT EXISTS ai_tags TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS ai_patterns TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS ai_design_dna JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS save_reason TEXT,
+  ADD COLUMN IF NOT EXISTS semantic_status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS semantic_error TEXT,
+  ADD COLUMN IF NOT EXISTS semantic_processed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS last_opened_at TIMESTAMPTZ;
 
 ALTER TABLE bookmarks
   DROP CONSTRAINT IF EXISTS bookmarks_url_check,
@@ -58,12 +68,20 @@ ALTER TABLE bookmarks
   DROP CONSTRAINT IF EXISTS bookmarks_summary_check,
   DROP CONSTRAINT IF EXISTS bookmarks_note_check,
   DROP CONSTRAINT IF EXISTS bookmarks_processing_status_check,
+  DROP CONSTRAINT IF EXISTS bookmarks_ai_description_check,
+  DROP CONSTRAINT IF EXISTS bookmarks_save_reason_check,
+  DROP CONSTRAINT IF EXISTS bookmarks_semantic_status_check,
+  DROP CONSTRAINT IF EXISTS bookmarks_semantic_error_check,
   ADD CONSTRAINT bookmarks_url_check CHECK (char_length(url) <= 2048),
   ADD CONSTRAINT bookmarks_title_check CHECK (char_length(title) <= 255),
   ADD CONSTRAINT bookmarks_screenshot_path_check CHECK (screenshot_path IS NULL OR char_length(screenshot_path) <= 1024),
   ADD CONSTRAINT bookmarks_summary_check CHECK (char_length(summary) <= 1000),
   ADD CONSTRAINT bookmarks_note_check CHECK (char_length(note) <= 2000),
-  ADD CONSTRAINT bookmarks_processing_status_check CHECK (processing_status IN ('queued', 'processing', 'ready', 'failed'));
+  ADD CONSTRAINT bookmarks_processing_status_check CHECK (processing_status IN ('queued', 'processing', 'ready', 'failed')),
+  ADD CONSTRAINT bookmarks_ai_description_check CHECK (ai_description IS NULL OR char_length(ai_description) <= 1200),
+  ADD CONSTRAINT bookmarks_save_reason_check CHECK (save_reason IS NULL OR char_length(save_reason) <= 500),
+  ADD CONSTRAINT bookmarks_semantic_status_check CHECK (semantic_status IN ('pending', 'processing', 'ready', 'failed', 'skipped')),
+  ADD CONSTRAINT bookmarks_semantic_error_check CHECK (semantic_error IS NULL OR char_length(semantic_error) <= 500);
 
 DROP TRIGGER IF EXISTS bookmarks_updated_at ON bookmarks;
 CREATE TRIGGER bookmarks_updated_at
@@ -75,6 +93,7 @@ CREATE INDEX IF NOT EXISTS idx_bookmarks_tags ON bookmarks USING GIN(tags);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_created ON bookmarks(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_user_url ON bookmarks(user_id, url);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_processing_status ON bookmarks(processing_status);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_semantic_status ON bookmarks(semantic_status);
 
 ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 
@@ -188,6 +207,104 @@ CREATE POLICY "update_own_bookmark_ai_metadata" ON bookmark_ai_metadata
 DROP POLICY IF EXISTS "delete_own_bookmark_ai_metadata" ON bookmark_ai_metadata;
 CREATE POLICY "delete_own_bookmark_ai_metadata" ON bookmark_ai_metadata
   FOR DELETE USING (auth.uid() = user_id);
+
+-- ============================================================
+-- Bookmark semantic embeddings
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS bookmark_embeddings (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  bookmark_id    UUID        NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
+  embedding      vector(768) NOT NULL,
+  embedding_text TEXT        NOT NULL,
+  model          TEXT        NOT NULL,
+  content_hash   TEXT        NOT NULL,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE bookmark_embeddings
+  ADD COLUMN IF NOT EXISTS user_id UUID,
+  ADD COLUMN IF NOT EXISTS bookmark_id UUID,
+  ADD COLUMN IF NOT EXISTS embedding vector(768),
+  ADD COLUMN IF NOT EXISTS embedding_text TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS model TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS content_hash TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE bookmark_embeddings
+  DROP CONSTRAINT IF EXISTS bookmark_embeddings_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS bookmark_embeddings_bookmark_id_fkey,
+  DROP CONSTRAINT IF EXISTS bookmark_embeddings_bookmark_id_key,
+  DROP CONSTRAINT IF EXISTS bookmark_embeddings_embedding_text_check,
+  DROP CONSTRAINT IF EXISTS bookmark_embeddings_model_check,
+  DROP CONSTRAINT IF EXISTS bookmark_embeddings_content_hash_check,
+  ADD CONSTRAINT bookmark_embeddings_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  ADD CONSTRAINT bookmark_embeddings_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES bookmarks(id) ON DELETE CASCADE,
+  ADD CONSTRAINT bookmark_embeddings_bookmark_id_key UNIQUE (bookmark_id),
+  ADD CONSTRAINT bookmark_embeddings_embedding_text_check CHECK (char_length(embedding_text) <= 16000),
+  ADD CONSTRAINT bookmark_embeddings_model_check CHECK (char_length(model) <= 120),
+  ADD CONSTRAINT bookmark_embeddings_content_hash_check CHECK (char_length(content_hash) <= 120);
+
+DROP TRIGGER IF EXISTS bookmark_embeddings_updated_at ON bookmark_embeddings;
+CREATE TRIGGER bookmark_embeddings_updated_at
+  BEFORE UPDATE ON bookmark_embeddings
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS bookmark_embeddings_user_id_idx
+  ON bookmark_embeddings(user_id);
+
+CREATE INDEX IF NOT EXISTS bookmark_embeddings_bookmark_id_idx
+  ON bookmark_embeddings(bookmark_id);
+
+-- Uses cosine distance for pgvector retrieval. If a Supabase project has an
+-- older pgvector version, recreate this as the compatible cosine index type.
+CREATE INDEX IF NOT EXISTS bookmark_embeddings_embedding_ivfflat_idx
+  ON bookmark_embeddings USING ivfflat (embedding vector_cosine_ops)
+  WITH (lists = 100);
+
+ALTER TABLE bookmark_embeddings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_bookmark_embeddings" ON bookmark_embeddings;
+CREATE POLICY "select_own_bookmark_embeddings" ON bookmark_embeddings
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_bookmark_embeddings" ON bookmark_embeddings;
+CREATE POLICY "insert_own_bookmark_embeddings" ON bookmark_embeddings
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "update_own_bookmark_embeddings" ON bookmark_embeddings;
+CREATE POLICY "update_own_bookmark_embeddings" ON bookmark_embeddings
+  FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_bookmark_embeddings" ON bookmark_embeddings;
+CREATE POLICY "delete_own_bookmark_embeddings" ON bookmark_embeddings
+  FOR DELETE USING (auth.uid() = user_id);
+
+CREATE OR REPLACE FUNCTION match_bookmarks_by_embedding(
+  query_embedding vector(768),
+  match_user_id UUID,
+  match_count INT DEFAULT 24,
+  similarity_threshold FLOAT DEFAULT 0.2
+)
+RETURNS TABLE (
+  bookmark_id UUID,
+  similarity FLOAT
+)
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT
+    be.bookmark_id,
+    1 - (be.embedding <=> query_embedding) AS similarity
+  FROM bookmark_embeddings be
+  WHERE be.user_id = match_user_id
+    AND 1 - (be.embedding <=> query_embedding) >= similarity_threshold
+  ORDER BY be.embedding <=> query_embedding
+  LIMIT LEAST(GREATEST(match_count, 1), 50);
+$$;
 
 -- ============================================================
 -- Design DNA

@@ -318,7 +318,7 @@
   margin: 28px 0 54px;
   overflow: hidden;
   border: 1px solid var(--blog-border);
-  border-radius: var(--blog-radius-md);
+  border-radius: 8px;
 }
 
 .comparison th,

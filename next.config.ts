@@ -20,9 +20,6 @@ const cspHeader = `
 
 const nextConfig: NextConfig = {
   poweredByHeader: false, // Remove X-Powered-By: Next.js header
-  experimental: {
-    optimizePackageImports: ["@phosphor-icons/react"],
-  },
 
   async headers() {
     return [

@@ -9,6 +9,7 @@ import {
   extractPaletteFromImage,
   upsertAiFailed,
 } from "./bookmark-ai.mjs";
+import { EMBEDDING_MODEL, processBookmarkSemanticMemory } from "./semantic-memory.mjs";
 
 const BUCKET = "bookmark-screenshots";
 
@@ -893,6 +894,27 @@ async function processJob(supabase, browser, job, config) {
     );
     await upsertAiFailed(supabase, job, error);
   }
+
+  try {
+    const semanticResult = await processBookmarkSemanticMemory({
+      supabase,
+      bookmarkId: job.bookmark_id,
+      userId: job.user_id,
+    });
+
+    if (semanticResult.status === "ready") {
+      console.log(`[processor] semantic memory ready: ${job.id}`);
+    } else if (semanticResult.status === "skipped") {
+      console.log(`[processor] semantic memory skipped: ${job.id}`);
+    } else {
+      console.warn(`[processor] semantic memory ${semanticResult.status}: ${semanticResult.error}`);
+    }
+  } catch (error) {
+    console.error(
+      `[processor] semantic memory failed unexpectedly: ${job.id}`,
+      error instanceof Error ? error.message : error
+    );
+  }
 }
 
 async function main() {
@@ -912,6 +934,8 @@ async function main() {
     quality: envNumber("WEBP_QUALITY", 70),
     maxWebpHeight: envNumber("MAX_WEBP_HEIGHT", 15000),
   };
+  const geminiConfigured = Boolean(process.env.GEMINI_API_KEY?.trim());
+  const geminiModel = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash";
 
   const workerId =
     process.env.WORKER_ID ||
@@ -936,8 +960,17 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
     fullPage: config.fullPage,
     quality: config.quality,
     maxWebpHeight: config.maxWebpHeight,
+    geminiConfigured,
+    geminiModel,
+    geminiEmbeddingModel: EMBEDDING_MODEL,
     workerId,
   });
+
+  if (!geminiConfigured) {
+    console.warn(
+      "[processor] Gemini is not configured; AI metadata and semantic memory will be skipped"
+    );
+  }
 
   const browser = await chromium.launch({
     headless: true,

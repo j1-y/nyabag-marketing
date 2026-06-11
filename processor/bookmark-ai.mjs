@@ -228,7 +228,7 @@ export async function upsertAiPending(supabase, job) {
 
 export async function upsertAiFailed(supabase, job, error) {
   const message = error instanceof Error ? error.message : String(error);
-  await supabase
+  const { error: upsertError } = await supabase
     .from("bookmark_ai_metadata")
     .upsert(
       {
@@ -240,11 +240,16 @@ export async function upsertAiFailed(supabase, job, error) {
       },
       { onConflict: "bookmark_id" }
     );
+
+  if (upsertError) {
+    console.warn(`[processor] Could not mark AI failed: ${upsertError.message}`);
+  }
 }
 
 export async function analyzeBookmarkScreenshot({ supabase, job, bookmark, screenshot, observed }) {
   if (!isGeminiConfigured()) {
     console.log("[processor] AI skipped: GEMINI_API_KEY is not configured");
+    await upsertAiFailed(supabase, job, new Error("GEMINI_API_KEY is not configured"));
     return null;
   }
 

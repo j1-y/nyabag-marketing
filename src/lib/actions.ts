@@ -341,6 +341,9 @@ async function createBookmarkForUser({
       processing_error: null,
       enrichment_started_at: null,
       enrichment_finished_at: null,
+      semantic_status: "pending",
+      semantic_error: null,
+      semantic_processed_at: null,
       folder_id: folder_id ?? null,
     })
     .select()
@@ -1057,6 +1060,9 @@ export async function updateBookmark(
     processing_error: urlChanged ? null : undefined,
     enrichment_started_at: urlChanged ? null : undefined,
     enrichment_finished_at: urlChanged ? null : undefined,
+    semantic_status: "pending",
+    semantic_error: null,
+    semantic_processed_at: null,
   };
 
   // Only include folder_id in update if it was explicitly provided in form

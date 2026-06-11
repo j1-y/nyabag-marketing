@@ -82,7 +82,18 @@ function GridInner({
   userEmail: string;
   showGreeting?: boolean;
 }) {
-  const { filtered, pendingBookmarks, openAdd, openImport, openEdit, deleteItem } = useBookmarks();
+  const {
+    filtered,
+    pendingBookmarks,
+    search,
+    searchMode,
+    semanticHasRun,
+    semanticError,
+    openAdd,
+    openImport,
+    openEdit,
+    deleteItem,
+  } = useBookmarks();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -112,8 +123,17 @@ function GridInner({
             <div className="empty-state-icon" aria-hidden="true">
               <BookmarkIcon size={24} />
             </div>
-            <h2>No bookmarks yet</h2>
-            <p>Save websites, references, and ideas into a visual board.</p>
+            {searchMode === "memory" && search.trim().length >= 2 && semanticHasRun ? (
+              <>
+                <h2>No memory matches yet</h2>
+                <p>{semanticError || "New saves may still be processing. Try a different vibe, layout, color, or pattern."}</p>
+              </>
+            ) : (
+              <>
+                <h2>No bookmarks yet</h2>
+                <p>Save websites, references, and ideas into a visual board.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="bm-grid view-moodboard dashboard-enter dashboard-enter-delayed">

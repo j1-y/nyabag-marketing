@@ -1,12 +1,22 @@
 "use client";
 
-import { Search, Send } from "lucide-react";
+import { Search, Send, Sparkles } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useBookmarks } from "@/hooks/useBookmarks";
 
 export function BookmarkSearchBar() {
-  const { search, setSearch, addOpen, importOpen, editTarget } = useBookmarks();
+  const {
+    search,
+    setSearch,
+    searchMode,
+    setSearchMode,
+    isSemanticSearching,
+    semanticError,
+    addOpen,
+    importOpen,
+    editTarget,
+  } = useBookmarks();
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,7 +68,11 @@ export function BookmarkSearchBar() {
         <input
           ref={inputRef}
           type="text"
-          placeholder={'Ask Nyabag: "dark bento grid SaaS hero"'}
+          placeholder={
+            searchMode === "memory"
+              ? "Try 'dark SaaS pricing page with green CTA'"
+              : 'Ask Nyabag: "dark bento grid SaaS hero"'
+          }
           autoComplete="on"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -67,6 +81,32 @@ export function BookmarkSearchBar() {
         <button type="submit" className="search-submit-btn" aria-label="Submit search">
           <Send size={15} fill="currentColor" />
         </button>
+      </div>
+      <div className="search-mode-row" aria-label="Search mode">
+        <div className="search-mode-toggle">
+          <button
+            type="button"
+            className={searchMode === "keyword" ? "is-active" : ""}
+            onClick={() => setSearchMode("keyword")}
+          >
+            Keyword
+          </button>
+          <button
+            type="button"
+            className={searchMode === "memory" ? "is-active" : ""}
+            onClick={() => setSearchMode("memory")}
+          >
+            <Sparkles size={13} />
+            Memory
+          </button>
+        </div>
+        {searchMode === "memory" && (
+          <span className="search-memory-status" role={semanticError ? "status" : undefined}>
+            {isSemanticSearching
+              ? "Searching memory..."
+              : semanticError || "Search by vibe, layout, color, or pattern"}
+          </span>
+        )}
       </div>
     </form>
   );

@@ -14,6 +14,7 @@ import {
 } from "react";
 import type { Bookmark } from "@/lib/types";
 import { deleteBookmark, getBookmarks, getProcessingBookmarks } from "@/lib/actions";
+import { searchBookmarksByMemory } from "@/lib/semantic/actions";
 
 export type PendingBookmark = {
   id: string;
@@ -33,6 +34,11 @@ interface BookmarksCtx {
   setActiveFilter: (f: "all" | "recent") => void;
   search: string;
   setSearch: (s: string) => void;
+  searchMode: "keyword" | "memory";
+  setSearchMode: (mode: "keyword" | "memory") => void;
+  isSemanticSearching: boolean;
+  semanticError: string;
+  semanticHasRun: boolean;
   // Modal state
   addOpen: boolean;
   openAdd: () => void;
@@ -62,6 +68,7 @@ function getBookmarkSnapshot(bookmarks: Bookmark[]) {
       bookmark.id,
       bookmark.updated_at,
       bookmark.processing_status,
+      bookmark.semantic_status ?? "",
       bookmark.screenshot_url ?? "",
       bookmark.ai_metadata?.updated_at ?? "",
     ].join(":"))
@@ -88,6 +95,11 @@ export function BookmarksProvider({
     }
   });
   const [search, setSearch] = useState("");
+  const [searchMode, setSearchMode] = useState<"keyword" | "memory">("keyword");
+  const [semanticResults, setSemanticResults] = useState<Bookmark[]>([]);
+  const [semanticError, setSemanticError] = useState("");
+  const [semanticHasRun, setSemanticHasRun] = useState(false);
+  const [isSemanticSearching, setIsSemanticSearching] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Bookmark | null>(null);
@@ -105,7 +117,9 @@ export function BookmarksProvider({
   }, []);
 
   const hasActiveProcessing = bookmarks.some((bookmark) =>
-    bookmark.processing_status === "queued" || bookmark.processing_status === "processing"
+    bookmark.processing_status === "queued" ||
+    bookmark.processing_status === "processing" ||
+    bookmark.semantic_status === "processing"
   );
 
   const refreshBookmarks = useCallback(async () => {
@@ -167,7 +181,9 @@ export function BookmarksProvider({
       if (result.success) {
         setBookmarks(result.data);
         stillProcessing = result.data.some((bookmark) =>
-          bookmark.processing_status === "queued" || bookmark.processing_status === "processing"
+          bookmark.processing_status === "queued" ||
+          bookmark.processing_status === "processing" ||
+          bookmark.semantic_status === "processing"
         );
       }
 
@@ -184,6 +200,55 @@ export function BookmarksProvider({
       if (timeout) window.clearTimeout(timeout);
     };
   }, [hasActiveProcessing]);
+
+  useEffect(() => {
+    const q = search.trim();
+    if (searchMode !== "memory") {
+      const timeout = window.setTimeout(() => {
+        setSemanticResults([]);
+        setSemanticError("");
+        setSemanticHasRun(false);
+        setIsSemanticSearching(false);
+      }, 0);
+      return () => window.clearTimeout(timeout);
+    }
+
+    if (q.length < 2) {
+      const timeout = window.setTimeout(() => {
+        setSemanticResults([]);
+        setSemanticError("");
+        setSemanticHasRun(false);
+        setIsSemanticSearching(false);
+      }, 0);
+      return () => window.clearTimeout(timeout);
+    }
+
+    let cancelled = false;
+    const timeout = window.setTimeout(async () => {
+      setIsSemanticSearching(true);
+      setSemanticError("");
+
+      const result = await searchBookmarksByMemory(q);
+      if (cancelled) return;
+
+      setSemanticHasRun(true);
+      setIsSemanticSearching(false);
+
+      if (!result.success) {
+        setSemanticResults([]);
+        setSemanticError(result.error);
+        return;
+      }
+
+      setSemanticResults(result.data.bookmarks);
+      setSemanticError(result.data.message ?? "");
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [search, searchMode]);
 
   const deleteItem = useCallback(async (id: string) => {
     // Keep reference to previous state for rollback
@@ -228,11 +293,13 @@ export function BookmarksProvider({
   const closeDetail = useCallback(() => setDetailTarget(null), []);
 
   const filtered = useMemo(() => {
-    let list = [...bookmarks];
+    const q = search.toLowerCase().trim();
+    const useSemanticResults = searchMode === "memory" && q.length >= 2 && semanticHasRun;
+    let list = useSemanticResults ? [...semanticResults] : [...bookmarks];
+
     if (activeFilter === "recent") list = list.slice(0, 10);
     if (activeTag !== "All") list = list.filter((b) => b.tags.includes(activeTag));
-    const q = search.toLowerCase().trim();
-    if (q)
+    if (q && !useSemanticResults)
       list = list.filter(
         (b) =>
           b.title.toLowerCase().includes(q) ||
@@ -242,7 +309,7 @@ export function BookmarksProvider({
           b.note.toLowerCase().includes(q)
       );
     return list;
-  }, [activeFilter, activeTag, bookmarks, search]);
+  }, [activeFilter, activeTag, bookmarks, search, searchMode, semanticHasRun, semanticResults]);
 
   const value = useMemo<BookmarksCtx>(
     () => ({
@@ -253,6 +320,11 @@ export function BookmarksProvider({
       activeTag, setActiveTag,
       activeFilter, setActiveFilter: setPersistentActiveFilter,
       search, setSearch,
+      searchMode,
+      setSearchMode,
+      isSemanticSearching,
+      semanticError,
+      semanticHasRun,
       addOpen,
       openAdd,
       closeAdd,
@@ -290,6 +362,10 @@ export function BookmarksProvider({
       pendingBookmarks,
       removePendingBookmark,
       search,
+      searchMode,
+      semanticError,
+      semanticHasRun,
+      isSemanticSearching,
       setPersistentActiveFilter,
     ]
   );
