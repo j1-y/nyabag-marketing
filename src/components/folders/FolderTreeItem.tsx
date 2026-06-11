@@ -4,7 +4,6 @@ import { ArrowDown, MoreHorizontal, FolderOpen, FolderPlus, Pencil, Trash2 } fro
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-;
 import { FolderCreateDialog } from "./FolderCreateDialog";
 import { FolderRenameDialog } from "./FolderRenameDialog";
 import { FolderDeleteDialog } from "./FolderDeleteDialog";
@@ -71,7 +70,7 @@ export function FolderTreeItem({
             aria-expanded={menuOpen}
             aria-label={`More options for ${node.name}`}
           >
-            <MoreHorizontal size={15} weight="bold" />
+            <MoreHorizontal size={15} />
           </button>
 
           {menuOpen && (

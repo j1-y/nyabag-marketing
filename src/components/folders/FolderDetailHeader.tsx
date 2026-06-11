@@ -2,7 +2,6 @@
 
 import { FolderPlus, Pencil, Plus, Trash2, Inbox } from "lucide-react";
 import { useState } from "react";
-;
 import { FolderCreateDialog } from "./FolderCreateDialog";
 import { FolderRenameDialog } from "./FolderRenameDialog";
 import { FolderDeleteDialog } from "./FolderDeleteDialog";
@@ -51,7 +50,7 @@ export function FolderDetailHeader({
                 onClick={onAddBookmark}
                 aria-label="Add bookmark"
               >
-                <Plus size={14} weight="bold" />
+                <Plus size={14} />
                 <span>Add bookmark</span>
               </button>
           )}
@@ -84,7 +83,7 @@ export function FolderDetailHeader({
               onClick={onAddBookmark}
               aria-label="Add bookmark"
             >
-              <Plus size={14} weight="bold" />
+              <Plus size={14} />
               <span>Add bookmark</span>
             </button>
           )}

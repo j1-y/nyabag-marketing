@@ -3,7 +3,6 @@
 import { Clock, FileText, Plus, Grid } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
-;
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { getTagColor } from "@/lib/data";
 
@@ -69,7 +68,7 @@ export function Sidebar() {
 
       <div className="sidebar-footer">
         <button className="add-btn-sidebar" onClick={openAdd}>
-          <Plus size={14} weight="bold" /> New bookmark
+          <Plus size={14} /> New bookmark
         </button>
       </div>
     </aside>

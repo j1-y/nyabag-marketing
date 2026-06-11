@@ -2,7 +2,6 @@
 
 import { ArrowUpRight, Maximize, Image, FileText, Palette, Pencil, Tag, Type, Trash2 } from "lucide-react";
 import { useState } from "react";
-;
 import { getDomain, getTagColor } from "@/lib/data";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
@@ -49,13 +48,13 @@ export function DetailModal() {
                 />
               ) : (
                 <div className="preview-fallback" style={{ position: "absolute", inset: 0, display: "flex" }}>
-                  <Image size={36} weight="light" />
+                  <Image size={36} />
                   <span style={{ fontSize: 12, color: "var(--text3)" }}>{domain}</span>
                 </div>
               )
             ) : (
               <div className="preview-fallback" style={{ position: "absolute", inset: 0, display: "flex" }}>
-                <Image size={36} weight="light" />
+                <Image size={36} />
                 <span style={{ fontSize: 12, color: "var(--text3)" }}>{domain}</span>
               </div>
             )}

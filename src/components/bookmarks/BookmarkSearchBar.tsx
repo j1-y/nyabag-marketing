@@ -3,7 +3,6 @@
 import { Search, Send } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-;
 import { useBookmarks } from "@/hooks/useBookmarks";
 
 export function BookmarkSearchBar() {
@@ -55,7 +54,7 @@ export function BookmarkSearchBar() {
       }}
     >
       <div className="search-wrap">
-        <Search size={16} weight="bold" />
+        <Search size={16} />
         <input
           ref={inputRef}
           type="text"

@@ -3,7 +3,6 @@
 import { Bookmark, Camera, ChevronLeft, ArrowRight, ChevronsUpDown, Settings, FileText, Palette, LogOut, User, LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-;
 import { signOut } from "@/lib/actions";
 import { FolderTree } from "@/components/folders/FolderTree";
 import type { BookmarkFolder } from "@/lib/types";
@@ -121,9 +120,9 @@ export function DashboardSidebar({
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? (
-              <ArrowRight size={16} weight="bold" />
+              <ArrowRight size={16} />
             ) : (
-              <ChevronLeft size={16} weight="bold" />
+              <ChevronLeft size={16} />
             )}
           </button>
         </div>
@@ -152,7 +151,6 @@ export function DashboardSidebar({
                 >
                   <ItemIcon
                     size={18}
-                    weight={active ? "duotone" : "regular"}
                     className="dashboard-sidebar-item-icon"
                     aria-hidden="true"
                   />

@@ -3,7 +3,6 @@
 import { ArrowUpRight, ArrowDown, Folder, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-;
 import { getDomain, getFaviconUrl } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { MoveToFolderMenu } from "@/components/folders/MoveToFolderMenu";
@@ -88,7 +87,7 @@ export function FolderBookmarkRow({ bookmark, onEdit, onDelete, isInbox }: Props
             }}
           >
             <Button variant="outline" size="sm" className="gap-2 text-xs h-8 px-2.5">
-              Move To <ArrowDown size={12} weight="bold" />
+              Move To <ArrowDown size={12} />
             </Button>
           </MoveToFolderMenu>
         </div>
