@@ -32,6 +32,19 @@ type SemanticBookmark = Bookmark & {
 
 const MAX_SEARCH_QUERY_LENGTH = 500;
 const DEFAULT_MATCH_COUNT = 24;
+const SEMANTIC_SIMILARITY_THRESHOLD = 0.35;
+
+type QueryVisualSignals = {
+  dark: boolean;
+  light: boolean;
+  bento: boolean;
+  glass: boolean;
+  gradient: boolean;
+  dashboard: boolean;
+  editorial: boolean;
+  minimal: boolean;
+  monochrome: boolean;
+};
 
 function shortError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error || "Memory processing failed");
@@ -66,6 +79,125 @@ function keywordMatches(bookmark: Bookmark, query: string) {
     bookmark.ai_tags?.some((tag) => tag.toLowerCase().includes(q)) ||
     bookmark.ai_patterns?.some((pattern) => pattern.toLowerCase().includes(q))
   );
+}
+
+function normalizeForEvidence(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function luminanceFromHex(hex: string) {
+  const match = hex.match(/^#?([0-9a-f]{6})$/i);
+  if (!match) return null;
+  const value = Number.parseInt(match[1], 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function inferPaletteMode(bookmark: Bookmark) {
+  const luminances = (bookmark.palette ?? [])
+    .map(luminanceFromHex)
+    .filter((value): value is number => typeof value === "number");
+
+  if (!luminances.length) return "";
+  const average = luminances.reduce((sum, value) => sum + value, 0) / luminances.length;
+  if (average < 95) return "dark";
+  if (average > 175) return "light";
+  return "mixed";
+}
+
+function getEvidenceText(bookmark: Bookmark) {
+  return normalizeForEvidence([
+    bookmark.title,
+    bookmark.summary,
+    bookmark.note,
+    ...(bookmark.tags ?? []),
+    ...(bookmark.ai_tags ?? []),
+    ...(bookmark.ai_patterns ?? []),
+    bookmark.ai_description,
+    bookmark.ai_metadata?.page_type,
+    bookmark.ai_metadata?.industry,
+    bookmark.ai_metadata?.design_context,
+    ...(bookmark.ai_metadata?.visual_style ?? []),
+    ...(bookmark.ai_metadata?.ui_patterns ?? []),
+    ...(bookmark.ai_metadata?.components ?? []),
+    ...(bookmark.ai_metadata?.suggested_tags ?? []),
+  ].filter(Boolean).join(" "));
+}
+
+function parseVisualSignals(query: string): QueryVisualSignals {
+  const q = normalizeForEvidence(query);
+  const negatedDark = /\b(no|not|without)\s+(a\s+)?(dark|black|charcoal)\b/.test(q);
+
+  return {
+    dark: !negatedDark && /\b(dark|dark theme|black|black theme|charcoal|midnight|noir)\b/.test(q),
+    light: /\b(light|light theme|white|bright|airy|off white|cream|neutral)\b/.test(q),
+    bento: /\b(bento|bento grid)\b/.test(q),
+    glass: /\b(glassmorphism|glass morphism|frosted glass|translucent|blurred glass)\b/.test(q),
+    gradient: /\b(gradient|mesh gradient|color gradient)\b/.test(q),
+    dashboard: /\b(dashboard|analytics|chart|charts|graph|data visualization|data viz|metrics)\b/.test(q),
+    editorial: /\b(editorial|serif|magazine|publication|type led|type driven)\b/.test(q),
+    minimal: /\b(minimal|minimalist|clean|simple|sparse)\b/.test(q),
+    monochrome: /\b(monochrome|black and white|grayscale|greyscale)\b/.test(q),
+  };
+}
+
+function hasAnySignal(signals: QueryVisualSignals) {
+  return Object.values(signals).some(Boolean);
+}
+
+function evidenceIncludes(evidence: string, terms: string[]) {
+  return terms.some((term) => evidence.includes(term));
+}
+
+function getVisualEvidenceScore(bookmark: Bookmark, signals: QueryVisualSignals) {
+  const evidence = getEvidenceText(bookmark);
+  const paletteMode = inferPaletteMode(bookmark);
+  let score = 0;
+
+  if (signals.dark && (paletteMode === "dark" || evidenceIncludes(evidence, ["dark ui", "dark theme", "black interface", "charcoal"]))) score += 3;
+  if (signals.light && (paletteMode === "light" || evidenceIncludes(evidence, ["light neutral", "light interface", "white space", "airy", "off white"]))) score += 3;
+  if (signals.bento && evidenceIncludes(evidence, ["bento grid", "bento layout"])) score += 4;
+  if (signals.glass && evidenceIncludes(evidence, ["glassmorphism", "glass morphism", "frosted glass", "translucent"])) score += 3;
+  if (signals.gradient && evidenceIncludes(evidence, ["gradient", "mesh gradient"])) score += 2;
+  if (signals.dashboard && evidenceIncludes(evidence, ["dashboard", "analytics", "chart", "graph", "data visualization", "data viz", "metrics"])) score += 2;
+  if (signals.editorial && evidenceIncludes(evidence, ["editorial", "serif", "magazine", "publication", "type led", "type driven"])) score += 2;
+  if (signals.minimal && evidenceIncludes(evidence, ["minimal", "minimalist", "clean", "sparse", "restrained"])) score += 1;
+  if (signals.monochrome && evidenceIncludes(evidence, ["monochrome", "black and white", "grayscale", "greyscale"])) score += 2;
+
+  return score;
+}
+
+function passesVisualSignals(bookmark: Bookmark, signals: QueryVisualSignals) {
+  const evidence = getEvidenceText(bookmark);
+  const paletteMode = inferPaletteMode(bookmark);
+
+  if (signals.dark) {
+    const hasDarkEvidence = paletteMode === "dark" || evidenceIncludes(evidence, ["dark ui", "dark theme", "black interface", "charcoal", "midnight"]);
+    const hasLightVeto = paletteMode === "light" || evidenceIncludes(evidence, ["light neutral", "light interface", "white background", "airy"]);
+    if (!hasDarkEvidence || hasLightVeto) return false;
+  }
+
+  if (signals.light) {
+    const hasLightEvidence = paletteMode === "light" || evidenceIncludes(evidence, ["light neutral", "light interface", "white background", "airy", "off white"]);
+    const hasDarkVeto = paletteMode === "dark" || evidenceIncludes(evidence, ["dark ui", "dark theme", "black interface"]);
+    if (!hasLightEvidence || hasDarkVeto) return false;
+  }
+
+  if (signals.bento && !evidenceIncludes(evidence, ["bento grid", "bento layout"])) return false;
+  if (signals.glass && !evidenceIncludes(evidence, ["glassmorphism", "glass morphism", "frosted glass", "translucent"])) return false;
+  if (signals.gradient && !evidenceIncludes(evidence, ["gradient", "mesh gradient"])) return false;
+  if (signals.dashboard && !evidenceIncludes(evidence, ["dashboard", "analytics", "chart", "graph", "data visualization", "data viz", "metrics"])) return false;
+  if (signals.editorial && !evidenceIncludes(evidence, ["editorial", "serif", "magazine", "publication", "type led", "type driven"])) return false;
+  if (signals.minimal && !evidenceIncludes(evidence, ["minimal", "minimalist", "clean", "sparse", "restrained"])) return false;
+  if (signals.monochrome && !evidenceIncludes(evidence, ["monochrome", "black and white", "grayscale", "greyscale"])) return false;
+
+  return true;
 }
 
 function buildSemanticFields(bookmark: SemanticBookmark) {
@@ -283,22 +415,8 @@ export async function processAllBookmarksSemanticData(): Promise<ActionResult<Ba
   if (error) return { success: false, error: error.message };
 
   const bookmarks = (data ?? []) as Bookmark[];
-  const bookmarkIds = bookmarks.map((bookmark) => bookmark.id);
-  const { data: embeddings } = bookmarkIds.length
-    ? await supabase
-        .from("bookmark_embeddings")
-        .select("bookmark_id")
-        .eq("user_id", user.id)
-        .in("bookmark_id", bookmarkIds)
-    : { data: [] };
-
-  const embeddedIds = new Set((embeddings ?? []).map((row) => row.bookmark_id as string));
   const targets = bookmarks
-    .filter((bookmark) =>
-      !embeddedIds.has(bookmark.id) ||
-      !bookmark.semantic_status ||
-      ["pending", "failed", "skipped"].includes(bookmark.semantic_status)
-    )
+    .filter((bookmark) => bookmark.semantic_status !== "processing")
     .slice(0, 20);
 
   const counts: BackfillPayload = { processed: 0, skipped: 0, failed: 0 };
@@ -326,6 +444,8 @@ export async function searchBookmarksByMemory(query: string): Promise<ActionResu
   }
 
   let semanticBookmarks: Bookmark[] = [];
+  const visualSignals = parseVisualSignals(trimmed);
+  const hasVisualSignals = hasAnySignal(visualSignals);
 
   try {
     const embedding = await createTextEmbedding(trimmed);
@@ -333,7 +453,7 @@ export async function searchBookmarksByMemory(query: string): Promise<ActionResu
       query_embedding: toPgVectorLiteral(embedding),
       match_user_id: user.id,
       match_count: DEFAULT_MATCH_COUNT,
-      similarity_threshold: 0.2,
+      similarity_threshold: SEMANTIC_SIMILARITY_THRESHOLD,
     });
 
     if (rpcError) throw new Error(rpcError.message);
@@ -363,10 +483,19 @@ export async function searchBookmarksByMemory(query: string): Promise<ActionResu
           };
         })
         .filter(Boolean) as Bookmark[];
+
+      semanticBookmarks = semanticBookmarks
+        .filter((bookmark) => !hasVisualSignals || passesVisualSignals(bookmark, visualSignals))
+        .sort((a, b) => {
+          const visualDelta = getVisualEvidenceScore(b, visualSignals) - getVisualEvidenceScore(a, visualSignals);
+          if (visualDelta !== 0) return visualDelta;
+          return (b.semantic_similarity ?? 0) - (a.semantic_similarity ?? 0);
+        });
     }
   } catch (error) {
     const message = shortError(error);
-    const keywordFallback = await getKeywordMatches(supabase, user.id, trimmed);
+    const keywordFallback = (await getKeywordMatches(supabase, user.id, trimmed))
+      .filter((bookmark) => !hasVisualSignals || passesVisualSignals(bookmark, visualSignals));
 
     return {
       success: true,
@@ -381,7 +510,7 @@ export async function searchBookmarksByMemory(query: string): Promise<ActionResu
     };
   }
 
-  const keywordFallback = semanticBookmarks.length < DEFAULT_MATCH_COUNT
+  const keywordFallback = !hasVisualSignals && semanticBookmarks.length < DEFAULT_MATCH_COUNT
     ? await getKeywordMatches(supabase, user.id, trimmed, DEFAULT_MATCH_COUNT)
     : [];
 
@@ -400,7 +529,9 @@ export async function searchBookmarksByMemory(query: string): Promise<ActionResu
       configured: true,
       usedFallback: semanticBookmarks.length === 0 && keywordFallback.length > 0,
       message: results.length === 0
-        ? "No memory matches yet. New saves may still be processing."
+        ? hasVisualSignals
+          ? "No memory matches with that visual evidence yet. Reprocess older saves if their design read is stale."
+          : "No memory matches yet. New saves may still be processing."
         : undefined,
     },
   };

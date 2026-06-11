@@ -8,7 +8,7 @@ const MAX_VISUAL_STYLE = 8;
 const MAX_UI_PATTERNS = 12;
 const MAX_COMPONENTS = 12;
 const MAX_SUGGESTED_TAGS = 15;
-const MAX_DESIGN_CONTEXT_CHARS = 240;
+const MAX_DESIGN_CONTEXT_CHARS = 520;
 
 const outputSchema = z.object({
   page_type: z.string().trim().max(80).default("unknown"),
@@ -134,38 +134,49 @@ function parseJson(text) {
 }
 
 function buildPrompt(bookmark, observed) {
-  return `You are Nyabag's screenshot-grounded design memory intelligence layer.
+  return `You are Nyabag's senior design-memory auditor: a top-tier product, brand, and interface designer creating precise retrieval metadata from screenshots.
 
-Analyze the attached bookmark screenshot as the visual source of truth.
-Use observed DOM data for exact fonts, colors, labels, and layout signals.
-Do not name fonts unless they appear in observed typography candidates.
-Do not invent colors outside observed palettes/colors.
+Treat the screenshot as the source of truth. Use observed DOM data only to support visible evidence such as text, typography candidates, colors, and layout hints. Do not infer design patterns from the company category or marketing copy.
 
-Return compact design metadata for a product/UI designer.
-Focus only on UI layout, visual hierarchy, typography treatment, components, patterns, visual style, and retrieval tags.
-Ignore business claims, sales copy, legal text, company history, and generic website description.
+Your job is to describe what a designer can actually see:
+- color mode and palette character
+- hero composition and visual hierarchy
+- typography style and contrast
+- layout structure and spacing rhythm
+- imagery/illustration/data-viz treatment
+- surface treatment, components, and interaction affordances
+- distinctive details worth retrieving later
+
+Strict accuracy rules:
+- Only tag patterns that are visibly present in the screenshot.
+- Do not use "dark-ui", "dark-theme", or "black-interface" unless the majority of the visible interface is dark.
+- Do not use "bento-grid", "card-grid", or "modular-grid" unless there are multiple distinct card modules arranged in a grid.
+- Do not use "glassmorphism" unless translucent frosted surfaces are clearly visible.
+- Do not use "brutalist", "neumorphism", "claymorphism", "cyberpunk", or "retro" unless the visual style unmistakably matches.
+- Avoid generic tags by themselves. Pair broad tags with concrete designer-observable traits.
+- If unsure, leave the specific pattern out instead of guessing.
 
 Input:
 ${JSON.stringify({ bookmark, observed })}
 
 Return exact JSON:
 {
-  "page_type": "saas-landing-page",
-  "industry": "design-tools",
-  "visual_style": ["dark-ui", "minimal"],
-  "ui_patterns": ["hero-section", "card-grid"],
-  "components": ["navbar", "cta", "cards"],
-  "suggested_tags": ["saas", "hero-section", "dark-ui"],
+  "page_type": "editorial-saas-page",
+  "industry": "developer-tools",
+  "visual_style": ["light-neutral", "editorial", "data-led"],
+  "ui_patterns": ["split-hero", "logo-strip", "inline-chart"],
+  "components": ["navbar", "cta-buttons", "customer-logos", "data-visualization"],
+  "suggested_tags": ["light-neutral", "serif-display-type", "chart-hero", "logo-strip"],
   "suggested_folder": "Landing Pages",
-  "design_context": "Useful for studying dark SaaS hero hierarchy, CTA placement, and card-grid structure.",
+  "design_context": "Light neutral SaaS page with serif-led editorial hierarchy, a split hero, visible chart/data visualization, roomy spacing, and a customer logo strip.",
   "confidence": 0.86
 }
 
 Rules:
 - Use kebab-case for arrays and page_type/industry.
-- Keep values short and design-specific.
-- design_context under ${MAX_DESIGN_CONTEXT_CHARS} characters.
-- If unsure, use "unknown" or an empty array.
+- Keep tags short, specific, and designer-observable.
+- design_context must mention visual evidence, not business claims, and stay under ${MAX_DESIGN_CONTEXT_CHARS} characters.
+- Return empty arrays for uncertain patterns/components.
 - Return JSON only.`;
 }
 

@@ -7,6 +7,24 @@ export const EMBEDDING_MODEL =
 
 let geminiClient = null;
 
+const GENERIC_RETRIEVAL_TERMS = new Set([
+  "ai",
+  "app",
+  "b2b",
+  "business",
+  "company",
+  "homepage",
+  "landing-page",
+  "marketing",
+  "product",
+  "saas",
+  "software",
+  "startup",
+  "tool",
+  "tools",
+  "website",
+]);
+
 function getGeminiClient() {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
@@ -44,6 +62,25 @@ function addArrayLine(lines, label, value, limit = 16) {
   if (values.length) lines.push(`${label}: ${values.join(", ")}`);
 }
 
+function specificArray(value, limit = 16) {
+  return cleanArray(value, limit).filter((item) => !GENERIC_RETRIEVAL_TERMS.has(item.toLowerCase()));
+}
+
+function addSpecificArrayLine(lines, label, value, limit = 16) {
+  const values = specificArray(value, limit);
+  if (values.length) lines.push(`${label}: ${values.join(", ")}`);
+}
+
+function luminanceFromHex(hex) {
+  const match = String(hex ?? "").match(/^#?([0-9a-f]{6})$/i);
+  if (!match) return null;
+  const value = Number.parseInt(match[1], 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 function getDomain(url) {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -65,6 +102,45 @@ function unique(values, limit = 20) {
   }
 
   return result;
+}
+
+function inferColorMode(bookmark, ai) {
+  const visualText = [
+    ...(ai?.visual_style ?? []),
+    ...(bookmark.ai_tags ?? []),
+    ...(bookmark.tags ?? []),
+    bookmark.ai_description,
+    ai?.design_context,
+  ].join(" ").toLowerCase();
+
+  const luminances = cleanArray(bookmark.palette)
+    .map(luminanceFromHex)
+    .filter((value) => typeof value === "number");
+  const average = luminances.length
+    ? luminances.reduce((sum, value) => sum + value, 0) / luminances.length
+    : null;
+  const paletteMode = average === null ? "" : average < 95 ? "dark" : average > 175 ? "light" : "mixed";
+
+  if (paletteMode === "light" && /\b(dark|black|charcoal|midnight|dark-ui|dark-theme)\b/.test(visualText)) {
+    return "light interface";
+  }
+
+  if (paletteMode === "dark" && /\b(light|white|bright|airy|neutral|off-white|cream|beige)\b/.test(visualText)) {
+    return "dark interface";
+  }
+
+  if (/\b(dark|black|charcoal|midnight|dark-ui|dark-theme)\b/.test(visualText)) {
+    return "dark interface";
+  }
+
+  if (/\b(light|white|bright|airy|neutral|off-white|cream|beige)\b/.test(visualText)) {
+    return "light interface";
+  }
+
+  if (paletteMode === "dark") return "dark interface";
+  if (paletteMode === "light") return "light interface";
+  if (paletteMode === "mixed") return "mixed contrast interface";
+  return "";
 }
 
 function toPgVectorLiteral(values) {
@@ -104,8 +180,9 @@ function buildSemanticFields(bookmark, ai) {
   };
 }
 
-function buildMemoryText(bookmark) {
+function buildMemoryText(bookmark, ai) {
   const lines = [];
+  const colorMode = inferColorMode(bookmark, ai);
 
   addLine(lines, "Title", bookmark.title);
   addLine(lines, "Domain", getDomain(bookmark.url));
@@ -113,10 +190,17 @@ function buildMemoryText(bookmark) {
   addLine(lines, "Summary", bookmark.summary);
   addLine(lines, "User note", bookmark.note);
   addLine(lines, "Save reason", bookmark.save_reason);
-  addLine(lines, "AI visual description", bookmark.ai_description);
+  addLine(lines, "Color mode", colorMode);
+  if (colorMode === "light interface") lines.push("Negative visual evidence: not a dark theme");
+  if (colorMode === "dark interface") lines.push("Positive visual evidence: dark theme");
+  addLine(lines, "Visual evidence", bookmark.ai_description || ai?.design_context);
+  addLine(lines, "Page type", ai?.page_type);
+  addLine(lines, "Industry", ai?.industry);
   addArrayLine(lines, "User tags", bookmark.tags);
-  addArrayLine(lines, "AI tags", bookmark.ai_tags);
-  addArrayLine(lines, "UI patterns", bookmark.ai_patterns);
+  addSpecificArrayLine(lines, "Specific AI tags", bookmark.ai_tags?.length ? bookmark.ai_tags : ai?.suggested_tags);
+  addSpecificArrayLine(lines, "Layout structure", bookmark.ai_patterns?.length ? bookmark.ai_patterns : ai?.ui_patterns);
+  addSpecificArrayLine(lines, "Visual style", ai?.visual_style);
+  addSpecificArrayLine(lines, "Notable UI details", ai?.components);
   addArrayLine(lines, "Palette colors", bookmark.palette);
   addArrayLine(lines, "Fonts", bookmark.fonts);
 
@@ -170,7 +254,7 @@ export async function processBookmarkSemanticMemory({ supabase, bookmarkId, user
   try {
     const semanticFields = buildSemanticFields(bookmark, ai);
     const semanticBookmark = { ...bookmark, ...semanticFields };
-    const memoryText = buildMemoryText(semanticBookmark);
+    const memoryText = buildMemoryText(semanticBookmark, ai);
     const contentHash = crypto.createHash("sha256").update(memoryText).digest("hex");
 
     const { data: existing } = await supabase

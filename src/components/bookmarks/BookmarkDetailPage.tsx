@@ -215,7 +215,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             </Button>
             <Button className="detail-action-btn" variant="outline" onClick={handleRefreshScreenshot} disabled={isRefreshing}>
               {isRefreshing ? <Loader2 className="animate-spin" /> : <RotateCw />}
-              {isRefreshing ? "Queueing..." : "Refresh preview"}
+              {isRefreshing ? "Queueing..." : "Reprocess preview + AI"}
             </Button>
             {currentBookmark.processing_status === "failed" && (
               <Button className="detail-action-btn" variant="outline" onClick={handleRetryProcessing} disabled={isRetrying}>

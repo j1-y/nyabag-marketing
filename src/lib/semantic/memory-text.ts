@@ -9,6 +9,24 @@ type BookmarkLike = Partial<Bookmark> & {
   design_dna?: DesignDna | null;
 };
 
+const GENERIC_RETRIEVAL_TERMS = new Set([
+  "ai",
+  "app",
+  "b2b",
+  "business",
+  "company",
+  "homepage",
+  "landing-page",
+  "marketing",
+  "product",
+  "saas",
+  "software",
+  "startup",
+  "tool",
+  "tools",
+  "website",
+]);
+
 function clean(value: unknown) {
   if (value === null || value === undefined) return "";
   return String(value).replace(/\s+/g, " ").trim();
@@ -58,6 +76,64 @@ function addArrayLine(lines: string[], label: string, value: unknown, limit = 16
   if (values.length) lines.push(`${label}: ${values.join(", ")}`);
 }
 
+function specificArray(value: unknown, limit = 16) {
+  return cleanArray(value, limit).filter((item) => !GENERIC_RETRIEVAL_TERMS.has(item.toLowerCase()));
+}
+
+function addSpecificArrayLine(lines: string[], label: string, value: unknown, limit = 16) {
+  const values = specificArray(value, limit);
+  if (values.length) lines.push(`${label}: ${values.join(", ")}`);
+}
+
+function luminanceFromHex(hex: string) {
+  const match = hex.match(/^#?([0-9a-f]{6})$/i);
+  if (!match) return null;
+  const value = Number.parseInt(match[1], 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function inferColorMode(bookmark: BookmarkLike) {
+  const visualText = [
+    ...(bookmark.ai_metadata?.visual_style ?? []),
+    ...(bookmark.ai_tags ?? []),
+    ...(bookmark.tags ?? []),
+    bookmark.ai_description,
+    bookmark.ai_metadata?.design_context,
+  ].join(" ").toLowerCase();
+
+  const luminances = cleanArray(bookmark.palette)
+    .map(luminanceFromHex)
+    .filter((value): value is number => typeof value === "number");
+  const average = luminances.length
+    ? luminances.reduce((sum, value) => sum + value, 0) / luminances.length
+    : null;
+  const paletteMode = average === null ? "" : average < 95 ? "dark" : average > 175 ? "light" : "mixed";
+
+  if (paletteMode === "light" && /\b(dark|black|charcoal|midnight|dark-ui|dark-theme)\b/.test(visualText)) {
+    return "light interface";
+  }
+
+  if (paletteMode === "dark" && /\b(light|white|bright|airy|neutral|off-white|cream|beige)\b/.test(visualText)) {
+    return "dark interface";
+  }
+
+  if (/\b(dark|black|charcoal|midnight|dark-ui|dark-theme)\b/.test(visualText)) {
+    return "dark interface";
+  }
+
+  if (/\b(light|white|bright|airy|neutral|off-white|cream|beige)\b/.test(visualText)) {
+    return "light interface";
+  }
+
+  if (paletteMode === "dark") return "dark interface";
+  if (paletteMode === "light") return "light interface";
+  if (paletteMode === "mixed") return "mixed contrast interface";
+  return "";
+}
+
 function readableLabel(value: string) {
   return value
     .replace(/[-_]+/g, " ")
@@ -79,14 +155,18 @@ export function buildBookmarkMemoryText(bookmark: BookmarkLike): string {
   addLine(lines, "Summary", bookmark.summary);
   addLine(lines, "User note", bookmark.note);
   addLine(lines, "Save reason", bookmark.save_reason);
-  addLine(lines, "AI visual description", bookmark.ai_description || aiMetadata?.design_context);
+  const colorMode = inferColorMode(bookmark);
+  addLine(lines, "Color mode", colorMode);
+  if (colorMode === "light interface") lines.push("Negative visual evidence: not a dark theme");
+  if (colorMode === "dark interface") lines.push("Positive visual evidence: dark theme");
+  addLine(lines, "Visual evidence", bookmark.ai_description || aiMetadata?.design_context);
   addLine(lines, "Page type", aiMetadata?.page_type);
   addLine(lines, "Industry", aiMetadata?.industry);
   addArrayLine(lines, "User tags", bookmark.tags);
-  addArrayLine(lines, "AI tags", bookmark.ai_tags?.length ? bookmark.ai_tags : aiMetadata?.suggested_tags);
-  addArrayLine(lines, "UI patterns", bookmark.ai_patterns?.length ? bookmark.ai_patterns : aiMetadata?.ui_patterns);
-  addArrayLine(lines, "Visual style", aiMetadata?.visual_style);
-  addArrayLine(lines, "Components", aiMetadata?.components);
+  addSpecificArrayLine(lines, "Specific AI tags", bookmark.ai_tags?.length ? bookmark.ai_tags : aiMetadata?.suggested_tags);
+  addSpecificArrayLine(lines, "Layout structure", bookmark.ai_patterns?.length ? bookmark.ai_patterns : aiMetadata?.ui_patterns);
+  addSpecificArrayLine(lines, "Visual style", aiMetadata?.visual_style);
+  addSpecificArrayLine(lines, "Notable UI details", aiMetadata?.components);
   addArrayLine(lines, "Palette colors", bookmark.palette);
   addArrayLine(lines, "Fonts", bookmark.fonts);
   addArrayLine(lines, "Design DNA colors", designDna?.colors?.map((color) => `${color.name} ${color.hex} ${color.usage}`));
@@ -106,6 +186,12 @@ export function getBookmarkMemoryContentHash(memoryText: string): string {
 
 export function deriveMatchReasons(bookmark: BookmarkLike, query = ""): string[] {
   const q = query.toLowerCase();
+  const reasons: string[] = [];
+  const colorMode = inferColorMode(bookmark);
+
+  if (colorMode === "light interface") reasons.push("Light interface");
+  if (colorMode === "dark interface") reasons.push("Dark interface");
+
   const candidates = [
     ...(bookmark.ai_patterns ?? []),
     ...(bookmark.ai_tags ?? []),
@@ -116,7 +202,8 @@ export function deriveMatchReasons(bookmark: BookmarkLike, query = ""): string[]
     ...(bookmark.tags ?? []),
   ]
     .filter(Boolean)
-    .map((value) => String(value));
+    .map((value) => String(value))
+    .filter((value) => !GENERIC_RETRIEVAL_TERMS.has(value.toLowerCase()));
 
   const scored = candidates
     .map((value) => ({
@@ -126,5 +213,5 @@ export function deriveMatchReasons(bookmark: BookmarkLike, query = ""): string[]
     .sort((a, b) => b.score - a.score)
     .map(({ value }) => readableLabel(value));
 
-  return Array.from(new Set(scored)).slice(0, 4);
+  return Array.from(new Set([...reasons, ...scored])).slice(0, 4);
 }

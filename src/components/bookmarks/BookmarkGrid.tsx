@@ -86,7 +86,6 @@ function GridInner({
     filtered,
     pendingBookmarks,
     search,
-    searchMode,
     semanticHasRun,
     semanticError,
     openAdd,
@@ -123,10 +122,15 @@ function GridInner({
             <div className="empty-state-icon" aria-hidden="true">
               <BookmarkIcon size={24} />
             </div>
-            {searchMode === "memory" && search.trim().length >= 2 && semanticHasRun ? (
+            {search.trim().length >= 2 && semanticHasRun ? (
               <>
-                <h2>No memory matches yet</h2>
-                <p>{semanticError || "New saves may still be processing. Try a different vibe, layout, color, or pattern."}</p>
+                <h2>No matches yet</h2>
+                <p>{semanticError || "Try a different keyword, vibe, layout, color, or pattern."}</p>
+              </>
+            ) : search.trim().length > 0 ? (
+              <>
+                <h2>No keyword matches yet</h2>
+                <p>Memory search is still checking, or this reference may need reprocessing.</p>
               </>
             ) : (
               <>

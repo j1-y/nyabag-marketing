@@ -9,8 +9,6 @@ export function BookmarkSearchBar() {
   const {
     search,
     setSearch,
-    searchMode,
-    setSearchMode,
     isSemanticSearching,
     semanticError,
     addOpen,
@@ -68,11 +66,7 @@ export function BookmarkSearchBar() {
         <input
           ref={inputRef}
           type="text"
-          placeholder={
-            searchMode === "memory"
-              ? "Try 'dark SaaS pricing page with green CTA'"
-              : 'Ask Nyabag: "dark bento grid SaaS hero"'
-          }
+          placeholder='Search keywords, vibe, layout, color, or pattern'
           autoComplete="on"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -82,32 +76,16 @@ export function BookmarkSearchBar() {
           <Send size={15} fill="currentColor" />
         </button>
       </div>
-      <div className="search-mode-row" aria-label="Search mode">
-        <div className="search-mode-toggle">
-          <button
-            type="button"
-            className={searchMode === "keyword" ? "is-active" : ""}
-            onClick={() => setSearchMode("keyword")}
-          >
-            Keyword
-          </button>
-          <button
-            type="button"
-            className={searchMode === "memory" ? "is-active" : ""}
-            onClick={() => setSearchMode("memory")}
-          >
-            <Sparkles size={13} />
-            Memory
-          </button>
-        </div>
-        {searchMode === "memory" && (
+      {(search.trim().length >= 2 || semanticError) && (
+        <div className="search-mode-row" aria-label="Search status">
           <span className="search-memory-status" role={semanticError ? "status" : undefined}>
+            <Sparkles size={13} />
             {isSemanticSearching
-              ? "Searching memory..."
-              : semanticError || "Search by vibe, layout, color, or pattern"}
+              ? "Checking memory..."
+              : semanticError || "Keyword + memory search"}
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </form>
   );
 }

@@ -34,8 +34,6 @@ interface BookmarksCtx {
   setActiveFilter: (f: "all" | "recent") => void;
   search: string;
   setSearch: (s: string) => void;
-  searchMode: "keyword" | "memory";
-  setSearchMode: (mode: "keyword" | "memory") => void;
   isSemanticSearching: boolean;
   semanticError: string;
   semanticHasRun: boolean;
@@ -95,7 +93,6 @@ export function BookmarksProvider({
     }
   });
   const [search, setSearch] = useState("");
-  const [searchMode, setSearchMode] = useState<"keyword" | "memory">("keyword");
   const [semanticResults, setSemanticResults] = useState<Bookmark[]>([]);
   const [semanticError, setSemanticError] = useState("");
   const [semanticHasRun, setSemanticHasRun] = useState(false);
@@ -203,16 +200,6 @@ export function BookmarksProvider({
 
   useEffect(() => {
     const q = search.trim();
-    if (searchMode !== "memory") {
-      const timeout = window.setTimeout(() => {
-        setSemanticResults([]);
-        setSemanticError("");
-        setSemanticHasRun(false);
-        setIsSemanticSearching(false);
-      }, 0);
-      return () => window.clearTimeout(timeout);
-    }
-
     if (q.length < 2) {
       const timeout = window.setTimeout(() => {
         setSemanticResults([]);
@@ -248,7 +235,7 @@ export function BookmarksProvider({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [search, searchMode]);
+  }, [search]);
 
   const deleteItem = useCallback(async (id: string) => {
     // Keep reference to previous state for rollback
@@ -294,22 +281,36 @@ export function BookmarksProvider({
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    const useSemanticResults = searchMode === "memory" && q.length >= 2 && semanticHasRun;
-    let list = useSemanticResults ? [...semanticResults] : [...bookmarks];
+    const keywordResults = q
+      ? bookmarks.filter(
+          (b) =>
+            b.title.toLowerCase().includes(q) ||
+            b.url.toLowerCase().includes(q) ||
+            b.summary.toLowerCase().includes(q) ||
+            b.tags.some((t) => t.toLowerCase().includes(q)) ||
+            b.note.toLowerCase().includes(q) ||
+            b.ai_tags?.some((tag) => tag.toLowerCase().includes(q)) ||
+            b.ai_patterns?.some((pattern) => pattern.toLowerCase().includes(q)) ||
+            b.ai_metadata?.design_context.toLowerCase().includes(q) ||
+            b.ai_metadata?.visual_style.some((style) => style.toLowerCase().includes(q)) ||
+            b.ai_metadata?.ui_patterns.some((pattern) => pattern.toLowerCase().includes(q)) ||
+            b.ai_metadata?.components.some((component) => component.toLowerCase().includes(q))
+        )
+      : bookmarks;
+
+    let list = [...keywordResults];
+
+    if (q.length >= 2 && semanticHasRun) {
+      const merged = new Map<string, Bookmark>();
+      for (const bookmark of keywordResults) merged.set(bookmark.id, bookmark);
+      for (const bookmark of semanticResults) merged.set(bookmark.id, bookmark);
+      list = Array.from(merged.values());
+    }
 
     if (activeFilter === "recent") list = list.slice(0, 10);
     if (activeTag !== "All") list = list.filter((b) => b.tags.includes(activeTag));
-    if (q && !useSemanticResults)
-      list = list.filter(
-        (b) =>
-          b.title.toLowerCase().includes(q) ||
-          b.url.toLowerCase().includes(q) ||
-          b.summary.toLowerCase().includes(q) ||
-          b.tags.some((t) => t.toLowerCase().includes(q)) ||
-          b.note.toLowerCase().includes(q)
-      );
     return list;
-  }, [activeFilter, activeTag, bookmarks, search, searchMode, semanticHasRun, semanticResults]);
+  }, [activeFilter, activeTag, bookmarks, search, semanticHasRun, semanticResults]);
 
   const value = useMemo<BookmarksCtx>(
     () => ({
@@ -320,8 +321,6 @@ export function BookmarksProvider({
       activeTag, setActiveTag,
       activeFilter, setActiveFilter: setPersistentActiveFilter,
       search, setSearch,
-      searchMode,
-      setSearchMode,
       isSemanticSearching,
       semanticError,
       semanticHasRun,
@@ -362,7 +361,6 @@ export function BookmarksProvider({
       pendingBookmarks,
       removePendingBookmark,
       search,
-      searchMode,
       semanticError,
       semanticHasRun,
       isSemanticSearching,
