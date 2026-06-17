@@ -47,7 +47,7 @@ export type Bookmark = VisualSearchResultFields & {
   semantic_processed_at?: string | null;
   last_opened_at?: string | null;
   search_score?: number;
-  search_mode?: "exact" | "hybrid" | "keyword" | "semantic";
+  search_mode?: "exact" | "hybrid" | "keyword" | "semantic" | "temporal";
   search_match_reasons?: string[];
   lexical_score?: number;
   exact_match_score?: number;

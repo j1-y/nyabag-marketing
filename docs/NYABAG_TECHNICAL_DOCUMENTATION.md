@@ -43,7 +43,7 @@ The app is currently desktop-first. Mobile authenticated users see a small captu
 
 - Add, edit, and delete bookmarks.
 - Moodboard-style bookmark grid.
-- Ranked hybrid search using weighted PostgreSQL lexical retrieval, Gemini bookmark embeddings, optional visual-memory evidence, and TypeScript fusion.
+- Ranked hybrid search using weighted PostgreSQL lexical retrieval, Gemini bookmark embeddings, optional visual-memory evidence, TypeScript fusion, and deterministic timezone-aware temporal filters such as `saved today` or `from last month`.
 - Tag filtering and recent filtering.
 - Visual detail page for each bookmark.
 - Full-page website screenshots through Microlink.

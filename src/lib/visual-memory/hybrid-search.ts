@@ -95,13 +95,23 @@ function mergeCandidate(candidates: Map<string, Candidate>, bookmarkId: string, 
   });
 }
 
-async function getKeywordCandidates(supabase: SupabaseClientLike, userId: string, query: QueryUnderstanding) {
-  const { data, error } = await supabase
+async function getKeywordCandidates(
+  supabase: SupabaseClientLike,
+  userId: string,
+  query: QueryUnderstanding,
+  bounds: { createdAfter?: string; createdBefore?: string } = {},
+) {
+  let request = supabase
     .from("bookmarks")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(500);
+
+  if (bounds.createdAfter) request = request.gte("created_at", bounds.createdAfter);
+  if (bounds.createdBefore) request = request.lt("created_at", bounds.createdBefore);
+
+  const { data, error } = await request;
 
   if (error) return [];
 
@@ -109,13 +119,23 @@ async function getKeywordCandidates(supabase: SupabaseClientLike, userId: string
   return bookmarks.filter((bookmark) => keywordMatches(bookmark, query.normalized)).slice(0, DEFAULT_MATCH_COUNT);
 }
 
-async function getRowsByIds(supabase: SupabaseClientLike, userId: string, ids: string[]) {
+async function getRowsByIds(
+  supabase: SupabaseClientLike,
+  userId: string,
+  ids: string[],
+  bounds: { createdAfter?: string; createdBefore?: string } = {},
+) {
   if (!ids.length) return [] as Bookmark[];
-  const { data, error } = await supabase
+  let request = supabase
     .from("bookmarks")
     .select("*")
     .eq("user_id", userId)
     .in("id", ids);
+
+  if (bounds.createdAfter) request = request.gte("created_at", bounds.createdAfter);
+  if (bounds.createdBefore) request = request.lt("created_at", bounds.createdBefore);
+
+  const { data, error } = await request;
 
   if (error) throw new Error(error.message);
   return attachAiMetadataToBookmarks(supabase, (data ?? []) as Bookmark[], userId);
@@ -138,13 +158,18 @@ export async function searchBookmarksHybridVisual({
   userId,
   query,
   limit = DEFAULT_MATCH_COUNT,
+  createdAfter,
+  createdBefore,
 }: {
   supabase: SupabaseClientLike;
   userId: string;
   query: string;
   limit?: number;
+  createdAfter?: string;
+  createdBefore?: string;
 }): Promise<HybridSearchPayload> {
   const queryUnderstanding = understandVisualQuery(query);
+  const bounds = { createdAfter, createdBefore };
   if (!visualSearchEnabled()) {
     return {
       bookmarks: [],
@@ -156,7 +181,7 @@ export async function searchBookmarksHybridVisual({
   }
 
   const candidates = new Map<string, Candidate>();
-  const keywordCandidates = await getKeywordCandidates(supabase, userId, queryUnderstanding);
+  const keywordCandidates = await getKeywordCandidates(supabase, userId, queryUnderstanding, bounds);
 
   for (const bookmark of keywordCandidates) {
     mergeCandidate(candidates, bookmark.id, {
@@ -171,22 +196,29 @@ export async function searchBookmarksHybridVisual({
     const vectorLiteral = toPgVectorLiteral(embedding);
 
     const [chunkVector, legacyVector, chunkText] = await Promise.all([
-      supabase.rpc("match_bookmark_memory_chunks", {
+      supabase.rpc("match_bookmark_memory_chunks_v2", {
         query_embedding: vectorLiteral,
         match_user_id: userId,
         match_count: limit * 3,
         similarity_threshold: VECTOR_THRESHOLD,
+        created_after: createdAfter ?? null,
+        created_before: createdBefore ?? null,
       }),
-      supabase.rpc("match_bookmarks_by_embedding", {
+      supabase.rpc("match_bookmarks_by_embedding_v2", {
         query_embedding: vectorLiteral,
         match_user_id: userId,
         match_count: limit * 2,
         similarity_threshold: LEGACY_VECTOR_THRESHOLD,
+        minimum_schema_version: 1,
+        created_after: createdAfter ?? null,
+        created_before: createdBefore ?? null,
       }),
-      supabase.rpc("search_bookmark_memory_chunks_text", {
+      supabase.rpc("search_bookmark_memory_chunks_text_v2", {
         query_text: queryUnderstanding.original,
         match_user_id: userId,
         match_count: limit * 3,
+        created_after: createdAfter ?? null,
+        created_before: createdBefore ?? null,
       }),
     ]);
 
@@ -233,7 +265,7 @@ export async function searchBookmarksHybridVisual({
   }
 
   const [bookmarks, visualFacts] = await Promise.all([
-    getRowsByIds(supabase, userId, ids),
+    getRowsByIds(supabase, userId, ids, bounds),
     getVisualFactsRows(supabase, userId, ids),
   ]);
 

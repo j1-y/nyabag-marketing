@@ -71,6 +71,7 @@
   - `docs/BOOKMARK_SEARCH_ARCHITECTURE.md` for operational changes
 - Validation steps:
   - Run `node scripts/evaluate-bookmark-search.mjs`
+  - Run `npx tsx scripts/evaluate-temporal-search.ts` when temporal parsing changes
   - Run `npm run test`
   - Run `npm run build`
   - Run `npm run lint`

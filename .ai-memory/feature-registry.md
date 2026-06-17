@@ -11,9 +11,9 @@
 ## Bookmark Search
 
 - Feature: Ranked hybrid bookmark search
-- Description: Server-ranked search over weighted lexical matches, Gemini retrieval embeddings, and optional visual-memory evidence. Active dashboard searches do not union broad local substring matches.
-- Key Files: `src/lib/bookmark-search/*`, `src/lib/semantic/actions.ts`, `src/lib/semantic/memory-text.ts`, `src/lib/semantic/embeddings.ts`, `src/hooks/useBookmarks.tsx`, `src/components/bookmarks/BookmarkSearchBar.tsx`, `src/components/bookmarks/BookmarkGrid.tsx`, `scripts/reindex-bookmark-search.mjs`, `scripts/evaluate-bookmark-search.mjs`, `tests/bookmark-search-fixtures.json`, `docs/BOOKMARK_SEARCH_ARCHITECTURE.md`, `supabase/schema.sql`
-- Dependencies: Supabase RLS, `search_bookmarks_lexical`, `bookmarks.search_vector`, `bookmark_embeddings.retrieval_schema_version`, pgvector 768, Gemini embeddings, optional visual memory chunks/facts
+- Description: Server-ranked search over weighted lexical matches, Gemini retrieval embeddings, optional visual-memory evidence, and deterministic timezone-aware temporal filters. Active dashboard searches do not union broad local substring matches.
+- Key Files: `src/lib/bookmark-search/*`, `src/lib/semantic/actions.ts`, `src/lib/semantic/memory-text.ts`, `src/lib/semantic/embeddings.ts`, `src/hooks/useBookmarks.tsx`, `src/components/bookmarks/BookmarkSearchBar.tsx`, `src/components/bookmarks/BookmarkGrid.tsx`, `scripts/reindex-bookmark-search.mjs`, `scripts/evaluate-bookmark-search.mjs`, `scripts/evaluate-temporal-search.ts`, `tests/bookmark-search-fixtures.json`, `docs/BOOKMARK_SEARCH_ARCHITECTURE.md`, `supabase/schema.sql`
+- Dependencies: Supabase RLS, `search_bookmarks_lexical_v2`, date-bound vector/chunk RPCs, `bookmarks.search_vector`, `bookmark_embeddings.retrieval_schema_version`, pgvector 768, Gemini embeddings, Luxon timezone handling, optional visual memory chunks/facts
 - Status: Active
 
 ## Canvas

@@ -14,6 +14,7 @@ import {
 } from "react";
 import { BOOKMARK_SEARCH_CONFIG } from "@/lib/bookmark-search/config";
 import type { BookmarkSearchMode, BookmarkSearchResult, SearchState } from "@/lib/bookmark-search/types";
+import type { TemporalFilter } from "@/lib/bookmark-search/temporal-query";
 import type { Bookmark } from "@/lib/types";
 import { deleteBookmark, getBookmarks, getProcessingBookmarks } from "@/lib/actions";
 import { searchBookmarksByMemory } from "@/lib/semantic/actions";
@@ -41,6 +42,8 @@ interface BookmarksCtx {
   semanticHasRun: boolean;
   searchMode: BookmarkSearchMode;
   searchResultCount: number;
+  temporalFilter?: Omit<TemporalFilter, "sourceText">;
+  effectiveSearchQuery: string;
   clearSearch: () => void;
   // Modal state
   addOpen: boolean;
@@ -69,6 +72,13 @@ function getPreviousSearchResults(state: SearchState): BookmarkSearchResult[] {
   if (state.status === "success") return state.payload.bookmarks;
   if (state.status === "loading" || state.status === "error") return state.previousResults;
   return [];
+}
+
+function getBrowserSearchContext() {
+  if (typeof window === "undefined") return { timeZone: "UTC", locale: "en-US" };
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const locale = navigator.language || "en-US";
+  return { timeZone, locale };
 }
 
 function getBookmarkSnapshot(bookmarks: Bookmark[]) {
@@ -227,7 +237,8 @@ export function BookmarksProvider({
         previousResults: getPreviousSearchResults(current),
       }));
 
-      const result = await searchBookmarksByMemory(q);
+      const searchContext = getBrowserSearchContext();
+      const result = await searchBookmarksByMemory(q, searchContext);
       if (searchRequestIdRef.current !== requestId) return;
 
       if (!result.success) {
@@ -341,6 +352,8 @@ export function BookmarksProvider({
         : "";
   const searchMode = searchState.status === "success" ? searchState.payload.mode : "keyword";
   const searchResultCount = searchState.status === "success" ? searchState.payload.result_count : filtered.length;
+  const temporalFilter = searchState.status === "success" ? searchState.payload.temporalFilter : undefined;
+  const effectiveSearchQuery = searchState.status === "success" ? searchState.payload.effectiveQuery : search.trim();
 
   const value = useMemo<BookmarksCtx>(
     () => ({
@@ -356,6 +369,8 @@ export function BookmarksProvider({
       semanticHasRun,
       searchMode,
       searchResultCount,
+      temporalFilter,
+      effectiveSearchQuery,
       clearSearch,
       addOpen,
       openAdd,
@@ -397,6 +412,8 @@ export function BookmarksProvider({
       search,
       searchMode,
       searchResultCount,
+      temporalFilter,
+      effectiveSearchQuery,
       semanticError,
       semanticHasRun,
       isSemanticSearching,

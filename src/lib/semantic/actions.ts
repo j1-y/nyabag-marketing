@@ -8,7 +8,8 @@ import {
   type FusedSearchCandidate,
   type SearchCandidateInput,
 } from "@/lib/bookmark-search/fusion";
-import type { BookmarkSearchPayload, BookmarkSearchResult } from "@/lib/bookmark-search/types";
+import { parseBookmarkSearchQuery, type TemporalFilter } from "@/lib/bookmark-search/temporal-query";
+import type { BookmarkSearchPayload, BookmarkSearchRequest, BookmarkSearchResult } from "@/lib/bookmark-search/types";
 import { attachAiMetadataToBookmarks, getBookmarkAiMetadata } from "@/lib/bookmarks/ai-metadata";
 import { getDesignDnaForBookmark } from "@/lib/design-dna/data";
 import {
@@ -51,7 +52,13 @@ type SemanticSearchRow = {
   similarity: number;
 };
 
+type SearchDateBounds = {
+  createdAfter?: string;
+  createdBefore?: string;
+};
+
 const MAX_SEARCH_QUERY_LENGTH = 500;
+const TEMPORAL_RESULT_LIMIT = 100;
 
 function shortError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error || "Memory processing failed");
@@ -204,10 +211,15 @@ async function getBookmarksByIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   ids: string[],
+  bounds: SearchDateBounds = {},
 ) {
   if (!ids.length) return new Map<string, Bookmark>();
 
-  const { data, error } = await supabase.from("bookmarks").select("*").eq("user_id", userId).in("id", ids);
+  let query = supabase.from("bookmarks").select("*").eq("user_id", userId).in("id", ids);
+  if (bounds.createdAfter) query = query.gte("created_at", bounds.createdAfter);
+  if (bounds.createdBefore) query = query.lt("created_at", bounds.createdBefore);
+
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
 
   const bookmarks = await attachAiMetadataToBookmarks(supabase, (data ?? []) as Bookmark[], userId);
@@ -257,13 +269,48 @@ function toSearchResult(bookmark: Bookmark, candidate: FusedSearchCandidate): Bo
   };
 }
 
+function temporalPayload(filter: TemporalFilter | null): BookmarkSearchPayload["temporalFilter"] {
+  if (!filter) return undefined;
+  return {
+    kind: filter.kind,
+    label: filter.label,
+    startUtc: filter.startUtc,
+    endUtc: filter.endUtc,
+  };
+}
+
+function boundsFromTemporal(filter: TemporalFilter | null): SearchDateBounds {
+  if (!filter) return {};
+  return {
+    createdAfter: filter.startUtc,
+    createdBefore: filter.endUtc,
+  };
+}
+
+function temporalReason(filter: TemporalFilter) {
+  return `Saved: ${filter.label}`;
+}
+
+function temporalEmptyMessage(filter: TemporalFilter, isDateOnly: boolean) {
+  const label = filter.label.toLowerCase();
+  if (isDateOnly) {
+    if (filter.label === "Today") return "No bookmarks saved today";
+    if (filter.label === "Yesterday") return "No bookmarks saved yesterday";
+    return `No bookmarks found for ${filter.label}`;
+  }
+  return `No matching bookmarks saved ${label}`;
+}
+
 async function searchLexicalCandidates(
   supabase: Awaited<ReturnType<typeof createClient>>,
   query: string,
+  bounds: SearchDateBounds = {},
 ): Promise<{ rows: LexicalSearchRow[]; error?: string }> {
-  const { data, error } = await supabase.rpc("search_bookmarks_lexical", {
+  const { data, error } = await supabase.rpc("search_bookmarks_lexical_v2", {
     search_query: query,
     result_limit: BOOKMARK_SEARCH_CONFIG.lexicalCandidateLimit,
+    created_after: bounds.createdAfter ?? null,
+    created_before: bounds.createdBefore ?? null,
   });
 
   if (error) return { rows: [], error: error.message };
@@ -274,15 +321,18 @@ async function searchSemanticCandidates(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   query: string,
+  bounds: SearchDateBounds = {},
 ): Promise<{ rows: SemanticSearchRow[]; configured: boolean; error?: string }> {
   try {
     const embedding = await createBookmarkQueryEmbedding(query);
-    const { data, error } = await supabase.rpc("match_bookmarks_by_embedding", {
+    const { data, error } = await supabase.rpc("match_bookmarks_by_embedding_v2", {
       query_embedding: toPgVectorLiteral(embedding),
       match_user_id: userId,
       match_count: BOOKMARK_SEARCH_CONFIG.semanticCandidateLimit,
       similarity_threshold: BOOKMARK_SEARCH_CONFIG.minimumSemanticSimilarity,
       minimum_schema_version: BOOKMARK_RETRIEVAL_SCHEMA_VERSION,
+      created_after: bounds.createdAfter ?? null,
+      created_before: bounds.createdBefore ?? null,
     });
 
     if (error) return { rows: [], configured: true, error: error.message };
@@ -291,6 +341,35 @@ async function searchSemanticCandidates(
     const message = shortError(error);
     return { rows: [], configured: !message.includes("GEMINI_API_KEY"), error: message };
   }
+}
+
+async function getTemporalBookmarks(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  filter: TemporalFilter,
+) {
+  const bounds = boundsFromTemporal(filter);
+  let query = supabase
+    .from("bookmarks")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(TEMPORAL_RESULT_LIMIT);
+
+  if (bounds.createdAfter) query = query.gte("created_at", bounds.createdAfter);
+  if (bounds.createdBefore) query = query.lt("created_at", bounds.createdBefore);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const bookmarks = await attachAiMetadataToBookmarks(supabase, (data ?? []) as Bookmark[], userId);
+  return bookmarks.map((bookmark) => ({
+    ...bookmark,
+    search_score: 1,
+    search_mode: "temporal" as const,
+    search_match_reasons: [temporalReason(filter)],
+    semantic_match_reasons: [temporalReason(filter)],
+  }));
 }
 
 export async function processBookmarkSemanticData(bookmarkId: string): Promise<ActionResult<Bookmark>> {
@@ -433,28 +512,90 @@ export async function processAllBookmarksSemanticData(): Promise<ActionResult<Ba
   return { success: true, data: counts };
 }
 
-export async function searchBookmarks(query: string): Promise<ActionResult<BookmarkSearchPayload>> {
+export async function searchBookmarks(input: BookmarkSearchRequest | string): Promise<ActionResult<BookmarkSearchPayload>> {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
-  const trimmed = query.replace(/\s+/g, " ").trim().slice(0, MAX_SEARCH_QUERY_LENGTH);
-  if (trimmed.length < BOOKMARK_SEARCH_CONFIG.minQueryLength) {
+  const request: BookmarkSearchRequest =
+    typeof input === "string"
+      ? { query: input, timeZone: "UTC" }
+      : { ...input, query: input.query };
+  const trimmed = request.query.replace(/\s+/g, " ").trim().slice(0, MAX_SEARCH_QUERY_LENGTH);
+  const parsed = parseBookmarkSearchQuery({
+    query: trimmed,
+    timeZone: request.timeZone || "UTC",
+    locale: request.locale,
+  });
+  const effectiveQuery = parsed.temporal ? parsed.residualQuery : trimmed;
+  const temporal = parsed.temporal;
+  const bounds = boundsFromTemporal(temporal);
+
+  if (!temporal && trimmed.length < BOOKMARK_SEARCH_CONFIG.minQueryLength) {
     return {
       success: true,
       data: {
         bookmarks: [],
         query: trimmed,
+        effectiveQuery: trimmed,
         mode: "keyword",
         result_count: 0,
         semantic_available: true,
         lexical_available: true,
+        configured: true,
+        usedSemantic: false,
+        totalCandidates: 0,
+      },
+    };
+  }
+
+  if (temporal && parsed.isDateOnlyQuery) {
+    try {
+      const bookmarks = await getTemporalBookmarks(supabase, user.id, temporal);
+      return {
+        success: true,
+        data: {
+          bookmarks,
+          query: trimmed,
+          effectiveQuery,
+          mode: "temporal",
+          result_count: bookmarks.length,
+          semantic_available: true,
+          lexical_available: true,
+          configured: true,
+          usedSemantic: false,
+          totalCandidates: bookmarks.length,
+          temporalFilter: temporalPayload(temporal),
+          message: bookmarks.length ? undefined : temporalEmptyMessage(temporal, true),
+        },
+      };
+    } catch (error) {
+      return { success: false, error: shortError(error) };
+    }
+  }
+
+  if (effectiveQuery.length < BOOKMARK_SEARCH_CONFIG.minQueryLength) {
+    return {
+      success: true,
+      data: {
+        bookmarks: [],
+        query: trimmed,
+        effectiveQuery,
+        mode: temporal ? "temporal" : "keyword",
+        result_count: 0,
+        semantic_available: true,
+        lexical_available: true,
+        configured: true,
+        usedSemantic: false,
+        totalCandidates: 0,
+        temporalFilter: temporalPayload(temporal),
+        message: temporal ? temporalEmptyMessage(temporal, true) : undefined,
       },
     };
   }
 
   const [lexical, semantic] = await Promise.all([
-    searchLexicalCandidates(supabase, trimmed),
-    searchSemanticCandidates(supabase, user.id, trimmed),
+    searchLexicalCandidates(supabase, effectiveQuery, bounds),
+    searchSemanticCandidates(supabase, user.id, effectiveQuery, bounds),
   ]);
 
   const candidates: SearchCandidateInput[] = [
@@ -480,8 +621,10 @@ export async function searchBookmarks(query: string): Promise<ActionResult<Bookm
       const visual = await searchBookmarksHybridVisual({
         supabase,
         userId: user.id,
-        query: trimmed,
+        query: effectiveQuery,
         limit: BOOKMARK_SEARCH_CONFIG.visualCandidateLimit,
+        createdAfter: bounds.createdAfter,
+        createdBefore: bounds.createdBefore,
       });
 
       const usableVisualResults = visual.bookmarks.filter((bookmark) => {
@@ -512,7 +655,7 @@ export async function searchBookmarks(query: string): Promise<ActionResult<Bookm
   const fused = fuseSearchCandidates(candidates);
   const strong = filterStrongSearchResults(fused);
   const ids = strong.map((candidate) => candidate.bookmarkId);
-  const bookmarkById = await getBookmarksByIds(supabase, user.id, ids);
+  const bookmarkById = await getBookmarksByIds(supabase, user.id, ids, bounds);
 
   const bookmarks = strong
     .map((candidate) => {
@@ -526,9 +669,11 @@ export async function searchBookmarks(query: string): Promise<ActionResult<Bookm
   const mode = bookmarks[0]?.search_mode ?? "keyword";
   const message =
     bookmarks.length === 0
-      ? semantic.configured
-        ? "No strong matches found."
-        : "Keyword search is available, but memory search needs GEMINI_API_KEY."
+      ? temporal
+        ? temporalEmptyMessage(temporal, false)
+        : semantic.configured
+          ? "No strong matches found."
+          : "Keyword search is available, but memory search needs GEMINI_API_KEY."
       : lexical.error && !semantic.error
         ? "Keyword search was unavailable, so Nyabag used memory matches."
         : semantic.error && lexical.rows.length > 0
@@ -540,10 +685,15 @@ export async function searchBookmarks(query: string): Promise<ActionResult<Bookm
     data: {
       bookmarks,
       query: trimmed,
+      effectiveQuery,
       mode,
       result_count: bookmarks.length,
       semantic_available: semantic.configured && !semantic.error,
       lexical_available: !lexical.error,
+      configured: !lexical.error || semantic.configured,
+      usedSemantic: semantic.rows.length > 0,
+      totalCandidates: fused.length,
+      temporalFilter: temporalPayload(temporal),
       message,
       debug: isBookmarkSearchDebugEnabled()
         ? {
@@ -557,6 +707,13 @@ export async function searchBookmarks(query: string): Promise<ActionResult<Bookm
   };
 }
 
-export async function searchBookmarksByMemory(query: string): Promise<ActionResult<BookmarkSearchPayload>> {
-  return searchBookmarks(query);
+export async function searchBookmarksByMemory(
+  query: string,
+  options?: { timeZone?: string; locale?: string },
+): Promise<ActionResult<BookmarkSearchPayload>> {
+  return searchBookmarks({
+    query,
+    timeZone: options?.timeZone ?? "UTC",
+    locale: options?.locale,
+  });
 }

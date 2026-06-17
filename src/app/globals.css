@@ -2477,6 +2477,31 @@
   outline-offset: 3px;
 }
 
+.search-temporal-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 18px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: hsl(var(--card-token) / 0.78);
+}
+
+.search-temporal-summary h2 {
+  margin: 0;
+  font-size: clamp(1rem, 1vw + 0.8rem, 1.35rem);
+  letter-spacing: -0.02em;
+}
+
+.search-temporal-summary p {
+  margin: 0;
+  color: var(--muted-fg);
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
 .search-submit-btn svg {
   width: 16px;
   height: 16px;

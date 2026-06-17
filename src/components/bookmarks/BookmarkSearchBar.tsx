@@ -13,6 +13,7 @@ export function BookmarkSearchBar() {
     semanticError,
     searchMode,
     searchResultCount,
+    temporalFilter,
     clearSearch,
     addOpen,
     importOpen,
@@ -58,6 +59,14 @@ export function BookmarkSearchBar() {
   const hasActiveSearch = search.trim().length >= 2;
   const statusCopy = isSemanticSearching
     ? "Searching your memory..."
+    : temporalFilter
+      ? searchMode === "temporal"
+        ? searchResultCount > 0
+          ? `${searchResultCount} ${searchResultCount === 1 ? "bookmark" : "bookmarks"} saved ${temporalFilter.label.toLowerCase()}`
+          : `Saved: ${temporalFilter.label}`
+        : searchResultCount > 0
+          ? "Best matches"
+          : "No matching bookmarks"
     : semanticError && searchResultCount === 0
       ? "No strong matches found"
       : searchResultCount > 0
@@ -103,6 +112,11 @@ export function BookmarkSearchBar() {
             <Sparkles size={13} />
             {statusCopy}
           </span>
+          {temporalFilter && searchMode !== "temporal" && (
+            <span className="search-memory-status" aria-label="Temporal filter">
+              Saved: {temporalFilter.label}
+            </span>
+          )}
         </div>
       )}
     </form>

@@ -31,3 +31,7 @@
 ## Decision: Bookmark search uses TypeScript fusion over a large SQL hybrid RPC
 
 - Reason: PostgreSQL should provide owner-scoped weighted lexical retrieval and pgvector candidates, while TypeScript fusion stays easier to test, tune, and integrate with existing visual-memory modules.
+
+## Decision: Temporal bookmark search is deterministic
+
+- Reason: Save-date language has a finite grammar and must respect browser timezone boundaries without spending Gemini calls or risking nondeterministic date interpretation.

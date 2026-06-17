@@ -1,6 +1,13 @@
 import type { Bookmark } from "@/lib/types";
+import type { TemporalFilter } from "./temporal-query";
 
-export type BookmarkSearchMode = "exact" | "hybrid" | "keyword" | "semantic";
+export type BookmarkSearchMode = "exact" | "hybrid" | "keyword" | "semantic" | "temporal";
+
+export type BookmarkSearchRequest = {
+  query: string;
+  timeZone: string;
+  locale?: string;
+};
 
 export type BookmarkSearchResult = Bookmark & {
   search_score: number;
@@ -13,10 +20,15 @@ export type BookmarkSearchResult = Bookmark & {
 export type BookmarkSearchPayload = {
   bookmarks: BookmarkSearchResult[];
   query: string;
+  effectiveQuery: string;
   mode: BookmarkSearchMode;
   result_count: number;
   semantic_available: boolean;
   lexical_available: boolean;
+  configured: boolean;
+  usedSemantic: boolean;
+  totalCandidates: number;
+  temporalFilter?: Omit<TemporalFilter, "sourceText">;
   message?: string;
   debug?: {
     lexical_candidates: number;

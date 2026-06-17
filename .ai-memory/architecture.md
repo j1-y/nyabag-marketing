@@ -54,7 +54,9 @@
 ## Bookmark search architecture
 
 - Active dashboard searches must use server-ranked results from `searchBookmarksByMemory()`/`searchBookmarks()`, not broad client-side substring unions.
+- Temporal search is parsed deterministically in `src/lib/bookmark-search/temporal-query.ts`; date-only queries bypass Gemini and visual memory, while mixed date+content queries pass UTC bounds to every candidate source.
 - Lexical retrieval uses `bookmarks.search_vector`, `idx_bookmarks_search_vector`, and the `search_bookmarks_lexical` RPC in `supabase/schema.sql`.
+- Date-bound retrieval uses versioned `_v2` RPCs to avoid PostgREST overload ambiguity.
 - Semantic retrieval uses Gemini 768-dimensional embeddings in `bookmark_embeddings` with `retrieval_schema_version`.
 - Fusion and cutoff are pure TypeScript in `src/lib/bookmark-search/fusion.ts`.
 - Full operational details live in `docs/BOOKMARK_SEARCH_ARCHITECTURE.md`.
