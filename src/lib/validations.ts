@@ -79,6 +79,27 @@ export const profileUpdateSchema = z.object({
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 
+export const onboardingWorkspaceTypeSchema = z.enum(["solo_creator", "team"]);
+export const onboardingPrimaryGoalSchema = z.enum([
+  "save_links",
+  "organize_research",
+  "build_moodboards",
+]);
+export const onboardingFocusAreaSchema = z.enum([
+  "product_design",
+  "branding",
+  "marketing",
+  "general",
+]);
+
+export const onboardingPreferencesSchema = z.object({
+  workspace_type: onboardingWorkspaceTypeSchema,
+  primary_goal: onboardingPrimaryGoalSchema,
+  focus_area: onboardingFocusAreaSchema,
+});
+
+export type OnboardingPreferencesInput = z.infer<typeof onboardingPreferencesSchema>;
+
 export const noteCreateSchema = z.object({
   type: z.enum(["text", "text_frame", "link", "image", "video", "social"]),
   section_id: z.string().uuid().nullable().default(null),

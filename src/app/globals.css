@@ -2452,6 +2452,31 @@
   outline-offset: 3px;
 }
 
+.search-clear-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--muted-token) / 0.7);
+  color: var(--muted-fg);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.search-clear-btn:hover {
+  background: hsl(var(--foreground-token) / 0.08);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.search-clear-btn:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+}
+
 .search-submit-btn svg {
   width: 16px;
   height: 16px;
@@ -3449,14 +3474,60 @@
   font-weight: 750;
 }
 
-.bookmark-memory-chip.is-match {
+.bookmark-memory-chip.is-match,
+.bookmark-memory-chip.is-exact,
+.bookmark-memory-chip.is-strong {
   background: hsl(var(--accent-token) / 0.92);
   color: var(--accent-ink);
   border-color: hsl(var(--accent-token) / 0.4);
 }
 
+.bookmark-memory-chip.is-possible {
+  background: hsl(var(--warning-token) / 0.94);
+  color: hsl(var(--foreground-token) / 0.9);
+  border-color: hsl(var(--warning-token) / 0.45);
+}
+
+.bookmark-memory-chip.is-related {
+  background: hsl(var(--text-inverse-token) / 0.9);
+  color: hsl(var(--foreground-token) / 0.78);
+  border-color: hsl(var(--foreground-token) / 0.14);
+}
+
 .bookmark-memory-chip.is-preparing svg {
   animation: spin 0.9s linear infinite;
+}
+
+.bookmark-evidence-chips {
+  position: absolute;
+  top: 44px;
+  right: 10px;
+  left: 10px;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.bookmark-evidence-chips span {
+  max-width: 110px;
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--foreground-token) / 0.12);
+  background: hsl(var(--surface-token) / 0.9);
+  color: hsl(var(--foreground-token) / 0.78);
+  box-shadow: 0 6px 18px hsl(var(--foreground-token) / 0.1);
+  backdrop-filter: blur(10px);
+  font-size: 10px;
+  font-weight: 720;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pending-bookmark-card {

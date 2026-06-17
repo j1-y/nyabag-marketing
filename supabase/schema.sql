@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS bookmarks (
   summary                  TEXT        NOT NULL DEFAULT '',
   metadata_refreshed_at    TIMESTAMPTZ,
   note                     TEXT        NOT NULL DEFAULT '',
+  search_vector            TSVECTOR,
   created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -59,7 +60,8 @@ ALTER TABLE bookmarks
   ADD COLUMN IF NOT EXISTS semantic_status TEXT NOT NULL DEFAULT 'pending',
   ADD COLUMN IF NOT EXISTS semantic_error TEXT,
   ADD COLUMN IF NOT EXISTS semantic_processed_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS last_opened_at TIMESTAMPTZ;
+  ADD COLUMN IF NOT EXISTS last_opened_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS search_vector TSVECTOR;
 
 ALTER TABLE bookmarks
   DROP CONSTRAINT IF EXISTS bookmarks_url_check,
@@ -94,6 +96,167 @@ CREATE INDEX IF NOT EXISTS idx_bookmarks_created ON bookmarks(user_id, created_a
 CREATE INDEX IF NOT EXISTS idx_bookmarks_user_url ON bookmarks(user_id, url);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_processing_status ON bookmarks(processing_status);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_semantic_status ON bookmarks(semantic_status);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_search_vector ON bookmarks USING GIN(search_vector);
+
+CREATE OR REPLACE FUNCTION bookmark_hostname(bookmark_url TEXT)
+RETURNS TEXT
+LANGUAGE SQL
+IMMUTABLE
+AS $$
+  SELECT lower(split_part(regexp_replace(coalesce(bookmark_url, ''), '^https?://(www\.)?', '', 'i'), '/', 1));
+$$;
+
+CREATE OR REPLACE FUNCTION build_bookmark_search_vector(
+  bookmark_title TEXT,
+  bookmark_url TEXT,
+  bookmark_tags TEXT[],
+  bookmark_summary TEXT,
+  bookmark_note TEXT,
+  bookmark_save_reason TEXT,
+  bookmark_ai_description TEXT,
+  bookmark_ai_tags TEXT[],
+  bookmark_ai_patterns TEXT[],
+  bookmark_fonts TEXT[],
+  bookmark_ai_design_dna JSONB
+)
+RETURNS TSVECTOR
+LANGUAGE SQL
+IMMUTABLE
+AS $$
+  SELECT
+    setweight(to_tsvector('english', coalesce(bookmark_title, '')), 'A') ||
+    setweight(to_tsvector('english', bookmark_hostname(bookmark_url)), 'A') ||
+    setweight(to_tsvector('english', array_to_string(coalesce(bookmark_tags, '{}'), ' ')), 'A') ||
+    setweight(to_tsvector('english', array_to_string(coalesce(bookmark_ai_patterns, '{}'), ' ')), 'B') ||
+    setweight(to_tsvector('english', array_to_string(coalesce(bookmark_ai_tags, '{}'), ' ')), 'B') ||
+    setweight(to_tsvector('english', coalesce(bookmark_note, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(bookmark_save_reason, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(bookmark_summary, '')), 'C') ||
+    setweight(to_tsvector('english', coalesce(bookmark_ai_description, '')), 'C') ||
+    setweight(to_tsvector('english', array_to_string(coalesce(bookmark_fonts, '{}'), ' ')), 'D') ||
+    setweight(to_tsvector('english', coalesce(bookmark_ai_design_dna::text, '')), 'D');
+$$;
+
+CREATE OR REPLACE FUNCTION update_bookmark_search_vector()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.search_vector = build_bookmark_search_vector(
+    NEW.title,
+    NEW.url,
+    NEW.tags,
+    NEW.summary,
+    NEW.note,
+    NEW.save_reason,
+    NEW.ai_description,
+    NEW.ai_tags,
+    NEW.ai_patterns,
+    NEW.fonts,
+    NEW.ai_design_dna
+  );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS bookmarks_search_vector_update ON bookmarks;
+CREATE TRIGGER bookmarks_search_vector_update
+  BEFORE INSERT OR UPDATE OF title, url, tags, summary, note, save_reason, ai_description, ai_tags, ai_patterns, fonts, ai_design_dna ON bookmarks
+  FOR EACH ROW EXECUTE FUNCTION update_bookmark_search_vector();
+
+UPDATE bookmarks
+SET search_vector = build_bookmark_search_vector(
+  title,
+  url,
+  tags,
+  summary,
+  note,
+  save_reason,
+  ai_description,
+  ai_tags,
+  ai_patterns,
+  fonts,
+  ai_design_dna
+)
+WHERE search_vector IS NULL;
+
+CREATE OR REPLACE FUNCTION search_bookmarks_lexical(
+  search_query TEXT,
+  result_limit INTEGER DEFAULT 40
+)
+RETURNS TABLE (
+  bookmark_id UUID,
+  lexical_score DOUBLE PRECISION,
+  exact_match_score DOUBLE PRECISION,
+  rank INTEGER,
+  match_reasons TEXT[]
+)
+LANGUAGE SQL
+STABLE
+SECURITY INVOKER
+AS $$
+  WITH q AS (
+    SELECT
+      trim(regexp_replace(coalesce(search_query, ''), '\s+', ' ', 'g')) AS raw_query,
+      lower(trim(regexp_replace(coalesce(search_query, ''), '\s+', ' ', 'g'))) AS normalized_query,
+      websearch_to_tsquery('english', trim(regexp_replace(coalesce(search_query, ''), '\s+', ' ', 'g'))) AS ts_query
+  ),
+  scored AS (
+    SELECT
+      b.id AS bookmark_id,
+      ts_rank_cd(b.search_vector, q.ts_query, 32) AS text_rank,
+      bookmark_hostname(b.url) AS hostname,
+      lower(b.title) AS title_normalized,
+      q.normalized_query,
+      LEAST(1.0,
+        (CASE WHEN lower(b.title) = q.normalized_query THEN 1.0 ELSE 0.0 END) +
+        (CASE WHEN bookmark_hostname(b.url) = q.normalized_query THEN 0.95 ELSE 0.0 END) +
+        (CASE WHEN EXISTS (SELECT 1 FROM unnest(b.tags) tag WHERE lower(tag) = q.normalized_query) THEN 0.9 ELSE 0.0 END) +
+        (CASE WHEN lower(b.title) LIKE q.normalized_query || '%' THEN 0.35 ELSE 0.0 END) +
+        (CASE WHEN bookmark_hostname(b.url) LIKE q.normalized_query || '%' THEN 0.3 ELSE 0.0 END) +
+        (CASE WHEN lower(b.title) LIKE '%' || q.normalized_query || '%' THEN 0.25 ELSE 0.0 END) +
+        (CASE WHEN lower(b.note) LIKE '%' || q.normalized_query || '%' THEN 0.2 ELSE 0.0 END)
+      ) AS exact_score,
+      array_remove(ARRAY[
+        CASE WHEN lower(b.title) = q.normalized_query THEN 'Exact title' END,
+        CASE WHEN bookmark_hostname(b.url) = q.normalized_query THEN 'Exact domain' END,
+        CASE WHEN EXISTS (SELECT 1 FROM unnest(b.tags) tag WHERE lower(tag) = q.normalized_query) THEN 'Exact tag' END,
+        CASE WHEN lower(b.title) LIKE q.normalized_query || '%' THEN 'Title prefix' END,
+        CASE WHEN bookmark_hostname(b.url) LIKE q.normalized_query || '%' THEN 'Domain prefix' END,
+        CASE WHEN ts_rank_cd(b.search_vector, q.ts_query, 32) > 0 THEN 'Keyword evidence' END,
+        CASE WHEN lower(b.note) LIKE '%' || q.normalized_query || '%' THEN 'Note phrase' END
+      ], NULL) AS reasons
+    FROM bookmarks b
+    CROSS JOIN q
+    WHERE b.user_id = auth.uid()
+      AND q.raw_query <> ''
+      AND (
+        b.search_vector @@ q.ts_query
+        OR lower(b.title) LIKE '%' || q.normalized_query || '%'
+        OR bookmark_hostname(b.url) LIKE '%' || q.normalized_query || '%'
+        OR lower(b.note) LIKE '%' || q.normalized_query || '%'
+        OR EXISTS (SELECT 1 FROM unnest(b.tags) tag WHERE lower(tag) LIKE '%' || q.normalized_query || '%')
+      )
+  ),
+  ranked AS (
+    SELECT
+      bookmark_id,
+      LEAST(1.0, text_rank + exact_score) AS lexical_score,
+      exact_score AS exact_match_score,
+      reasons AS match_reasons,
+      row_number() OVER (ORDER BY exact_score DESC, text_rank DESC, bookmark_id) AS result_rank
+    FROM scored
+  )
+  SELECT
+    bookmark_id,
+    lexical_score,
+    exact_match_score,
+    result_rank::INTEGER - 1 AS rank,
+    match_reasons
+  FROM ranked
+  ORDER BY result_rank
+  LIMIT LEAST(GREATEST(result_limit, 1), 80);
+$$;
 
 ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 
@@ -220,6 +383,7 @@ CREATE TABLE IF NOT EXISTS bookmark_embeddings (
   embedding_text TEXT        NOT NULL,
   model          TEXT        NOT NULL,
   content_hash   TEXT        NOT NULL,
+  retrieval_schema_version INTEGER NOT NULL DEFAULT 1,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -231,6 +395,7 @@ ALTER TABLE bookmark_embeddings
   ADD COLUMN IF NOT EXISTS embedding_text TEXT NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS model TEXT NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS content_hash TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS retrieval_schema_version INTEGER NOT NULL DEFAULT 1,
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
@@ -241,12 +406,14 @@ ALTER TABLE bookmark_embeddings
   DROP CONSTRAINT IF EXISTS bookmark_embeddings_embedding_text_check,
   DROP CONSTRAINT IF EXISTS bookmark_embeddings_model_check,
   DROP CONSTRAINT IF EXISTS bookmark_embeddings_content_hash_check,
+  DROP CONSTRAINT IF EXISTS bookmark_embeddings_retrieval_schema_version_check,
   ADD CONSTRAINT bookmark_embeddings_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
   ADD CONSTRAINT bookmark_embeddings_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES bookmarks(id) ON DELETE CASCADE,
   ADD CONSTRAINT bookmark_embeddings_bookmark_id_key UNIQUE (bookmark_id),
   ADD CONSTRAINT bookmark_embeddings_embedding_text_check CHECK (char_length(embedding_text) <= 16000),
   ADD CONSTRAINT bookmark_embeddings_model_check CHECK (char_length(model) <= 120),
-  ADD CONSTRAINT bookmark_embeddings_content_hash_check CHECK (char_length(content_hash) <= 120);
+  ADD CONSTRAINT bookmark_embeddings_content_hash_check CHECK (char_length(content_hash) <= 120),
+  ADD CONSTRAINT bookmark_embeddings_retrieval_schema_version_check CHECK (retrieval_schema_version >= 1);
 
 DROP TRIGGER IF EXISTS bookmark_embeddings_updated_at ON bookmark_embeddings;
 CREATE TRIGGER bookmark_embeddings_updated_at
@@ -287,7 +454,8 @@ CREATE OR REPLACE FUNCTION match_bookmarks_by_embedding(
   query_embedding vector(768),
   match_user_id UUID,
   match_count INT DEFAULT 24,
-  similarity_threshold FLOAT DEFAULT 0.2
+  similarity_threshold FLOAT DEFAULT 0.2,
+  minimum_schema_version INT DEFAULT 1
 )
 RETURNS TABLE (
   bookmark_id UUID,
@@ -301,10 +469,356 @@ AS $$
     1 - (be.embedding <=> query_embedding) AS similarity
   FROM bookmark_embeddings be
   WHERE be.user_id = match_user_id
+    AND be.retrieval_schema_version >= minimum_schema_version
     AND 1 - (be.embedding <=> query_embedding) >= similarity_threshold
   ORDER BY be.embedding <=> query_embedding
   LIMIT LEAST(GREATEST(match_count, 1), 50);
 $$;
+
+-- ============================================================
+-- Visual memory facts and chunks
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS bookmark_visual_facts (
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id             UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  bookmark_id         UUID        NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
+  version             INTEGER     NOT NULL DEFAULT 1,
+  source              TEXT        NOT NULL DEFAULT 'processor',
+  status              TEXT        NOT NULL DEFAULT 'pending',
+  facts               JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  dom_snapshot        JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  vision_snapshot     JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  section_facts       JSONB       NOT NULL DEFAULT '[]'::jsonb,
+  visible_text        TEXT[]      NOT NULL DEFAULT '{}',
+  visible_brands      TEXT[]      NOT NULL DEFAULT '{}',
+  detected_components TEXT[]      NOT NULL DEFAULT '{}',
+  detected_patterns   TEXT[]      NOT NULL DEFAULT '{}',
+  detected_styles     TEXT[]      NOT NULL DEFAULT '{}',
+  detected_colors     TEXT[]      NOT NULL DEFAULT '{}',
+  confidence          NUMERIC     NOT NULL DEFAULT 0,
+  error               TEXT,
+  content_hash        TEXT        NOT NULL DEFAULT '',
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE bookmark_visual_facts
+  ADD COLUMN IF NOT EXISTS user_id UUID,
+  ADD COLUMN IF NOT EXISTS bookmark_id UUID,
+  ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'processor',
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS facts JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS dom_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS vision_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS section_facts JSONB NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS visible_text TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS visible_brands TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS detected_components TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS detected_patterns TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS detected_styles TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS detected_colors TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS confidence NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS error TEXT,
+  ADD COLUMN IF NOT EXISTS content_hash TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE bookmark_visual_facts
+  DROP CONSTRAINT IF EXISTS bookmark_visual_facts_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS bookmark_visual_facts_bookmark_id_fkey,
+  DROP CONSTRAINT IF EXISTS bookmark_visual_facts_user_bookmark_key,
+  DROP CONSTRAINT IF EXISTS bookmark_visual_facts_status_check,
+  DROP CONSTRAINT IF EXISTS bookmark_visual_facts_confidence_check,
+  DROP CONSTRAINT IF EXISTS bookmark_visual_facts_error_check,
+  DROP CONSTRAINT IF EXISTS bookmark_visual_facts_content_hash_check,
+  ADD CONSTRAINT bookmark_visual_facts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  ADD CONSTRAINT bookmark_visual_facts_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES bookmarks(id) ON DELETE CASCADE,
+  ADD CONSTRAINT bookmark_visual_facts_user_bookmark_key UNIQUE (user_id, bookmark_id),
+  ADD CONSTRAINT bookmark_visual_facts_status_check CHECK (status IN ('pending', 'completed', 'failed')),
+  ADD CONSTRAINT bookmark_visual_facts_confidence_check CHECK (confidence >= 0 AND confidence <= 1),
+  ADD CONSTRAINT bookmark_visual_facts_error_check CHECK (error IS NULL OR char_length(error) <= 1000),
+  ADD CONSTRAINT bookmark_visual_facts_content_hash_check CHECK (char_length(content_hash) <= 120);
+
+DROP TRIGGER IF EXISTS bookmark_visual_facts_updated_at ON bookmark_visual_facts;
+CREATE TRIGGER bookmark_visual_facts_updated_at
+  BEFORE UPDATE ON bookmark_visual_facts
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_user_id_idx ON bookmark_visual_facts(user_id);
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_bookmark_id_idx ON bookmark_visual_facts(bookmark_id);
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_status_idx ON bookmark_visual_facts(status);
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_facts_gin_idx ON bookmark_visual_facts USING GIN(facts);
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_section_facts_gin_idx ON bookmark_visual_facts USING GIN(section_facts);
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_visible_text_gin_idx ON bookmark_visual_facts USING GIN(visible_text);
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_visible_brands_gin_idx ON bookmark_visual_facts USING GIN(visible_brands);
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_components_gin_idx ON bookmark_visual_facts USING GIN(detected_components);
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_patterns_gin_idx ON bookmark_visual_facts USING GIN(detected_patterns);
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_styles_gin_idx ON bookmark_visual_facts USING GIN(detected_styles);
+CREATE INDEX IF NOT EXISTS bookmark_visual_facts_colors_gin_idx ON bookmark_visual_facts USING GIN(detected_colors);
+
+ALTER TABLE bookmark_visual_facts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_bookmark_visual_facts" ON bookmark_visual_facts;
+CREATE POLICY "select_own_bookmark_visual_facts" ON bookmark_visual_facts
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_bookmark_visual_facts" ON bookmark_visual_facts;
+CREATE POLICY "insert_own_bookmark_visual_facts" ON bookmark_visual_facts
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "update_own_bookmark_visual_facts" ON bookmark_visual_facts;
+CREATE POLICY "update_own_bookmark_visual_facts" ON bookmark_visual_facts
+  FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_bookmark_visual_facts" ON bookmark_visual_facts;
+CREATE POLICY "delete_own_bookmark_visual_facts" ON bookmark_visual_facts
+  FOR DELETE USING (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS bookmark_memory_chunks (
+  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  bookmark_id  UUID        NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
+  chunk_type   TEXT        NOT NULL,
+  chunk_label  TEXT        NOT NULL DEFAULT '',
+  chunk_text   TEXT        NOT NULL DEFAULT '',
+  evidence     JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  embedding    vector(768),
+  model        TEXT        NOT NULL DEFAULT '',
+  content_hash TEXT        NOT NULL DEFAULT '',
+  confidence   NUMERIC     NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE bookmark_memory_chunks
+  ADD COLUMN IF NOT EXISTS user_id UUID,
+  ADD COLUMN IF NOT EXISTS bookmark_id UUID,
+  ADD COLUMN IF NOT EXISTS chunk_type TEXT NOT NULL DEFAULT 'full_page',
+  ADD COLUMN IF NOT EXISTS chunk_label TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS chunk_text TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS evidence JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS embedding vector(768),
+  ADD COLUMN IF NOT EXISTS model TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS content_hash TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS confidence NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE bookmark_memory_chunks
+  DROP CONSTRAINT IF EXISTS bookmark_memory_chunks_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS bookmark_memory_chunks_bookmark_id_fkey,
+  DROP CONSTRAINT IF EXISTS bookmark_memory_chunks_unique_chunk,
+  DROP CONSTRAINT IF EXISTS bookmark_memory_chunks_chunk_type_check,
+  DROP CONSTRAINT IF EXISTS bookmark_memory_chunks_chunk_text_check,
+  DROP CONSTRAINT IF EXISTS bookmark_memory_chunks_confidence_check,
+  DROP CONSTRAINT IF EXISTS bookmark_memory_chunks_model_check,
+  DROP CONSTRAINT IF EXISTS bookmark_memory_chunks_content_hash_check,
+  ADD CONSTRAINT bookmark_memory_chunks_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  ADD CONSTRAINT bookmark_memory_chunks_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES bookmarks(id) ON DELETE CASCADE,
+  ADD CONSTRAINT bookmark_memory_chunks_unique_chunk UNIQUE (user_id, bookmark_id, chunk_type, chunk_label),
+  ADD CONSTRAINT bookmark_memory_chunks_chunk_type_check CHECK (chunk_type IN ('full_page', 'hero', 'navbar', 'footer', 'pricing', 'features', 'testimonials', 'dashboard', 'form', 'table', 'cards', 'media', 'style', 'component', 'text', 'visual_facts')),
+  ADD CONSTRAINT bookmark_memory_chunks_chunk_text_check CHECK (char_length(chunk_text) <= 16000),
+  ADD CONSTRAINT bookmark_memory_chunks_confidence_check CHECK (confidence >= 0 AND confidence <= 1),
+  ADD CONSTRAINT bookmark_memory_chunks_model_check CHECK (char_length(model) <= 120),
+  ADD CONSTRAINT bookmark_memory_chunks_content_hash_check CHECK (char_length(content_hash) <= 120);
+
+DROP TRIGGER IF EXISTS bookmark_memory_chunks_updated_at ON bookmark_memory_chunks;
+CREATE TRIGGER bookmark_memory_chunks_updated_at
+  BEFORE UPDATE ON bookmark_memory_chunks
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS bookmark_memory_chunks_user_id_idx ON bookmark_memory_chunks(user_id);
+CREATE INDEX IF NOT EXISTS bookmark_memory_chunks_bookmark_id_idx ON bookmark_memory_chunks(bookmark_id);
+CREATE INDEX IF NOT EXISTS bookmark_memory_chunks_chunk_type_idx ON bookmark_memory_chunks(chunk_type);
+CREATE INDEX IF NOT EXISTS bookmark_memory_chunks_text_search_idx
+  ON bookmark_memory_chunks USING GIN(to_tsvector('english', chunk_text));
+CREATE INDEX IF NOT EXISTS bookmark_memory_chunks_embedding_ivfflat_idx
+  ON bookmark_memory_chunks USING ivfflat (embedding vector_cosine_ops)
+  WITH (lists = 100);
+
+ALTER TABLE bookmark_memory_chunks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_bookmark_memory_chunks" ON bookmark_memory_chunks;
+CREATE POLICY "select_own_bookmark_memory_chunks" ON bookmark_memory_chunks
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_bookmark_memory_chunks" ON bookmark_memory_chunks;
+CREATE POLICY "insert_own_bookmark_memory_chunks" ON bookmark_memory_chunks
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "update_own_bookmark_memory_chunks" ON bookmark_memory_chunks;
+CREATE POLICY "update_own_bookmark_memory_chunks" ON bookmark_memory_chunks
+  FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_bookmark_memory_chunks" ON bookmark_memory_chunks;
+CREATE POLICY "delete_own_bookmark_memory_chunks" ON bookmark_memory_chunks
+  FOR DELETE USING (auth.uid() = user_id);
+
+CREATE OR REPLACE FUNCTION match_bookmark_memory_chunks(
+  query_embedding vector(768),
+  match_user_id UUID,
+  match_count INT DEFAULT 40,
+  similarity_threshold FLOAT DEFAULT 0.2
+)
+RETURNS TABLE (
+  bookmark_id UUID,
+  chunk_id UUID,
+  chunk_type TEXT,
+  chunk_label TEXT,
+  similarity FLOAT,
+  evidence JSONB
+)
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT
+    bmc.bookmark_id,
+    bmc.id AS chunk_id,
+    bmc.chunk_type,
+    bmc.chunk_label,
+    1 - (bmc.embedding <=> query_embedding) AS similarity,
+    bmc.evidence
+  FROM bookmark_memory_chunks bmc
+  WHERE bmc.user_id = match_user_id
+    AND bmc.embedding IS NOT NULL
+    AND 1 - (bmc.embedding <=> query_embedding) >= similarity_threshold
+  ORDER BY bmc.embedding <=> query_embedding
+  LIMIT LEAST(GREATEST(match_count, 1), 100);
+$$;
+
+CREATE OR REPLACE FUNCTION search_bookmark_memory_chunks_text(
+  query_text TEXT,
+  match_user_id UUID,
+  match_count INT DEFAULT 40
+)
+RETURNS TABLE (
+  bookmark_id UUID,
+  chunk_id UUID,
+  chunk_type TEXT,
+  chunk_label TEXT,
+  rank FLOAT,
+  evidence JSONB
+)
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT
+    bmc.bookmark_id,
+    bmc.id AS chunk_id,
+    bmc.chunk_type,
+    bmc.chunk_label,
+    ts_rank_cd(to_tsvector('english', bmc.chunk_text), plainto_tsquery('english', query_text)) AS rank,
+    bmc.evidence
+  FROM bookmark_memory_chunks bmc
+  WHERE bmc.user_id = match_user_id
+    AND query_text IS NOT NULL
+    AND char_length(trim(query_text)) > 0
+    AND to_tsvector('english', bmc.chunk_text) @@ plainto_tsquery('english', query_text)
+  ORDER BY rank DESC
+  LIMIT LEAST(GREATEST(match_count, 1), 100);
+$$;
+
+CREATE TABLE IF NOT EXISTS visual_search_verifications (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  query_hash      TEXT        NOT NULL,
+  bookmark_id     UUID        NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
+  screenshot_hash TEXT        NOT NULL DEFAULT '',
+  verdict         JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  score           NUMERIC     NOT NULL DEFAULT 0,
+  model           TEXT        NOT NULL DEFAULT '',
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE visual_search_verifications
+  ADD COLUMN IF NOT EXISTS user_id UUID,
+  ADD COLUMN IF NOT EXISTS query_hash TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS bookmark_id UUID,
+  ADD COLUMN IF NOT EXISTS screenshot_hash TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS verdict JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS score NUMERIC NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS model TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE visual_search_verifications
+  DROP CONSTRAINT IF EXISTS visual_search_verifications_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS visual_search_verifications_bookmark_id_fkey,
+  DROP CONSTRAINT IF EXISTS visual_search_verifications_unique_cache,
+  DROP CONSTRAINT IF EXISTS visual_search_verifications_score_check,
+  ADD CONSTRAINT visual_search_verifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  ADD CONSTRAINT visual_search_verifications_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES bookmarks(id) ON DELETE CASCADE,
+  ADD CONSTRAINT visual_search_verifications_unique_cache UNIQUE (user_id, query_hash, bookmark_id, screenshot_hash),
+  ADD CONSTRAINT visual_search_verifications_score_check CHECK (score >= 0 AND score <= 1);
+
+CREATE INDEX IF NOT EXISTS visual_search_verifications_user_id_idx ON visual_search_verifications(user_id);
+CREATE INDEX IF NOT EXISTS visual_search_verifications_query_hash_idx ON visual_search_verifications(query_hash);
+CREATE INDEX IF NOT EXISTS visual_search_verifications_bookmark_id_idx ON visual_search_verifications(bookmark_id);
+
+ALTER TABLE visual_search_verifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_visual_search_verifications" ON visual_search_verifications;
+CREATE POLICY "select_own_visual_search_verifications" ON visual_search_verifications
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_visual_search_verifications" ON visual_search_verifications;
+CREATE POLICY "insert_own_visual_search_verifications" ON visual_search_verifications
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_visual_search_verifications" ON visual_search_verifications;
+CREATE POLICY "delete_own_visual_search_verifications" ON visual_search_verifications
+  FOR DELETE USING (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS visual_search_feedback (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  query       TEXT        NOT NULL,
+  query_hash  TEXT        NOT NULL,
+  bookmark_id UUID        NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
+  feedback    TEXT        NOT NULL,
+  reason      TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE visual_search_feedback
+  ADD COLUMN IF NOT EXISTS user_id UUID,
+  ADD COLUMN IF NOT EXISTS query TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS query_hash TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS bookmark_id UUID,
+  ADD COLUMN IF NOT EXISTS feedback TEXT NOT NULL DEFAULT 'relevant',
+  ADD COLUMN IF NOT EXISTS reason TEXT,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE visual_search_feedback
+  DROP CONSTRAINT IF EXISTS visual_search_feedback_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS visual_search_feedback_bookmark_id_fkey,
+  DROP CONSTRAINT IF EXISTS visual_search_feedback_feedback_check,
+  DROP CONSTRAINT IF EXISTS visual_search_feedback_query_check,
+  DROP CONSTRAINT IF EXISTS visual_search_feedback_reason_check,
+  ADD CONSTRAINT visual_search_feedback_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  ADD CONSTRAINT visual_search_feedback_bookmark_id_fkey FOREIGN KEY (bookmark_id) REFERENCES bookmarks(id) ON DELETE CASCADE,
+  ADD CONSTRAINT visual_search_feedback_feedback_check CHECK (feedback IN ('relevant', 'irrelevant', 'pinned')),
+  ADD CONSTRAINT visual_search_feedback_query_check CHECK (char_length(query) <= 500),
+  ADD CONSTRAINT visual_search_feedback_reason_check CHECK (reason IS NULL OR char_length(reason) <= 500);
+
+CREATE INDEX IF NOT EXISTS visual_search_feedback_user_id_idx ON visual_search_feedback(user_id);
+CREATE INDEX IF NOT EXISTS visual_search_feedback_query_hash_idx ON visual_search_feedback(query_hash);
+CREATE INDEX IF NOT EXISTS visual_search_feedback_bookmark_id_idx ON visual_search_feedback(bookmark_id);
+
+ALTER TABLE visual_search_feedback ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_visual_search_feedback" ON visual_search_feedback;
+CREATE POLICY "select_own_visual_search_feedback" ON visual_search_feedback
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_visual_search_feedback" ON visual_search_feedback;
+CREATE POLICY "insert_own_visual_search_feedback" ON visual_search_feedback
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_visual_search_feedback" ON visual_search_feedback;
+CREATE POLICY "delete_own_visual_search_feedback" ON visual_search_feedback
+  FOR DELETE USING (auth.uid() = user_id);
 
 -- ============================================================
 -- Design DNA
@@ -883,6 +1397,65 @@ CREATE POLICY "update_own_profile" ON profiles
 
 DROP POLICY IF EXISTS "delete_own_profile" ON profiles;
 CREATE POLICY "delete_own_profile" ON profiles
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- ============================================================
+-- Onboarding state
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS user_onboarding (
+  user_id        UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  workspace_type TEXT        NOT NULL DEFAULT '',
+  primary_goal   TEXT        NOT NULL DEFAULT '',
+  focus_area     TEXT        NOT NULL DEFAULT '',
+  current_step   TEXT        NOT NULL DEFAULT 'welcome',
+  completed_at   TIMESTAMPTZ,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE user_onboarding
+  ADD COLUMN IF NOT EXISTS workspace_type TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS primary_goal TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS focus_area TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS current_step TEXT NOT NULL DEFAULT 'welcome',
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE user_onboarding
+  DROP CONSTRAINT IF EXISTS user_onboarding_workspace_type_check,
+  DROP CONSTRAINT IF EXISTS user_onboarding_primary_goal_check,
+  DROP CONSTRAINT IF EXISTS user_onboarding_focus_area_check,
+  DROP CONSTRAINT IF EXISTS user_onboarding_current_step_check,
+  ADD CONSTRAINT user_onboarding_workspace_type_check CHECK (workspace_type IN ('', 'solo_creator', 'team')),
+  ADD CONSTRAINT user_onboarding_primary_goal_check CHECK (primary_goal IN ('', 'save_links', 'organize_research', 'build_moodboards')),
+  ADD CONSTRAINT user_onboarding_focus_area_check CHECK (focus_area IN ('', 'product_design', 'branding', 'marketing', 'general')),
+  ADD CONSTRAINT user_onboarding_current_step_check CHECK (current_step IN ('welcome', 'preferences', 'telegram', 'complete'));
+
+DROP TRIGGER IF EXISTS user_onboarding_updated_at ON user_onboarding;
+CREATE TRIGGER user_onboarding_updated_at
+  BEFORE UPDATE ON user_onboarding
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+ALTER TABLE user_onboarding ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "select_own_user_onboarding" ON user_onboarding;
+CREATE POLICY "select_own_user_onboarding" ON user_onboarding
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "insert_own_user_onboarding" ON user_onboarding;
+CREATE POLICY "insert_own_user_onboarding" ON user_onboarding
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "update_own_user_onboarding" ON user_onboarding;
+CREATE POLICY "update_own_user_onboarding" ON user_onboarding
+  FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "delete_own_user_onboarding" ON user_onboarding;
+CREATE POLICY "delete_own_user_onboarding" ON user_onboarding
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ============================================================

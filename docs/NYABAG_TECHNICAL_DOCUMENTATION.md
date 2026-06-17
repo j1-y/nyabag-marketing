@@ -1,8 +1,10 @@
 # Nyabag Technical Documentation
 
-Last updated: 2026-05-30
+Last updated: 2026-06-17
 
 Nyabag is a desktop-first bookmark and notes workspace built with Next.js, Supabase, and React. It combines a visual bookmark moodboard with a FigJam-style infinite canvas for notes, links, media, social embeds, and grouped sections. This document is intended for future developers working on the codebase, deployment, debugging, and feature expansion.
+
+For agent workflows, start with `AGENTS.md` and `.ai-memory/README.md`. The `.ai-memory/` layer is the short-form working memory for coding agents, while this document remains the canonical architecture source. Bookmark search details live in `docs/BOOKMARK_SEARCH_ARCHITECTURE.md`.
 
 ## Table of Contents
 
@@ -41,7 +43,7 @@ The app is currently desktop-first. Mobile authenticated users see a small captu
 
 - Add, edit, and delete bookmarks.
 - Moodboard-style bookmark grid.
-- Search by title, URL, summary, note, and tags.
+- Ranked hybrid search using weighted PostgreSQL lexical retrieval, Gemini bookmark embeddings, optional visual-memory evidence, and TypeScript fusion.
 - Tag filtering and recent filtering.
 - Visual detail page for each bookmark.
 - Full-page website screenshots through Microlink.
@@ -741,6 +743,7 @@ Modules:
 | `bookmarks` | Current bookmark list |
 | `pendingBookmarks` | Client-only pending creation cards |
 | `activeTag`, `activeFilter`, `search` | Filtering inputs |
+| `searchState` | Discriminated server-search state; active searches render only ranked server results |
 | `addOpen`, `editTarget`, `detailTarget` | Modal state |
 | `deleteItem(id)` | Optimistic delete with rollback |
 | `filtered` | Derived filtered bookmark list |

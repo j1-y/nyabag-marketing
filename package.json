@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "node scripts/evaluate-bookmark-search.mjs",
     "lint": "eslint",
     "check:colors": "node scripts/check-colors.mjs",
     "check:design-system": "node scripts/check-design-system.mjs",

@@ -1,3 +1,5 @@
+import type { VisualSearchResultFields } from "@/lib/visual-memory/types";
+
 export type BookmarkFolder = {
   id: string;
   user_id: string;
@@ -17,7 +19,7 @@ export type BookmarkFolderTreeNode = BookmarkFolder & {
   recursive_bookmark_count?: number;
 };
 
-export type Bookmark = {
+export type Bookmark = VisualSearchResultFields & {
   id: string;
   user_id: string;
   url: string;
@@ -44,6 +46,11 @@ export type Bookmark = {
   semantic_error?: string | null;
   semantic_processed_at?: string | null;
   last_opened_at?: string | null;
+  search_score?: number;
+  search_mode?: "exact" | "hybrid" | "keyword" | "semantic";
+  search_match_reasons?: string[];
+  lexical_score?: number;
+  exact_match_score?: number;
   semantic_similarity?: number;
   semantic_match_reasons?: string[];
   created_at: string;
@@ -78,6 +85,29 @@ export type TelegramInboundMessageStatus =
   | "failed"
   | "ignored"
   | "verification";
+
+export type OnboardingWorkspaceType = "solo_creator" | "team";
+export type OnboardingPrimaryGoal =
+  | "save_links"
+  | "organize_research"
+  | "build_moodboards";
+export type OnboardingFocusArea =
+  | "product_design"
+  | "branding"
+  | "marketing"
+  | "general";
+export type OnboardingStep = "welcome" | "preferences" | "telegram" | "complete";
+
+export type UserOnboarding = {
+  user_id: string;
+  workspace_type: OnboardingWorkspaceType | "";
+  primary_goal: OnboardingPrimaryGoal | "";
+  focus_area: OnboardingFocusArea | "";
+  current_step: OnboardingStep;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export type BookmarkAiStatus = "pending" | "completed" | "failed";
 

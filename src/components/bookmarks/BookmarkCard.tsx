@@ -3,11 +3,9 @@
 import { ArrowUpRight, Folder, Image, Pencil, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-;
 import { retryBookmarkProcessing } from "@/lib/actions";
-import { getBookmarkFolders } from "@/lib/folder-actions";
 import { getDomain, getFaviconUrl } from "@/lib/data";
-import type { Bookmark, BookmarkFolder } from "@/lib/types";
+import type { Bookmark } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { AIMetadataChip } from "./AIMetadataChip";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
@@ -57,9 +55,23 @@ function BookmarkCardComponent({
     bookmark.ai_metadata?.status === "completed" && bookmark.ai_metadata.page_type
       ? bookmark.ai_metadata.page_type
       : "";
-  const isMemoryMatch = typeof bookmark.semantic_similarity === "number";
+  const isMemoryMatch = typeof bookmark.search_score === "number" || typeof bookmark.semantic_similarity === "number";
   const isMemoryPreparing =
     bookmark.semantic_status === "pending" || bookmark.semantic_status === "processing";
+  const memoryLabel = bookmark.match_label ?? (isMemoryMatch ? "Related" : "Preparing memory");
+  const memoryChipClass = bookmark.match_strength ? `is-${bookmark.match_strength}` : isMemoryMatch ? "is-related" : "is-preparing";
+  const evidenceLabels = (
+    bookmark.search_match_reasons?.length
+      ? bookmark.search_match_reasons
+      : bookmark.visual_match_evidence?.length
+        ? bookmark.visual_match_evidence.map((item) => item.label)
+        : bookmark.semantic_match_reasons ?? []
+  ).filter(Boolean).slice(0, 3);
+  const evidenceTitle = bookmark.visual_match_evidence?.length
+    ? `Matched because Nyabag detected ${bookmark.visual_match_evidence.map((item) => item.label.toLowerCase()).join(", ")}.`
+    : evidenceLabels.length
+      ? `Related memory evidence: ${evidenceLabels.join(", ")}.`
+      : undefined;
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
@@ -214,10 +226,18 @@ function BookmarkCardComponent({
             />
           )}
 
-          {(isMemoryMatch || isMemoryPreparing) && (
-            <div className={`bookmark-memory-chip ${isMemoryMatch ? "is-match" : "is-preparing"}`}>
-              {isMemoryMatch ? <Sparkles size={12} /> : <Loader2 size={12} />}
-              <span>{isMemoryMatch ? "Memory match" : "Preparing memory"}</span>
+          {(isMemoryMatch || isMemoryPreparing || bookmark.match_label) && (
+            <div className={`bookmark-memory-chip ${memoryChipClass}`} title={evidenceTitle}>
+              {isMemoryPreparing && !bookmark.match_label ? <Loader2 size={12} /> : <Sparkles size={12} />}
+              <span>{memoryLabel}</span>
+            </div>
+          )}
+
+          {evidenceLabels.length > 0 && (
+            <div className="bookmark-evidence-chips" title={evidenceTitle}>
+              {evidenceLabels.map((label) => (
+                <span key={label}>{label}</span>
+              ))}
             </div>
           )}
 

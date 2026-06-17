@@ -1,0 +1,68 @@
+# Architecture
+
+## Core layout
+
+- Root app layout: `src/app/layout.tsx`
+- Public site: `src/app/page.tsx`, `src/app/about/page.tsx`, `src/app/blog/page.tsx`, `src/app/contact/page.tsx`, `src/app/privacy/page.tsx`, `src/app/terms/page.tsx`
+- Auth flows: `src/app/login/page.tsx`, `src/app/signup/page.tsx`, `src/app/onboarding/page.tsx`
+- Dashboard group: `src/app/app/(dashboard)/layout.tsx`
+
+## Dashboard routes
+
+- Bookmarks home: `src/app/app/(dashboard)/page.tsx`
+- Bookmark detail: `src/app/app/(dashboard)/bookmarks/[id]/page.tsx`
+- Canvas: `src/app/app/(dashboard)/canvas/page.tsx`
+- Folders: `src/app/app/(dashboard)/folders/[folderId]/page.tsx`
+- Design DNA list/detail: `src/app/app/(dashboard)/design-dna/page.tsx`, `src/app/app/(dashboard)/design-dna/[id]/page.tsx`
+- Captures: `src/app/app/(dashboard)/captures/page.tsx`
+- Profile: `src/app/app/(dashboard)/profile/page.tsx`
+
+## Route and shell behavior
+
+- `src/components/layout/DashboardShell.tsx` controls the desktop shell and mobile capture experience.
+- `src/components/layout/MobileBookmarkCapture.tsx` is the mobile-only URL submission surface.
+- `src/components/layout/DashboardSidebar.tsx` and `src/components/layout/DashboardNav.tsx` define the main workspace navigation.
+- `src/components/site/*` owns the marketing-site chrome.
+
+## Data and mutation surfaces
+
+- Bookmark/profile/auth mutations: `src/lib/actions.ts`
+- Canvas mutations: `src/lib/canvas-actions.ts`
+- Folder mutations: `src/lib/folder-actions.ts`
+- Onboarding mutations: `src/lib/onboarding-actions.ts`
+- Admin mutations: `src/lib/admin/actions.ts`
+- Semantic memory logic: `src/lib/semantic/*`
+- Bookmark search config/fusion/types: `src/lib/bookmark-search/*`
+- Visual memory logic: `src/lib/visual-memory/*`
+- Bookmark enrichment and processor dispatch: `src/lib/bookmarks/*`
+
+## Storage and schema
+
+- Canonical schema: `supabase/schema.sql`
+- Private canvas media bucket: `canvas-media`
+- Public profile avatar bucket: `profile-avatars`
+- Owner-scoped tables and RLS drive the core data model.
+
+## Processing pipeline
+
+- Bookmark creation inserts a row first, then triggers enrichment and processor work.
+- The bookmark processor lives under `processor/*`.
+- Visual-memory backfill and evaluation helpers live under `scripts/*`.
+- Bookmark search reindexing lives in `scripts/reindex-bookmark-search.mjs`; fixture evaluation lives in `scripts/evaluate-bookmark-search.mjs`.
+- Screenshot and metadata enrichment are intentionally best-effort and must remain fallback-safe.
+
+## Bookmark search architecture
+
+- Active dashboard searches must use server-ranked results from `searchBookmarksByMemory()`/`searchBookmarks()`, not broad client-side substring unions.
+- Lexical retrieval uses `bookmarks.search_vector`, `idx_bookmarks_search_vector`, and the `search_bookmarks_lexical` RPC in `supabase/schema.sql`.
+- Semantic retrieval uses Gemini 768-dimensional embeddings in `bookmark_embeddings` with `retrieval_schema_version`.
+- Fusion and cutoff are pure TypeScript in `src/lib/bookmark-search/fusion.ts`.
+- Full operational details live in `docs/BOOKMARK_SEARCH_ARCHITECTURE.md`.
+
+## Important boundaries
+
+- Desktop-first behavior is the default.
+- Mobile capture is intentionally limited.
+- Route groups under `src/app/app/(dashboard)` are organizational and do not change the URL.
+- Server actions must continue to enforce auth and ownership checks.
+- Docs are part of the architecture: update this file when routes, flows, or boundaries change.

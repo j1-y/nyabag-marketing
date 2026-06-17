@@ -9,6 +9,8 @@ type BookmarkLike = Partial<Bookmark> & {
   design_dna?: DesignDna | null;
 };
 
+export const BOOKMARK_RETRIEVAL_SCHEMA_VERSION = 2;
+
 const GENERIC_RETRIEVAL_TERMS = new Set([
   "ai",
   "app",
@@ -149,17 +151,16 @@ export function buildBookmarkMemoryText(bookmark: BookmarkLike): string {
   const aiMetadata = bookmark.ai_metadata;
   const designDna = bookmark.design_dna;
 
+  lines.push(`Retrieval schema: bookmark-v${BOOKMARK_RETRIEVAL_SCHEMA_VERSION}`);
   addLine(lines, "Title", bookmark.title);
   addLine(lines, "Domain", domain);
-  addLine(lines, "URL", bookmark.url);
-  addLine(lines, "Summary", bookmark.summary);
   addLine(lines, "User note", bookmark.note);
   addLine(lines, "Save reason", bookmark.save_reason);
   const colorMode = inferColorMode(bookmark);
   addLine(lines, "Color mode", colorMode);
   if (colorMode === "light interface") lines.push("Negative visual evidence: not a dark theme");
   if (colorMode === "dark interface") lines.push("Positive visual evidence: dark theme");
-  addLine(lines, "Visual evidence", bookmark.ai_description || aiMetadata?.design_context);
+  addLine(lines, "Visual evidence", bookmark.ai_description || bookmark.summary || aiMetadata?.design_context);
   addLine(lines, "Page type", aiMetadata?.page_type);
   addLine(lines, "Industry", aiMetadata?.industry);
   addArrayLine(lines, "User tags", bookmark.tags);
@@ -167,9 +168,8 @@ export function buildBookmarkMemoryText(bookmark: BookmarkLike): string {
   addSpecificArrayLine(lines, "Layout structure", bookmark.ai_patterns?.length ? bookmark.ai_patterns : aiMetadata?.ui_patterns);
   addSpecificArrayLine(lines, "Visual style", aiMetadata?.visual_style);
   addSpecificArrayLine(lines, "Notable UI details", aiMetadata?.components);
-  addArrayLine(lines, "Palette colors", bookmark.palette);
   addArrayLine(lines, "Fonts", bookmark.fonts);
-  addArrayLine(lines, "Design DNA colors", designDna?.colors?.map((color) => `${color.name} ${color.hex} ${color.usage}`));
+  addSpecificArrayLine(lines, "Design DNA colors", designDna?.colors?.map((color) => `${color.name} ${color.usage}`), 8);
   addArrayLine(lines, "Design DNA typography", designDna?.typography?.map((font) => `${font.role} ${font.fontFamily} ${font.fontWeight}`));
   addArrayLine(lines, "Design DNA components", designDna?.components);
   addArrayLine(lines, "Design DNA layout patterns", designDna?.layout_patterns);
@@ -177,11 +177,14 @@ export function buildBookmarkMemoryText(bookmark: BookmarkLike): string {
   const compactDna = compactJsonRecord(bookmark.ai_design_dna);
   if (compactDna.length) lines.push(`AI design DNA: ${compactDna.join("; ")}`);
 
-  return lines.join("\n").slice(0, 16_000);
+  return lines.join("\n").slice(0, 8_000);
 }
 
 export function getBookmarkMemoryContentHash(memoryText: string): string {
-  return crypto.createHash("sha256").update(memoryText).digest("hex");
+  return crypto
+    .createHash("sha256")
+    .update(`bookmark-retrieval-schema:${BOOKMARK_RETRIEVAL_SCHEMA_VERSION}\n${memoryText}`)
+    .digest("hex");
 }
 
 export function deriveMatchReasons(bookmark: BookmarkLike, query = ""): string[] {
@@ -213,5 +216,5 @@ export function deriveMatchReasons(bookmark: BookmarkLike, query = ""): string[]
     .sort((a, b) => b.score - a.score)
     .map(({ value }) => readableLabel(value));
 
-  return Array.from(new Set([...reasons, ...scored])).slice(0, 4);
+  return Array.from(new Set([...reasons, ...scored])).slice(0, 3);
 }

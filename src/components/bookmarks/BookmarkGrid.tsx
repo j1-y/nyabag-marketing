@@ -88,6 +88,7 @@ function GridInner({
     search,
     semanticHasRun,
     semanticError,
+    isSemanticSearching,
     openAdd,
     openImport,
     openEdit,
@@ -124,13 +125,13 @@ function GridInner({
             </div>
             {search.trim().length >= 2 && semanticHasRun ? (
               <>
-                <h2>No matches yet</h2>
-                <p>{semanticError || "Try a different keyword, vibe, layout, color, or pattern."}</p>
+                <h2>No strong matches found</h2>
+                <p>{semanticError || "Try a broader phrase, another design term, or remove a filter."}</p>
               </>
             ) : search.trim().length > 0 ? (
               <>
-                <h2>No keyword matches yet</h2>
-                <p>Memory search is still checking, or this reference may need reprocessing.</p>
+                <h2>{isSemanticSearching ? "Searching your memory..." : "No strong matches found"}</h2>
+                <p>Try a broader phrase, another design term, or remove a filter.</p>
               </>
             ) : (
               <>

@@ -34,16 +34,23 @@ export default function SignupPage() {
     try {
       await timeAsync("signup submit client flow", async () => {
         const supabase = createClient();
-        const { error: authError } = await supabase.auth.signUp({
+        const { data, error: authError } = await supabase.auth.signUp({
           email,
           password,
         });
         if (authError) {
           setError(authError.message);
           setLoading(false);
-        } else {
-          router.replace("/app");
+          return;
         }
+
+        if (data.session) {
+          router.replace("/onboarding");
+          return;
+        }
+
+        setError("Check your email to confirm your account, then sign in to continue to onboarding.");
+        setLoading(false);
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Sign up failed");

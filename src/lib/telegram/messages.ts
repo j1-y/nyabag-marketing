@@ -1,6 +1,6 @@
 export const telegramMessages = {
   startNotConnected:
-    "Welcome to Nyabag\n\nSend your connection code from Nyabag Settings -> Connections -> Telegram to link this chat.\n\nAfter that, send any URL here and I'll save it to your Nyabag.",
+    "Welcome to Nyabag\n\nSend your connection code from Nyabag's Telegram setup screen to link this chat.\n\nAfter that, send any URL here and I'll save it to your Nyabag.",
   connected:
     "Connected to Nyabag. You can now send URLs here and I'll save them.",
   help:
@@ -13,7 +13,7 @@ export const telegramMessages = {
   noUrls: "Send me a URL and I'll save it to Nyabag.",
   unlinked: "Telegram disconnected from Nyabag.",
   notConnected:
-    "This Telegram chat is not connected yet. Open Nyabag -> Settings -> Connections -> Telegram and send me your code.",
+    "This Telegram chat is not connected yet. Open Nyabag's Telegram setup screen and send me your code.",
   privateOnly: "Please DM me privately to connect and save links.",
   statusConnected: "Telegram is connected to Nyabag.",
   statusNotConnected: "This Telegram chat is not connected to Nyabag yet.",

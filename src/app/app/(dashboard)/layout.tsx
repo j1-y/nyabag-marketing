@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUserProfile } from "@/lib/profile";
+import { getUserOnboarding, hasCompletedOnboarding } from "@/lib/onboarding";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import type { BookmarkFolder } from "@/lib/types";
 
@@ -48,6 +49,9 @@ export default async function DashboardLayout({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const onboarding = await getUserOnboarding(supabase, user);
+  if (!hasCompletedOnboarding(onboarding)) redirect("/onboarding");
 
   const [profile, foldersResult] = await Promise.all([
     getUserProfile(supabase, user),

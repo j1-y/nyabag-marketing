@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Refresh session — do NOT remove this
+  // Refresh session - do NOT remove this
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -37,18 +37,41 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/signup");
+  const isOnboardingRoute =
+    pathname === "/onboarding" || pathname.startsWith("/onboarding/");
   const isProtectedAppRoute =
     pathname === "/app" || pathname.startsWith("/app/");
 
-  // Redirect unauthenticated users away from the product app
-  if (!user && isProtectedAppRoute) {
+  if (!user && (isProtectedAppRoute || isOnboardingRoute)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    if (isOnboardingRoute) {
+      url.searchParams.set("next", "/onboarding");
+    }
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from auth pages
-  if (user && isAuthRoute) {
+  if (!user) {
+    return supabaseResponse;
+  }
+
+  const { data: onboarding } = await supabase
+    .from("user_onboarding")
+    .select("completed_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const onboardingComplete = Boolean(onboarding?.completed_at);
+  const shouldForceOnboarding =
+    !onboardingComplete && (isAuthRoute || isProtectedAppRoute);
+
+  if (shouldForceOnboarding) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/onboarding";
+    return NextResponse.redirect(url);
+  }
+
+  if (onboardingComplete && (isAuthRoute || isOnboardingRoute)) {
     const url = request.nextUrl.clone();
     url.pathname = "/app";
     return NextResponse.redirect(url);

@@ -62,3 +62,11 @@ export async function createTextEmbedding(text: string): Promise<number[]> {
 
   return values;
 }
+
+export async function createBookmarkDocumentEmbedding(text: string): Promise<number[]> {
+  return createTextEmbedding(`Document: ${text}`);
+}
+
+export async function createBookmarkQueryEmbedding(query: string): Promise<number[]> {
+  return createTextEmbedding(`Query: ${query}`);
+}

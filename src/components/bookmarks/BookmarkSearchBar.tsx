@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Send, Sparkles } from "lucide-react";
+import { Search, Send, Sparkles, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useBookmarks } from "@/hooks/useBookmarks";
@@ -11,6 +11,9 @@ export function BookmarkSearchBar() {
     setSearch,
     isSemanticSearching,
     semanticError,
+    searchMode,
+    searchResultCount,
+    clearSearch,
     addOpen,
     importOpen,
     editTarget,
@@ -51,6 +54,18 @@ export function BookmarkSearchBar() {
 
   if (hasOpenModal) return null;
 
+  const hasSearch = search.trim().length > 0;
+  const hasActiveSearch = search.trim().length >= 2;
+  const statusCopy = isSemanticSearching
+    ? "Searching your memory..."
+    : semanticError && searchResultCount === 0
+      ? "No strong matches found"
+      : searchResultCount > 0
+        ? searchMode === "keyword"
+          ? "Keyword search"
+          : "Best matches"
+        : semanticError || "No strong matches found";
+
   return (
     <form
       className="bookmark-search-bar bookmark-controls"
@@ -71,18 +86,22 @@ export function BookmarkSearchBar() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <kbd suppressHydrationWarning>{shortcutLabel}</kbd>
+        {hasSearch ? (
+          <button type="button" className="search-clear-btn" aria-label="Clear search" onClick={clearSearch}>
+            <X size={14} />
+          </button>
+        ) : (
+          <kbd suppressHydrationWarning>{shortcutLabel}</kbd>
+        )}
         <button type="submit" className="search-submit-btn" aria-label="Submit search">
           <Send size={15} fill="currentColor" />
         </button>
       </div>
-      {(search.trim().length >= 2 || semanticError) && (
+      {(hasActiveSearch || semanticError) && (
         <div className="search-mode-row" aria-label="Search status">
           <span className="search-memory-status" role={semanticError ? "status" : undefined}>
             <Sparkles size={13} />
-            {isSemanticSearching
-              ? "Checking memory..."
-              : semanticError || "Keyword + memory search"}
+            {statusCopy}
           </span>
         </div>
       )}

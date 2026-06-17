@@ -1,23 +1,31 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { BOOKMARK_SEARCH_CONFIG, isBookmarkSearchDebugEnabled } from "@/lib/bookmark-search/config";
+import {
+  filterStrongSearchResults,
+  fuseSearchCandidates,
+  type FusedSearchCandidate,
+  type SearchCandidateInput,
+} from "@/lib/bookmark-search/fusion";
+import type { BookmarkSearchPayload, BookmarkSearchResult } from "@/lib/bookmark-search/types";
 import { attachAiMetadataToBookmarks, getBookmarkAiMetadata } from "@/lib/bookmarks/ai-metadata";
 import { getDesignDnaForBookmark } from "@/lib/design-dna/data";
-import { createTextEmbedding, EMBEDDING_MODEL, toPgVectorLiteral } from "@/lib/semantic/embeddings";
 import {
+  createBookmarkDocumentEmbedding,
+  createBookmarkQueryEmbedding,
+  EMBEDDING_MODEL,
+  toPgVectorLiteral,
+} from "@/lib/semantic/embeddings";
+import {
+  BOOKMARK_RETRIEVAL_SCHEMA_VERSION,
   buildBookmarkMemoryText,
-  deriveMatchReasons,
   getBookmarkMemoryContentHash,
 } from "@/lib/semantic/memory-text";
+import { createClient } from "@/lib/supabase/server";
+import { buildMemoryChunks, getMemoryChunkContentHash } from "@/lib/visual-memory/chunks";
+import { searchBookmarksHybridVisual } from "@/lib/visual-memory/hybrid-search";
 import type { ActionResult, Bookmark, BookmarkAiMetadata, DesignDna } from "@/lib/types";
-
-type SearchByMemoryPayload = {
-  bookmarks: Bookmark[];
-  configured: boolean;
-  usedFallback: boolean;
-  message?: string;
-};
 
 type BackfillPayload = {
   processed: number;
@@ -30,21 +38,20 @@ type SemanticBookmark = Bookmark & {
   design_dna?: DesignDna | null;
 };
 
-const MAX_SEARCH_QUERY_LENGTH = 500;
-const DEFAULT_MATCH_COUNT = 24;
-const SEMANTIC_SIMILARITY_THRESHOLD = 0.35;
-
-type QueryVisualSignals = {
-  dark: boolean;
-  light: boolean;
-  bento: boolean;
-  glass: boolean;
-  gradient: boolean;
-  dashboard: boolean;
-  editorial: boolean;
-  minimal: boolean;
-  monochrome: boolean;
+type LexicalSearchRow = {
+  bookmark_id: string;
+  lexical_score: number;
+  exact_match_score: number;
+  rank: number;
+  match_reasons: string[] | null;
 };
+
+type SemanticSearchRow = {
+  bookmark_id: string;
+  similarity: number;
+};
+
+const MAX_SEARCH_QUERY_LENGTH = 500;
 
 function shortError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error || "Memory processing failed");
@@ -66,149 +73,11 @@ function unique(values: Array<string | null | undefined>, limit = 20) {
   return result;
 }
 
-function keywordMatches(bookmark: Bookmark, query: string) {
-  const q = query.toLowerCase().trim();
-  if (!q) return false;
-
-  return (
-    bookmark.title.toLowerCase().includes(q) ||
-    bookmark.url.toLowerCase().includes(q) ||
-    bookmark.summary.toLowerCase().includes(q) ||
-    bookmark.note.toLowerCase().includes(q) ||
-    bookmark.tags.some((tag) => tag.toLowerCase().includes(q)) ||
-    bookmark.ai_tags?.some((tag) => tag.toLowerCase().includes(q)) ||
-    bookmark.ai_patterns?.some((pattern) => pattern.toLowerCase().includes(q))
-  );
-}
-
-function normalizeForEvidence(value: unknown) {
-  return String(value ?? "")
-    .toLowerCase()
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function luminanceFromHex(hex: string) {
-  const match = hex.match(/^#?([0-9a-f]{6})$/i);
-  if (!match) return null;
-  const value = Number.parseInt(match[1], 16);
-  const r = (value >> 16) & 255;
-  const g = (value >> 8) & 255;
-  const b = value & 255;
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function inferPaletteMode(bookmark: Bookmark) {
-  const luminances = (bookmark.palette ?? [])
-    .map(luminanceFromHex)
-    .filter((value): value is number => typeof value === "number");
-
-  if (!luminances.length) return "";
-  const average = luminances.reduce((sum, value) => sum + value, 0) / luminances.length;
-  if (average < 95) return "dark";
-  if (average > 175) return "light";
-  return "mixed";
-}
-
-function getEvidenceText(bookmark: Bookmark) {
-  return normalizeForEvidence([
-    bookmark.title,
-    bookmark.summary,
-    bookmark.note,
-    ...(bookmark.tags ?? []),
-    ...(bookmark.ai_tags ?? []),
-    ...(bookmark.ai_patterns ?? []),
-    bookmark.ai_description,
-    bookmark.ai_metadata?.page_type,
-    bookmark.ai_metadata?.industry,
-    bookmark.ai_metadata?.design_context,
-    ...(bookmark.ai_metadata?.visual_style ?? []),
-    ...(bookmark.ai_metadata?.ui_patterns ?? []),
-    ...(bookmark.ai_metadata?.components ?? []),
-    ...(bookmark.ai_metadata?.suggested_tags ?? []),
-  ].filter(Boolean).join(" "));
-}
-
-function parseVisualSignals(query: string): QueryVisualSignals {
-  const q = normalizeForEvidence(query);
-  const negatedDark = /\b(no|not|without)\s+(a\s+)?(dark|black|charcoal)\b/.test(q);
-
-  return {
-    dark: !negatedDark && /\b(dark|dark theme|black|black theme|charcoal|midnight|noir)\b/.test(q),
-    light: /\b(light|light theme|white|bright|airy|off white|cream|neutral)\b/.test(q),
-    bento: /\b(bento|bento grid)\b/.test(q),
-    glass: /\b(glassmorphism|glass morphism|frosted glass|translucent|blurred glass)\b/.test(q),
-    gradient: /\b(gradient|mesh gradient|color gradient)\b/.test(q),
-    dashboard: /\b(dashboard|analytics|chart|charts|graph|data visualization|data viz|metrics)\b/.test(q),
-    editorial: /\b(editorial|serif|magazine|publication|type led|type driven)\b/.test(q),
-    minimal: /\b(minimal|minimalist|clean|simple|sparse)\b/.test(q),
-    monochrome: /\b(monochrome|black and white|grayscale|greyscale)\b/.test(q),
-  };
-}
-
-function hasAnySignal(signals: QueryVisualSignals) {
-  return Object.values(signals).some(Boolean);
-}
-
-function evidenceIncludes(evidence: string, terms: string[]) {
-  return terms.some((term) => evidence.includes(term));
-}
-
-function getVisualEvidenceScore(bookmark: Bookmark, signals: QueryVisualSignals) {
-  const evidence = getEvidenceText(bookmark);
-  const paletteMode = inferPaletteMode(bookmark);
-  let score = 0;
-
-  if (signals.dark && (paletteMode === "dark" || evidenceIncludes(evidence, ["dark ui", "dark theme", "black interface", "charcoal"]))) score += 3;
-  if (signals.light && (paletteMode === "light" || evidenceIncludes(evidence, ["light neutral", "light interface", "white space", "airy", "off white"]))) score += 3;
-  if (signals.bento && evidenceIncludes(evidence, ["bento grid", "bento layout"])) score += 4;
-  if (signals.glass && evidenceIncludes(evidence, ["glassmorphism", "glass morphism", "frosted glass", "translucent"])) score += 3;
-  if (signals.gradient && evidenceIncludes(evidence, ["gradient", "mesh gradient"])) score += 2;
-  if (signals.dashboard && evidenceIncludes(evidence, ["dashboard", "analytics", "chart", "graph", "data visualization", "data viz", "metrics"])) score += 2;
-  if (signals.editorial && evidenceIncludes(evidence, ["editorial", "serif", "magazine", "publication", "type led", "type driven"])) score += 2;
-  if (signals.minimal && evidenceIncludes(evidence, ["minimal", "minimalist", "clean", "sparse", "restrained"])) score += 1;
-  if (signals.monochrome && evidenceIncludes(evidence, ["monochrome", "black and white", "grayscale", "greyscale"])) score += 2;
-
-  return score;
-}
-
-function passesVisualSignals(bookmark: Bookmark, signals: QueryVisualSignals) {
-  const evidence = getEvidenceText(bookmark);
-  const paletteMode = inferPaletteMode(bookmark);
-
-  if (signals.dark) {
-    const hasDarkEvidence = paletteMode === "dark" || evidenceIncludes(evidence, ["dark ui", "dark theme", "black interface", "charcoal", "midnight"]);
-    const hasLightVeto = paletteMode === "light" || evidenceIncludes(evidence, ["light neutral", "light interface", "white background", "airy"]);
-    if (!hasDarkEvidence || hasLightVeto) return false;
-  }
-
-  if (signals.light) {
-    const hasLightEvidence = paletteMode === "light" || evidenceIncludes(evidence, ["light neutral", "light interface", "white background", "airy", "off white"]);
-    const hasDarkVeto = paletteMode === "dark" || evidenceIncludes(evidence, ["dark ui", "dark theme", "black interface"]);
-    if (!hasLightEvidence || hasDarkVeto) return false;
-  }
-
-  if (signals.bento && !evidenceIncludes(evidence, ["bento grid", "bento layout"])) return false;
-  if (signals.glass && !evidenceIncludes(evidence, ["glassmorphism", "glass morphism", "frosted glass", "translucent"])) return false;
-  if (signals.gradient && !evidenceIncludes(evidence, ["gradient", "mesh gradient"])) return false;
-  if (signals.dashboard && !evidenceIncludes(evidence, ["dashboard", "analytics", "chart", "graph", "data visualization", "data viz", "metrics"])) return false;
-  if (signals.editorial && !evidenceIncludes(evidence, ["editorial", "serif", "magazine", "publication", "type led", "type driven"])) return false;
-  if (signals.minimal && !evidenceIncludes(evidence, ["minimal", "minimalist", "clean", "sparse", "restrained"])) return false;
-  if (signals.monochrome && !evidenceIncludes(evidence, ["monochrome", "black and white", "grayscale", "greyscale"])) return false;
-
-  return true;
-}
-
 function buildSemanticFields(bookmark: SemanticBookmark) {
   const ai = bookmark.ai_metadata;
   const designDna = bookmark.design_dna;
 
-  const aiDescription =
-    bookmark.ai_description ||
-    ai?.design_context ||
-    bookmark.summary ||
-    null;
+  const aiDescription = bookmark.ai_description || ai?.design_context || bookmark.summary || null;
 
   const aiTags = unique([
     ...(bookmark.ai_tags ?? []),
@@ -259,7 +128,7 @@ async function getAuthenticatedUser() {
 async function getSemanticBookmark(
   supabase: Awaited<ReturnType<typeof createClient>>,
   bookmarkId: string,
-  userId: string
+  userId: string,
 ): Promise<SemanticBookmark | null> {
   const { data, error } = await supabase
     .from("bookmarks")
@@ -282,23 +151,146 @@ async function getSemanticBookmark(
   };
 }
 
-async function getKeywordMatches(
+async function upsertMemoryChunksForBookmark(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  bookmark: SemanticBookmark,
+  userId: string,
+) {
+  const { data: visualFacts } = await supabase
+    .from("bookmark_visual_facts")
+    .select("*")
+    .eq("bookmark_id", bookmark.id)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!visualFacts) return { chunks: 0, embedded: 0 };
+
+  const chunks = buildMemoryChunks({
+    bookmark,
+    aiMetadata: bookmark.ai_metadata,
+    designDna: bookmark.design_dna,
+    visualFacts,
+  });
+
+  const rows = [];
+  for (const chunk of chunks) {
+    const embedding = await createBookmarkDocumentEmbedding(chunk.chunk_text);
+    rows.push({
+      user_id: userId,
+      bookmark_id: bookmark.id,
+      chunk_type: chunk.chunk_type,
+      chunk_label: chunk.chunk_label,
+      chunk_text: chunk.chunk_text,
+      evidence: chunk.evidence,
+      embedding: toPgVectorLiteral(embedding),
+      model: EMBEDDING_MODEL,
+      content_hash: getMemoryChunkContentHash(chunk),
+      confidence: chunk.confidence,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  await supabase.from("bookmark_memory_chunks").delete().eq("bookmark_id", bookmark.id).eq("user_id", userId);
+
+  if (!rows.length) return { chunks: 0, embedded: 0 };
+
+  const { error } = await supabase.from("bookmark_memory_chunks").insert(rows);
+  if (error) throw new Error(error.message);
+
+  return { chunks: rows.length, embedded: rows.length };
+}
+
+async function getBookmarksByIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  ids: string[],
+) {
+  if (!ids.length) return new Map<string, Bookmark>();
+
+  const { data, error } = await supabase.from("bookmarks").select("*").eq("user_id", userId).in("id", ids);
+  if (error) throw new Error(error.message);
+
+  const bookmarks = await attachAiMetadataToBookmarks(supabase, (data ?? []) as Bookmark[], userId);
+  return new Map(bookmarks.map((bookmark) => [bookmark.id, bookmark]));
+}
+
+function visualReasons(bookmark: Bookmark) {
+  return unique(
+    [
+      ...(bookmark.visual_match_evidence?.map((evidence) => evidence.label) ?? []),
+      ...(bookmark.semantic_match_reasons ?? []),
+    ],
+    BOOKMARK_SEARCH_CONFIG.reasonLimit,
+  );
+}
+
+function toSearchResult(bookmark: Bookmark, candidate: FusedSearchCandidate): BookmarkSearchResult {
+  const matchLabel =
+    candidate.searchMode === "exact"
+      ? "Exact visual match"
+      : candidate.searchMode === "hybrid"
+        ? "Strong visual match"
+        : candidate.searchMode === "semantic"
+          ? "Possible match"
+          : "Related";
+
+  const matchStrength =
+    candidate.searchMode === "exact"
+      ? "exact"
+      : candidate.searchMode === "hybrid"
+        ? "strong"
+        : candidate.searchMode === "semantic"
+          ? "possible"
+          : "related";
+
+  return {
+    ...bookmark,
+    search_score: candidate.searchScore,
+    search_mode: candidate.searchMode,
+    search_match_reasons: candidate.reasons,
+    lexical_score: candidate.lexicalScore || undefined,
+    exact_match_score: candidate.exactMatchScore || undefined,
+    semantic_similarity: candidate.semanticSimilarity || bookmark.semantic_similarity,
+    semantic_match_reasons: candidate.reasons,
+    match_label: matchLabel,
+    match_strength: matchStrength,
+  };
+}
+
+async function searchLexicalCandidates(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  query: string,
+): Promise<{ rows: LexicalSearchRow[]; error?: string }> {
+  const { data, error } = await supabase.rpc("search_bookmarks_lexical", {
+    search_query: query,
+    result_limit: BOOKMARK_SEARCH_CONFIG.lexicalCandidateLimit,
+  });
+
+  if (error) return { rows: [], error: error.message };
+  return { rows: (data ?? []) as LexicalSearchRow[] };
+}
+
+async function searchSemanticCandidates(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   query: string,
-  limit = DEFAULT_MATCH_COUNT
-) {
-  const { data, error } = await supabase
-    .from("bookmarks")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(500);
+): Promise<{ rows: SemanticSearchRow[]; configured: boolean; error?: string }> {
+  try {
+    const embedding = await createBookmarkQueryEmbedding(query);
+    const { data, error } = await supabase.rpc("match_bookmarks_by_embedding", {
+      query_embedding: toPgVectorLiteral(embedding),
+      match_user_id: userId,
+      match_count: BOOKMARK_SEARCH_CONFIG.semanticCandidateLimit,
+      similarity_threshold: BOOKMARK_SEARCH_CONFIG.minimumSemanticSimilarity,
+      minimum_schema_version: BOOKMARK_RETRIEVAL_SCHEMA_VERSION,
+    });
 
-  if (error) return [];
-
-  const bookmarks = await attachAiMetadataToBookmarks(supabase, (data ?? []) as Bookmark[], userId);
-  return bookmarks.filter((bookmark) => keywordMatches(bookmark, query)).slice(0, limit);
+    if (error) return { rows: [], configured: true, error: error.message };
+    return { rows: (data ?? []) as SemanticSearchRow[], configured: true };
+  } catch (error) {
+    const message = shortError(error);
+    return { rows: [], configured: !message.includes("GEMINI_API_KEY"), error: message };
+  }
 }
 
 export async function processBookmarkSemanticData(bookmarkId: string): Promise<ActionResult<Bookmark>> {
@@ -322,12 +314,17 @@ export async function processBookmarkSemanticData(bookmarkId: string): Promise<A
 
     const { data: existing } = await supabase
       .from("bookmark_embeddings")
-      .select("content_hash")
+      .select("content_hash, model, retrieval_schema_version")
       .eq("bookmark_id", bookmarkId)
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (existing?.content_hash === contentHash && bookmark.semantic_status === "ready") {
+    if (
+      existing?.content_hash === contentHash &&
+      existing.model === EMBEDDING_MODEL &&
+      existing.retrieval_schema_version === BOOKMARK_RETRIEVAL_SCHEMA_VERSION &&
+      bookmark.semantic_status === "ready"
+    ) {
       const { data: skipped } = await supabase
         .from("bookmarks")
         .update({
@@ -344,7 +341,10 @@ export async function processBookmarkSemanticData(bookmarkId: string): Promise<A
       return { success: true, data: skipped as Bookmark };
     }
 
-    const embedding = await createTextEmbedding(memoryText);
+    const embedding = await createBookmarkDocumentEmbedding(memoryText);
+    await upsertMemoryChunksForBookmark(supabase, semanticBookmark, user.id).catch((chunkError) => {
+      console.warn("[semantic] visual memory chunk refresh skipped:", shortError(chunkError));
+    });
 
     const { error: embeddingError } = await supabase.from("bookmark_embeddings").upsert(
       {
@@ -354,9 +354,10 @@ export async function processBookmarkSemanticData(bookmarkId: string): Promise<A
         embedding_text: memoryText,
         model: EMBEDDING_MODEL,
         content_hash: contentHash,
+        retrieval_schema_version: BOOKMARK_RETRIEVAL_SCHEMA_VERSION,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "bookmark_id" }
+      { onConflict: "bookmark_id" },
     );
 
     if (embeddingError) throw new Error(embeddingError.message);
@@ -415,9 +416,7 @@ export async function processAllBookmarksSemanticData(): Promise<ActionResult<Ba
   if (error) return { success: false, error: error.message };
 
   const bookmarks = (data ?? []) as Bookmark[];
-  const targets = bookmarks
-    .filter((bookmark) => bookmark.semantic_status !== "processing")
-    .slice(0, 20);
+  const targets = bookmarks.filter((bookmark) => bookmark.semantic_status !== "processing").slice(0, 20);
 
   const counts: BackfillPayload = { processed: 0, skipped: 0, failed: 0 };
 
@@ -434,105 +433,130 @@ export async function processAllBookmarksSemanticData(): Promise<ActionResult<Ba
   return { success: true, data: counts };
 }
 
-export async function searchBookmarksByMemory(query: string): Promise<ActionResult<SearchByMemoryPayload>> {
+export async function searchBookmarks(query: string): Promise<ActionResult<BookmarkSearchPayload>> {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
   const trimmed = query.replace(/\s+/g, " ").trim().slice(0, MAX_SEARCH_QUERY_LENGTH);
-  if (trimmed.length < 2) {
-    return { success: true, data: { bookmarks: [], configured: true, usedFallback: false } };
-  }
-
-  let semanticBookmarks: Bookmark[] = [];
-  const visualSignals = parseVisualSignals(trimmed);
-  const hasVisualSignals = hasAnySignal(visualSignals);
-
-  try {
-    const embedding = await createTextEmbedding(trimmed);
-    const { data: matches, error: rpcError } = await supabase.rpc("match_bookmarks_by_embedding", {
-      query_embedding: toPgVectorLiteral(embedding),
-      match_user_id: user.id,
-      match_count: DEFAULT_MATCH_COUNT,
-      similarity_threshold: SEMANTIC_SIMILARITY_THRESHOLD,
-    });
-
-    if (rpcError) throw new Error(rpcError.message);
-
-    const rows = (matches ?? []) as Array<{ bookmark_id: string; similarity: number }>;
-    const ids = rows.map((row) => row.bookmark_id);
-
-    if (ids.length) {
-      const { data: bookmarks, error: bookmarkError } = await supabase
-        .from("bookmarks")
-        .select("*")
-        .eq("user_id", user.id)
-        .in("id", ids);
-
-      if (bookmarkError) throw new Error(bookmarkError.message);
-
-      const withAi = await attachAiMetadataToBookmarks(supabase, (bookmarks ?? []) as Bookmark[], user.id);
-      const byId = new Map(withAi.map((bookmark) => [bookmark.id, bookmark]));
-      semanticBookmarks = rows
-        .map((row) => {
-          const bookmark = byId.get(row.bookmark_id);
-          if (!bookmark) return null;
-          return {
-            ...bookmark,
-            semantic_similarity: row.similarity,
-            semantic_match_reasons: deriveMatchReasons(bookmark, trimmed),
-          };
-        })
-        .filter(Boolean) as Bookmark[];
-
-      semanticBookmarks = semanticBookmarks
-        .filter((bookmark) => !hasVisualSignals || passesVisualSignals(bookmark, visualSignals))
-        .sort((a, b) => {
-          const visualDelta = getVisualEvidenceScore(b, visualSignals) - getVisualEvidenceScore(a, visualSignals);
-          if (visualDelta !== 0) return visualDelta;
-          return (b.semantic_similarity ?? 0) - (a.semantic_similarity ?? 0);
-        });
-    }
-  } catch (error) {
-    const message = shortError(error);
-    const keywordFallback = (await getKeywordMatches(supabase, user.id, trimmed))
-      .filter((bookmark) => !hasVisualSignals || passesVisualSignals(bookmark, visualSignals));
-
+  if (trimmed.length < BOOKMARK_SEARCH_CONFIG.minQueryLength) {
     return {
       success: true,
       data: {
-        bookmarks: keywordFallback,
-        configured: !message.includes("GEMINI_API_KEY"),
-        usedFallback: true,
-        message: message.includes("GEMINI_API_KEY")
-          ? "Memory search is not configured yet. Add GEMINI_API_KEY and process your bookmarks."
-          : "Memory search is having trouble, so Nyabag used keyword matches.",
+        bookmarks: [],
+        query: trimmed,
+        mode: "keyword",
+        result_count: 0,
+        semantic_available: true,
+        lexical_available: true,
       },
     };
   }
 
-  const keywordFallback = !hasVisualSignals && semanticBookmarks.length < DEFAULT_MATCH_COUNT
-    ? await getKeywordMatches(supabase, user.id, trimmed, DEFAULT_MATCH_COUNT)
-    : [];
+  const [lexical, semantic] = await Promise.all([
+    searchLexicalCandidates(supabase, trimmed),
+    searchSemanticCandidates(supabase, user.id, trimmed),
+  ]);
 
-  const merged = new Map<string, Bookmark>();
-  for (const bookmark of semanticBookmarks) merged.set(bookmark.id, bookmark);
-  for (const bookmark of keywordFallback) {
-    if (!merged.has(bookmark.id)) merged.set(bookmark.id, bookmark);
+  const candidates: SearchCandidateInput[] = [
+    ...lexical.rows.map((row, index) => ({
+      bookmarkId: row.bookmark_id,
+      lexicalRank: index,
+      lexicalScore: row.lexical_score,
+      exactMatchScore: row.exact_match_score,
+      reasons: row.match_reasons ?? undefined,
+    })),
+    ...semantic.rows.map((row, index) => ({
+      bookmarkId: row.bookmark_id,
+      semanticRank: index,
+      semanticSimilarity: row.similarity,
+      reasons: ["Semantic memory match"],
+    })),
+  ];
+
+  let visualCandidates = 0;
+  const visualById = new Map<string, Bookmark>();
+  if (process.env.VISUAL_MEMORY_SEARCH_ENABLED?.trim().toLowerCase() !== "false") {
+    try {
+      const visual = await searchBookmarksHybridVisual({
+        supabase,
+        userId: user.id,
+        query: trimmed,
+        limit: BOOKMARK_SEARCH_CONFIG.visualCandidateLimit,
+      });
+
+      const usableVisualResults = visual.bookmarks.filter((bookmark) => {
+        const visualScore = bookmark.visual_score_breakdown?.final ?? bookmark.semantic_similarity ?? 0;
+        return (
+          visual.queryUnderstanding.hasVisualConstraints ||
+          visualScore >= BOOKMARK_SEARCH_CONFIG.minimumVisualScore ||
+          (bookmark.visual_match_evidence?.length ?? 0) > 0
+        );
+      });
+
+      visualCandidates = usableVisualResults.length;
+      usableVisualResults.forEach((bookmark, index) => {
+        visualById.set(bookmark.id, bookmark);
+        candidates.push({
+          bookmarkId: bookmark.id,
+          visualRank: index,
+          visualScore: bookmark.visual_score_breakdown?.final ?? bookmark.semantic_similarity ?? 0,
+          semanticSimilarity: bookmark.semantic_similarity,
+          reasons: visualReasons(bookmark),
+        });
+      });
+    } catch (error) {
+      console.warn("[search] visual candidate search skipped:", shortError(error));
+    }
   }
 
-  const results = Array.from(merged.values()).slice(0, DEFAULT_MATCH_COUNT);
+  const fused = fuseSearchCandidates(candidates);
+  const strong = filterStrongSearchResults(fused);
+  const ids = strong.map((candidate) => candidate.bookmarkId);
+  const bookmarkById = await getBookmarksByIds(supabase, user.id, ids);
+
+  const bookmarks = strong
+    .map((candidate) => {
+      const base = bookmarkById.get(candidate.bookmarkId);
+      if (!base) return null;
+      const visual = visualById.get(candidate.bookmarkId);
+      return toSearchResult({ ...base, ...visual }, candidate);
+    })
+    .filter(Boolean) as BookmarkSearchResult[];
+
+  const mode = bookmarks[0]?.search_mode ?? "keyword";
+  const message =
+    bookmarks.length === 0
+      ? semantic.configured
+        ? "No strong matches found."
+        : "Keyword search is available, but memory search needs GEMINI_API_KEY."
+      : lexical.error && !semantic.error
+        ? "Keyword search was unavailable, so Nyabag used memory matches."
+        : semantic.error && lexical.rows.length > 0
+          ? "Memory search was unavailable, so Nyabag used ranked keyword matches."
+          : undefined;
 
   return {
     success: true,
     data: {
-      bookmarks: results,
-      configured: true,
-      usedFallback: semanticBookmarks.length === 0 && keywordFallback.length > 0,
-      message: results.length === 0
-        ? hasVisualSignals
-          ? "No memory matches with that visual evidence yet. Reprocess older saves if their design read is stale."
-          : "No memory matches yet. New saves may still be processing."
+      bookmarks,
+      query: trimmed,
+      mode,
+      result_count: bookmarks.length,
+      semantic_available: semantic.configured && !semantic.error,
+      lexical_available: !lexical.error,
+      message,
+      debug: isBookmarkSearchDebugEnabled()
+        ? {
+            lexical_candidates: lexical.rows.length,
+            semantic_candidates: semantic.rows.length,
+            visual_candidates: visualCandidates,
+            fused_candidates: fused.length,
+          }
         : undefined,
     },
   };
+}
+
+export async function searchBookmarksByMemory(query: string): Promise<ActionResult<BookmarkSearchPayload>> {
+  return searchBookmarks(query);
 }

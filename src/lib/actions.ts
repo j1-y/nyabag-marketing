@@ -14,6 +14,7 @@ import { triggerBookmarkProcessor } from "@/lib/bookmarks/trigger-processor";
 import { extractDesignDnaFromHtmlCss } from "@/lib/design-dna/extract-html-css-styleguide";
 import { exportDesignDnaToMarkdown, getDesignDnaExportFilename } from "@/lib/design-dna/export-markdown";
 import { getDesignDnaById } from "@/lib/design-dna/data";
+import { processBookmarkSemanticData } from "@/lib/semantic/actions";
 import { timeAsync } from "@/lib/perf";
 import { PROFILE_AVATAR_BUCKET } from "@/lib/profile";
 import { getTelegramBotUrl, isTelegramConfigured } from "@/lib/telegram/config";
@@ -765,6 +766,12 @@ export async function regenerateDesignDna(
   revalidatePath(`/app/design-dna/${designDnaId}`);
 
   if (bookmarkRecord.id) {
+    await processBookmarkSemanticData(bookmarkRecord.id).catch((error) => {
+      console.warn(
+        "[refreshDesignDna] Memory refresh failed:",
+        error instanceof Error ? error.message : error
+      );
+    });
     revalidatePath(`/app/bookmarks/${bookmarkRecord.id}`);
   }
 
@@ -1088,6 +1095,13 @@ export async function updateBookmark(
     const job = await enqueueBookmarkProcessingJob(supabase, id, user.id, url);
     if (!job.success) return { success: false, error: job.error };
     await triggerProcessorBestEffort("updateBookmark");
+  } else {
+    await processBookmarkSemanticData(id).catch((error) => {
+      console.warn(
+        "[updateBookmark] Memory refresh failed:",
+        error instanceof Error ? error.message : error
+      );
+    });
   }
 
   revalidatePath("/app");

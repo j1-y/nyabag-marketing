@@ -12,6 +12,8 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
+import { BOOKMARK_SEARCH_CONFIG } from "@/lib/bookmark-search/config";
+import type { BookmarkSearchMode, BookmarkSearchResult, SearchState } from "@/lib/bookmark-search/types";
 import type { Bookmark } from "@/lib/types";
 import { deleteBookmark, getBookmarks, getProcessingBookmarks } from "@/lib/actions";
 import { searchBookmarksByMemory } from "@/lib/semantic/actions";
@@ -37,6 +39,9 @@ interface BookmarksCtx {
   isSemanticSearching: boolean;
   semanticError: string;
   semanticHasRun: boolean;
+  searchMode: BookmarkSearchMode;
+  searchResultCount: number;
+  clearSearch: () => void;
   // Modal state
   addOpen: boolean;
   openAdd: () => void;
@@ -59,6 +64,12 @@ const Ctx = createContext<BookmarksCtx | null>(null);
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 15_000;
 const DASHBOARD_FOCUS_REFRESH_MIN_MS = 5_000;
+
+function getPreviousSearchResults(state: SearchState): BookmarkSearchResult[] {
+  if (state.status === "success") return state.payload.bookmarks;
+  if (state.status === "loading" || state.status === "error") return state.previousResults;
+  return [];
+}
 
 function getBookmarkSnapshot(bookmarks: Bookmark[]) {
   return bookmarks
@@ -93,16 +104,14 @@ export function BookmarksProvider({
     }
   });
   const [search, setSearch] = useState("");
-  const [semanticResults, setSemanticResults] = useState<Bookmark[]>([]);
-  const [semanticError, setSemanticError] = useState("");
-  const [semanticHasRun, setSemanticHasRun] = useState(false);
-  const [isSemanticSearching, setIsSemanticSearching] = useState(false);
+  const [searchState, setSearchState] = useState<SearchState>({ status: "idle", query: "" });
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Bookmark | null>(null);
   const [detailTarget, setDetailTarget] = useState<Bookmark | null>(null);
   const refreshInFlightRef = useRef(false);
   const lastRefreshAtRef = useRef(0);
+  const searchRequestIdRef = useRef(0);
 
   const setPersistentActiveFilter = useCallback((filter: "all" | "recent") => {
     setActiveFilter(filter);
@@ -200,39 +209,41 @@ export function BookmarksProvider({
 
   useEffect(() => {
     const q = search.trim();
-    if (q.length < 2) {
+    if (q.length < BOOKMARK_SEARCH_CONFIG.minQueryLength) {
+      searchRequestIdRef.current += 1;
       const timeout = window.setTimeout(() => {
-        setSemanticResults([]);
-        setSemanticError("");
-        setSemanticHasRun(false);
-        setIsSemanticSearching(false);
+        setSearchState({ status: "idle", query: "" });
       }, 0);
       return () => window.clearTimeout(timeout);
     }
 
-    let cancelled = false;
+    const requestId = searchRequestIdRef.current + 1;
+    searchRequestIdRef.current = requestId;
+
     const timeout = window.setTimeout(async () => {
-      setIsSemanticSearching(true);
-      setSemanticError("");
+      setSearchState((current) => ({
+        status: "loading",
+        query: q,
+        previousResults: getPreviousSearchResults(current),
+      }));
 
       const result = await searchBookmarksByMemory(q);
-      if (cancelled) return;
-
-      setSemanticHasRun(true);
-      setIsSemanticSearching(false);
+      if (searchRequestIdRef.current !== requestId) return;
 
       if (!result.success) {
-        setSemanticResults([]);
-        setSemanticError(result.error);
+        setSearchState((current) => ({
+          status: "error",
+          query: q,
+          message: result.error,
+          previousResults: getPreviousSearchResults(current),
+        }));
         return;
       }
 
-      setSemanticResults(result.data.bookmarks);
-      setSemanticError(result.data.message ?? "");
-    }, 500);
+      setSearchState({ status: "success", query: q, payload: result.data });
+    }, BOOKMARK_SEARCH_CONFIG.debounceMs);
 
     return () => {
-      cancelled = true;
       window.clearTimeout(timeout);
     };
   }, [search]);
@@ -278,39 +289,58 @@ export function BookmarksProvider({
   const closeEdit = useCallback(() => setEditTarget(null), []);
   const openDetail = useCallback((b: Bookmark) => setDetailTarget(b), []);
   const closeDetail = useCallback(() => setDetailTarget(null), []);
+  const clearSearch = useCallback(() => {
+    searchRequestIdRef.current += 1;
+    setSearch("");
+    setSearchState({ status: "idle", query: "" });
+  }, []);
+
+  const rankedSearchResults = useMemo(() => getPreviousSearchResults(searchState), [searchState]);
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    const keywordResults = q
-      ? bookmarks.filter(
-          (b) =>
-            b.title.toLowerCase().includes(q) ||
-            b.url.toLowerCase().includes(q) ||
-            b.summary.toLowerCase().includes(q) ||
-            b.tags.some((t) => t.toLowerCase().includes(q)) ||
-            b.note.toLowerCase().includes(q) ||
-            b.ai_tags?.some((tag) => tag.toLowerCase().includes(q)) ||
-            b.ai_patterns?.some((pattern) => pattern.toLowerCase().includes(q)) ||
-            b.ai_metadata?.design_context.toLowerCase().includes(q) ||
-            b.ai_metadata?.visual_style.some((style) => style.toLowerCase().includes(q)) ||
-            b.ai_metadata?.ui_patterns.some((pattern) => pattern.toLowerCase().includes(q)) ||
-            b.ai_metadata?.components.some((component) => component.toLowerCase().includes(q))
-        )
-      : bookmarks;
+    const q = search.trim();
+    let list: Bookmark[] = [...bookmarks];
 
-    let list = [...keywordResults];
+    if (q.length >= BOOKMARK_SEARCH_CONFIG.minQueryLength) {
+      const refreshedById = new Map(bookmarks.map((bookmark) => [bookmark.id, bookmark]));
 
-    if (q.length >= 2 && semanticHasRun) {
-      const merged = new Map<string, Bookmark>();
-      for (const bookmark of keywordResults) merged.set(bookmark.id, bookmark);
-      for (const bookmark of semanticResults) merged.set(bookmark.id, bookmark);
-      list = Array.from(merged.values());
+      list = rankedSearchResults
+        .map((result) => {
+          const refreshed = refreshedById.get(result.id);
+          if (!refreshed) return null;
+          return {
+            ...refreshed,
+            search_score: result.search_score,
+            search_mode: result.search_mode,
+            search_match_reasons: result.search_match_reasons,
+            lexical_score: result.lexical_score,
+            exact_match_score: result.exact_match_score,
+            semantic_similarity: result.semantic_similarity,
+            semantic_match_reasons: result.semantic_match_reasons,
+            match_label: result.match_label,
+            match_strength: result.match_strength,
+            visual_match_evidence: result.visual_match_evidence,
+            visual_score_breakdown: result.visual_score_breakdown,
+          } satisfies BookmarkSearchResult;
+        })
+        .filter(Boolean) as Bookmark[];
     }
 
-    if (activeFilter === "recent") list = list.slice(0, 10);
     if (activeTag !== "All") list = list.filter((b) => b.tags.includes(activeTag));
+    if (activeFilter === "recent") list = list.slice(0, 10);
     return list;
-  }, [activeFilter, activeTag, bookmarks, search, semanticHasRun, semanticResults]);
+  }, [activeFilter, activeTag, bookmarks, rankedSearchResults, search]);
+
+  const isSemanticSearching = searchState.status === "loading";
+  const semanticHasRun = searchState.status === "success" || searchState.status === "error";
+  const semanticError =
+    searchState.status === "error"
+      ? searchState.message
+      : searchState.status === "success"
+        ? searchState.payload.message ?? ""
+        : "";
+  const searchMode = searchState.status === "success" ? searchState.payload.mode : "keyword";
+  const searchResultCount = searchState.status === "success" ? searchState.payload.result_count : filtered.length;
 
   const value = useMemo<BookmarksCtx>(
     () => ({
@@ -324,6 +354,9 @@ export function BookmarksProvider({
       isSemanticSearching,
       semanticError,
       semanticHasRun,
+      searchMode,
+      searchResultCount,
+      clearSearch,
       addOpen,
       openAdd,
       closeAdd,
@@ -349,6 +382,7 @@ export function BookmarksProvider({
       closeDetail,
       closeEdit,
       closeImport,
+      clearSearch,
       deleteItem,
       detailTarget,
       editTarget,
@@ -361,6 +395,8 @@ export function BookmarksProvider({
       pendingBookmarks,
       removePendingBookmark,
       search,
+      searchMode,
+      searchResultCount,
       semanticError,
       semanticHasRun,
       isSemanticSearching,
