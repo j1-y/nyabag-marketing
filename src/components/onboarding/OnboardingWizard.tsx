@@ -36,6 +36,7 @@ import type {
   OnboardingWorkspaceType,
   TelegramConnection,
 } from "@/lib/types";
+import Image from "next/image";
 import styles from "./OnboardingWizard.module.css";
 
 type TelegramState = {
@@ -438,189 +439,202 @@ export function OnboardingWizard({
           </div>
 
           <div className={styles.messageStack} aria-live="polite">
-            {error && <div className={styles.error}>{error}</div>}
-            {success && <div className={styles.success}>{success}</div>}
+  {error && <div className={styles.error}>{error}</div>}
+  {success && <div className={styles.success}>{success}</div>}
+</div>
+
+<div className={styles.stepBody}>
+  {step === "welcome" && (
+    <div className={styles.choiceGroup} role="radiogroup" aria-label="Workspace type">
+      {workspaceChoices.map((choice) => {
+        const Icon = choice.icon;
+        const selected = choiceState(choice.value, workspaceType);
+
+        return (
+          <button
+            key={choice.value}
+            type="button"
+            className={cn(styles.choiceCard, selected && styles.choiceCardSelected)}
+            onClick={() => selectWorkspace(choice.value)}
+            aria-pressed={selected}
+          >
+            <span className={styles.choiceIcon}>
+              <Icon size={18} />
+            </span>
+            <span className={styles.choiceBody}>
+              <span className={styles.choiceTitleRow}>
+                <span className={styles.choiceTitle}>{choice.title}</span>
+                {selected && <Check size={16} />}
+              </span>
+              <span className={styles.choiceDescription}>{choice.description}</span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  )}
+
+  {step === "preferences" && (
+    <div className={styles.preferencesGrid}>
+      <section className={styles.preferenceColumn}>
+        <p className={styles.sectionLabel}>Primary goal</p>
+        <div className={styles.choiceStack} role="radiogroup" aria-label="Primary goal">
+          {goalChoices.map((choice) => {
+            const Icon = choice.icon;
+            const selected = choiceState(choice.value, primaryGoal);
+
+            return (
+              <button
+                key={choice.value}
+                type="button"
+                className={cn(
+                  styles.choiceCard,
+                  styles.goalCard,
+                  selected && styles.choiceCardSelected
+                )}
+                onClick={() => selectGoal(choice.value)}
+                aria-pressed={selected}
+              >
+                <span className={styles.choiceIcon}>
+                  <Icon size={18} />
+                </span>
+                <span className={styles.choiceBody}>
+                  <span className={styles.choiceTitleRow}>
+                    <span className={styles.choiceTitle}>{choice.title}</span>
+                    {selected && <Check size={16} />}
+                  </span>
+                  <span className={styles.choiceDescription}>{choice.description}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={styles.preferenceColumn}>
+        <p className={styles.sectionLabel}>Focus area</p>
+        <div className={styles.focusGrid} role="radiogroup" aria-label="Focus area">
+          {focusChoices.map((choice) => {
+            const Icon = choice.icon;
+            const selected = choiceState(choice.value, focusArea);
+
+            return (
+              <button
+                key={choice.value}
+                type="button"
+                className={cn(styles.focusCard, selected && styles.focusCardSelected)}
+                onClick={() => selectFocus(choice.value)}
+                aria-pressed={selected}
+              >
+                <span className={styles.focusIcon}>
+                  <Icon size={18} />
+                </span>
+                <span className={styles.focusText}>
+                  <span className={styles.focusTitleRow}>
+                    <span className={styles.focusTitle}>{choice.title}</span>
+                    {selected && <Check size={15} />}
+                  </span>
+                  <span className={styles.focusDescription}>{choice.description}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  )}
+
+  {step === "telegram" && (
+    <div className={styles.telegramPanel}>
+      <div className={styles.telegramStatusRow}>
+        <Badge variant={telegramState.configured ? "subtle" : "warning"}>
+          {telegramState.configured ? "Telegram ready" : "Telegram offline"}
+        </Badge>
+        {telegramState.connection?.status && (
+          <Badge
+            variant={
+              telegramState.connection.status === "connected"
+                ? "success"
+                : telegramState.connection.status === "pending"
+                  ? "warning"
+                  : "subtle"
+            }
+          >
+            {telegramState.connection.status}
+          </Badge>
+        )}
+      </div>
+
+      <div className={styles.telegramCard}>
+        <div className={styles.telegramCardHeader}>
+          <div className={styles.telegramCardIcon}>
+            <Send size={18} />
           </div>
+          <div>
+            <h2>Connect the Telegram bot</h2>
+            <p>Send a verification code from Nyabag to start saving links from chat.</p>
+          </div>
+        </div>
 
-          {step === "welcome" && (
-            <div className={styles.choiceGroup} role="radiogroup" aria-label="Workspace type">
-              {workspaceChoices.map((choice) => {
-                const Icon = choice.icon;
-                const selected = choiceState(choice.value, workspaceType);
-                return (
-                  <button
-                    key={choice.value}
-                    type="button"
-                    className={cn(styles.choiceCard, selected && styles.choiceCardSelected)}
-                    onClick={() => selectWorkspace(choice.value)}
-                    aria-pressed={selected}
-                  >
-                    <span className={styles.choiceIcon}>
-                      <Icon size={18} />
-                    </span>
-                    <span className={styles.choiceBody}>
-                      <span className={styles.choiceTitleRow}>
-                        <span className={styles.choiceTitle}>{choice.title}</span>
-                        {selected && <Check size={16} />}
-                      </span>
-                      <span className={styles.choiceDescription}>{choice.description}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+        {code ? (
+          <div className={styles.telegramCodePanel}>
+            <span className={styles.codeLabel}>Connection code</span>
+            <div className={styles.code}>{code}</div>
+            <p className={styles.telegramHint}>
+              Open the bot, paste this code, and wait for Nyabag to confirm the link.
+            </p>
+            {expiresAt && <p className={styles.expiry}>Expires {formatDate(expiresAt)}</p>}
+          </div>
+        ) : (
+          <div className={styles.telegramInstructions}>
+            <p>Generate a code, open the bot, and follow the prompt to link your account.</p>
+            <ul>
+              <li>Open Telegram from the button below.</li>
+              <li>Send the generated code to the Nyabag bot.</li>
+              <li>Wait for the connection badge to switch to connected.</li>
+            </ul>
+          </div>
+        )}
+
+        <div className={styles.telegramActions}>
+          {telegramState.configured && telegramState.connection?.status !== "connected" && (
+            <Button type="button" onClick={generateTelegramCode} disabled={isPending}>
+              <Bot size={14} />
+              {telegramState.connection?.status === "pending" || code
+                ? "Regenerate code"
+                : "Generate code"}
+            </Button>
           )}
 
-          {step === "preferences" && (
-            <div className={styles.preferencesGrid}>
-              <section className={styles.preferenceColumn}>
-                <p className={styles.sectionLabel}>Primary goal</p>
-                <div className={styles.choiceStack} role="radiogroup" aria-label="Primary goal">
-                  {goalChoices.map((choice) => {
-                    const Icon = choice.icon;
-                    const selected = choiceState(choice.value, primaryGoal);
-                    return (
-                      <button
-                        key={choice.value}
-                        type="button"
-                        className={cn(styles.choiceCard, styles.goalCard, selected && styles.choiceCardSelected)}
-                        onClick={() => selectGoal(choice.value)}
-                        aria-pressed={selected}
-                      >
-                        <span className={styles.choiceIcon}>
-                          <Icon size={18} />
-                        </span>
-                        <span className={styles.choiceBody}>
-                          <span className={styles.choiceTitleRow}>
-                            <span className={styles.choiceTitle}>{choice.title}</span>
-                            {selected && <Check size={16} />}
-                          </span>
-                          <span className={styles.choiceDescription}>{choice.description}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className={styles.preferenceColumn}>
-                <p className={styles.sectionLabel}>Focus area</p>
-                <div className={styles.focusGrid} role="radiogroup" aria-label="Focus area">
-                  {focusChoices.map((choice) => {
-                    const Icon = choice.icon;
-                    const selected = choiceState(choice.value, focusArea);
-                    return (
-                      <button
-                        key={choice.value}
-                        type="button"
-                        className={cn(styles.focusCard, selected && styles.focusCardSelected)}
-                        onClick={() => selectFocus(choice.value)}
-                        aria-pressed={selected}
-                      >
-                        <span className={styles.focusIcon}>
-                          <Icon size={18} />
-                        </span>
-                        <span className={styles.focusText}>
-                          <span className={styles.focusTitleRow}>
-                            <span className={styles.focusTitle}>{choice.title}</span>
-                            {selected && <Check size={15} />}
-                          </span>
-                          <span className={styles.focusDescription}>{choice.description}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            </div>
+          {telegramState.botUrl && telegramState.configured && (
+            <Button type="button" variant="outline" asChild>
+              <a href={telegramState.botUrl} target="_blank" rel="noreferrer">
+                <ArrowUpRight size={14} />
+                Open Telegram bot
+              </a>
+            </Button>
           )}
 
-          {step === "telegram" && (
-            <div className={styles.telegramPanel}>
-              <div className={styles.telegramStatusRow}>
-                <Badge variant={telegramState.configured ? "subtle" : "warning"}>
-                  {telegramState.configured ? "Telegram ready" : "Telegram offline"}
-                </Badge>
-                {telegramState.connection?.status && (
-                  <Badge
-                    variant={
-                      telegramState.connection.status === "connected"
-                        ? "success"
-                        : telegramState.connection.status === "pending"
-                          ? "warning"
-                          : "subtle"
-                    }
-                  >
-                    {telegramState.connection.status}
-                  </Badge>
-                )}
-              </div>
+          <Button
+            type="button"
+            variant={completionDisabled ? "subtle" : "default"}
+            onClick={finishSetup}
+            disabled={isPending || (completionDisabled && telegramState.configured)}
+          >
+            {isPending && step === "telegram" ? (
+              <Loader2 size={14} className={styles.spin} />
+            ) : (
+              <ArrowRight size={14} />
+            )}
+            {continueLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
 
-              <div className={styles.telegramCard}>
-                <div className={styles.telegramCardHeader}>
-                  <div className={styles.telegramCardIcon}>
-                    <Send size={18} />
-                  </div>
-                  <div>
-                    <h2>Connect the Telegram bot</h2>
-                    <p>Send a verification code from Nyabag to start saving links from chat.</p>
-                  </div>
-                </div>
-
-                {code ? (
-                  <div className={styles.telegramCodePanel}>
-                    <span className={styles.codeLabel}>Connection code</span>
-                    <div className={styles.code}>{code}</div>
-                    <p className={styles.telegramHint}>
-                      Open the bot, paste this code, and wait for Nyabag to confirm the link.
-                    </p>
-                    {expiresAt && <p className={styles.expiry}>Expires {formatDate(expiresAt)}</p>}
-                  </div>
-                ) : (
-                  <div className={styles.telegramInstructions}>
-                    <p>Generate a code, open the bot, and follow the prompt to link your account.</p>
-                    <ul>
-                      <li>Open Telegram from the button below.</li>
-                      <li>Send the generated code to the Nyabag bot.</li>
-                      <li>Wait for the connection badge to switch to connected.</li>
-                    </ul>
-                  </div>
-                )}
-
-                <div className={styles.telegramActions}>
-                  {telegramState.configured && telegramState.connection?.status !== "connected" && (
-                    <Button type="button" onClick={generateTelegramCode} disabled={isPending}>
-                      <Bot size={14} />
-                      {telegramState.connection?.status === "pending" || code ? "Regenerate code" : "Generate code"}
-                    </Button>
-                  )}
-
-                  {telegramState.botUrl && telegramState.configured && (
-                    <Button type="button" variant="outline" asChild>
-                      <a href={telegramState.botUrl} target="_blank" rel="noreferrer">
-                        <ArrowUpRight size={14} />
-                        Open Telegram bot
-                      </a>
-                    </Button>
-                  )}
-
-                  <Button
-                    type="button"
-                    variant={completionDisabled ? "subtle" : "default"}
-                    onClick={finishSetup}
-                    disabled={isPending || (completionDisabled && telegramState.configured)}
-                  >
-                    {isPending && step === "telegram" ? (
-                      <Loader2 size={14} className={styles.spin} />
-                    ) : (
-                      <ArrowRight size={14} />
-                    )}
-                    {continueLabel}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+<div className={styles.footer}></div>
 
           <div className={styles.footer}>
             <div className={styles.progress}>
@@ -666,91 +680,15 @@ export function OnboardingWizard({
         </section>
 
         <aside className={styles.rightPane} aria-hidden="true">
-          <div className={styles.quoteCard}>
-            <div className={styles.quoteMeta}>
-              <span className={styles.quoteLabel}>What people want from Nyabag</span>
-              <div className={styles.rating}>
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <Star key={index} size={13} fill="currentColor" />
-                ))}
-              </div>
-            </div>
+        <div className={styles.onboardingArtworkFrame}>
+    <img
+      src="/assets/onboarding-showcase.png"
+      alt=""
+      className={styles.onboardingArtwork}
+    />
+  </div>
+</aside>
 
-            <blockquote className={styles.quote}>
-              &quot;Nyabag makes it feel like my design references, research, and Telegram saves all live in one calm workspace.&quot;
-            </blockquote>
-
-            <div className={styles.quoteAuthor}>
-              <strong>Built for focused creators</strong>
-              <span>Save inspiration without switching context.</span>
-            </div>
-          </div>
-
-          <div className={styles.browserMock}>
-            <div className={styles.browserChrome}>
-              <span />
-              <span />
-              <span />
-            </div>
-
-            <div className={styles.browserBody}>
-              <div className={styles.mockSidebar}>
-                <div className={styles.mockBrand}>
-                  <img src="/assets/logo.svg" alt="" />
-                  <span>Nyabag</span>
-                </div>
-                <div className={styles.mockNav}>
-                  <div className={styles.mockNavItem}>Home</div>
-                  <div className={cn(styles.mockNavItem, styles.mockNavItemActive)}>Dashboard</div>
-                  <div className={styles.mockNavItem}>Bookmarks</div>
-                  <div className={styles.mockNavItem}>Settings</div>
-                </div>
-                <div className={styles.mockPanel}>
-                  <span>Setup</span>
-                  <strong>Telegram</strong>
-                  <p>Connected apps stay in sync automatically.</p>
-                </div>
-              </div>
-
-              <div className={styles.mockContent}>
-                <div className={styles.mockContentHeader}>
-                  <div>
-                    <p className={styles.mockEyebrow}>Integrations and connected apps</p>
-                    <h2>Everything in one place</h2>
-                  </div>
-                  <Badge variant="success">Live preview</Badge>
-                </div>
-
-                <div className={styles.mockList}>
-                  {[
-                    ["Telegram", "Link URLs from chat and save instantly.", true],
-                    ["Linear", "Track ideas and product work from bookmarks.", true],
-                    ["Figma", "Keep design references together.", false],
-                    ["Loom", "Store async walkthroughs for later.", false],
-                  ].map(([name, text, active]) => (
-                    <div key={name as string} className={styles.mockRow}>
-                      <div className={styles.mockRowIcon}>
-                        {active ? <Check size={15} /> : <Sparkles size={15} />}
-                      </div>
-                      <div className={styles.mockRowText}>
-                        <strong>{name as string}</strong>
-                        <span>{text as string}</span>
-                      </div>
-                      <Badge variant={active ? "success" : "subtle"}>{active ? "Connected" : "Queued"}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.sideNote}>
-            <div>
-              <strong>Flow summary</strong>
-              <p>Signup -&gt; workspace type -&gt; preferences -&gt; Telegram -&gt; dashboard.</p>
-            </div>
-          </div>
-        </aside>
       </div>
     </main>
   );
