@@ -63,7 +63,7 @@ Mixed temporal flow:
 - A-weighted: title, hostname, user tags.
 - B-weighted: AI patterns, AI tags, note, save reason.
 - C-weighted: summary and AI description.
-- D-weighted: fonts and compact Design DNA JSON.
+- D-weighted: fonts and other lower-priority extracted metadata.
 
 `search_bookmarks_lexical(search_query, result_limit)` is retained for compatibility.
 `search_bookmarks_lexical_v2(search_query, result_limit, created_after, created_before)` adds optional date bounds and uses `auth.uid()` with `SECURITY INVOKER`, RLS, weighted `ts_rank_cd`, and exact boosts for title, domain, tag, title prefix, domain prefix, title phrase, and note phrase.
@@ -80,7 +80,7 @@ Retrieval document schema v2 is built in `src/lib/semantic/memory-text.ts` and i
 - page type
 - distinctive UI/layout patterns
 - visual evidence
-- selected Design DNA
+- fonts and extracted visual metadata
 
 The document avoids full URLs, repeated generic AI tags, duplicated raw JSON, and HEX-heavy palettes.
 

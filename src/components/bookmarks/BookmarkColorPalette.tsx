@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import type { DesignDna } from "@/lib/types";
 
 function getReadableTextColor(hex: string) {
   const value = hex.replace("#", "");
@@ -15,14 +13,11 @@ function getReadableTextColor(hex: string) {
 
 export function BookmarkColorPalette({
   colors,
-  designDna,
 }: {
   colors: string[];
-  designDna?: DesignDna | null;
 }) {
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
   const visibleColors = Array.from(new Set(colors.map((color) => color.toUpperCase()))).slice(0, 5);
-  const completedDesignDna = designDna?.extraction_status === "completed" ? designDna : null;
 
   async function copyColor(color: string) {
     await navigator.clipboard.writeText(color);
@@ -58,17 +53,6 @@ export function BookmarkColorPalette({
         ))}
       </div>
 
-      <div className="detail-color-footer">
-        {completedDesignDna ? (
-          <Link className="detail-color-dna-link" href={`/app/design-dna/${completedDesignDna.id}`}>
-            View all colours in Design DNA
-          </Link>
-        ) : (
-          <span className="detail-color-dna-link detail-color-dna-link-muted">
-            Generate Design DNA to view all colours
-          </span>
-        )}
-      </div>
     </div>
   );
 }

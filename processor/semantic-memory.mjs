@@ -166,17 +166,6 @@ function buildSemanticFields(bookmark, ai) {
       ...(bookmark.ai_patterns ?? []),
       ...(ai?.ui_patterns ?? []),
     ]),
-    ai_design_dna: bookmark.ai_design_dna && Object.keys(bookmark.ai_design_dna).length
-      ? bookmark.ai_design_dna
-      : {
-          page_type: ai?.page_type ?? null,
-          industry: ai?.industry ?? null,
-          visual_style: ai?.visual_style ?? [],
-          components: ai?.components ?? [],
-          ui_patterns: ai?.ui_patterns ?? [],
-          colors: bookmark.palette ?? [],
-          typography: bookmark.fonts ?? [],
-        },
   };
 }
 

@@ -33,10 +33,11 @@ type DashboardSidebarProps = {
 };
 
 type NavItem = {
-  href: string;
+  href?: string;
   label: string;
   icon: LucideIcon;
   match: (pathname: string) => boolean;
+  comingSoon?: boolean;
 };
 
 // ─── Nav config ──────────────────────────────────────────────
@@ -58,10 +59,10 @@ const NAV_ITEMS: NavItem[] = [
     match: (p) => p.startsWith("/app/canvas"),
   },
   {
-    href: "/app/design-dna",
     label: "Design DNA",
     icon: Palette,
-    match: (p) => p.startsWith("/app/design-dna"),
+    match: () => false,
+    comingSoon: true,
   },
   {
     href: "/app/captures",
@@ -128,6 +129,18 @@ export function DashboardSidebar({
         </div>
 
         {/* ── Nav ── */}
+        {!collapsed && (
+          <div className="dashboard-sidebar-workspace" aria-label="Personal Nyabag workspace">
+            <span className="dashboard-sidebar-workspace-icon" aria-hidden="true">
+              {userInitials}
+            </span>
+            <span className="dashboard-sidebar-workspace-copy">
+              <small>Personal workspace</small>
+              <strong>{displayName}</strong>
+            </span>
+          </div>
+        )}
+
         <nav
           className="dashboard-sidebar-scroll"
           aria-label="Primary navigation"
@@ -140,38 +153,62 @@ export function DashboardSidebar({
             {NAV_ITEMS.map((item) => {
               const ItemIcon = item.icon;
               const active = item.match(pathname);
+              const itemLabel = item.comingSoon ? `${item.label} - Coming soon` : item.label;
+              const itemClassName = `dashboard-sidebar-item${active ? " active" : ""}${
+                item.comingSoon ? " dashboard-sidebar-item-disabled" : ""
+              }`;
 
-              const linkEl = (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={`dashboard-sidebar-item${active ? " active" : ""}`}
-                  aria-label={collapsed ? item.label : undefined}
-                  aria-current={active ? "page" : undefined}
-                >
+              const itemContent = (
+                <>
                   <ItemIcon
                     size={18}
                     className="dashboard-sidebar-item-icon"
                     aria-hidden="true"
                   />
                   <span className="dashboard-sidebar-item-copy">
-                    {item.label}
+                    <span>{item.label}</span>
+                    {item.comingSoon && (
+                      <span className="sidebar-coming-soon-badge">Coming soon</span>
+                    )}
                   </span>
+                </>
+              );
+
+              const navEl = item.href ? (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={itemClassName}
+                  aria-label={collapsed ? itemLabel : undefined}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {itemContent}
                 </Link>
+              ) : (
+                <button
+                  key={item.label}
+                  type="button"
+                  className={itemClassName}
+                  aria-disabled="true"
+                  aria-label={collapsed ? itemLabel : undefined}
+                  tabIndex={-1}
+                >
+                  {itemContent}
+                </button>
               );
 
               if (collapsed) {
                 return (
                   <Tooltip key={item.label}>
-                    <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
+                    <TooltipTrigger asChild>{navEl}</TooltipTrigger>
                     <TooltipContent side="right" sideOffset={10}>
-                      {item.label}
+                      {itemLabel}
                     </TooltipContent>
                   </Tooltip>
                 );
               }
 
-              return linkEl;
+              return navEl;
             })}
           </div>
 

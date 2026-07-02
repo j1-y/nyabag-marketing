@@ -40,7 +40,6 @@ export type Bookmark = VisualSearchResultFields & {
   ai_description?: string | null;
   ai_tags?: string[];
   ai_patterns?: string[];
-  ai_design_dna?: Record<string, unknown> | null;
   save_reason?: string | null;
   semantic_status?: "pending" | "processing" | "ready" | "failed" | "skipped";
   semantic_error?: string | null;
@@ -58,7 +57,6 @@ export type Bookmark = VisualSearchResultFields & {
   folder_id?: string | null;
   folder?: BookmarkFolder | null;
   ai_metadata?: BookmarkAiMetadata | null;
-  design_dna?: DesignDna | null;
 };
 
 export type TelegramConnectionStatus = "pending" | "connected" | "disabled";
@@ -128,54 +126,6 @@ export type BookmarkAiMetadata = {
   raw_response?: unknown | null;
   error?: string | null;
   status: BookmarkAiStatus;
-  created_at: string;
-  updated_at: string;
-};
-
-export type DesignDnaStatus = "pending" | "completed" | "failed";
-export type DesignDnaExtractionMethod = "html-css" | "dom" | "dom-plus-ai" | "manual";
-
-export type DesignDnaTypographyItem = {
-  role: string;
-  sample: string;
-  fontFamily: string;
-  fontStack?: string;
-  fontSize: string;
-  fontWeight: string;
-  lineHeight: string;
-  letterSpacing?: string;
-  color?: string;
-  selector?: string;
-  confidence: "exact" | "inferred" | "estimated";
-  source: "css-rule" | "css-variable" | "html-tag" | "metadata" | "fallback";
-};
-
-export type DesignDnaColorItem = {
-  name: string;
-  hex: string;
-  rgb?: string;
-  usage: string;
-  source?: "css-variable" | "text" | "background" | "border" | "accent" | "bookmark-palette" | "unknown";
-  count?: number;
-};
-
-export type DesignDna = {
-  id: string;
-  user_id: string;
-  bookmark_id: string | null;
-  title: string;
-  source_url: string;
-  source_domain: string;
-  source_title: string;
-  screenshot_url?: string | null;
-  typography: DesignDnaTypographyItem[];
-  colors: DesignDnaColorItem[];
-  components: string[];
-  layout_patterns: string[];
-  extraction_method: DesignDnaExtractionMethod;
-  extraction_status: DesignDnaStatus;
-  extraction_error?: string | null;
-  raw_extraction?: unknown | null;
   created_at: string;
   updated_at: string;
 };

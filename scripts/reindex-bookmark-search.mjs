@@ -73,19 +73,7 @@ function addArrayLine(lines, label, value, limit = 12) {
   if (values.length) lines.push(`${label}: ${values.join(", ")}`);
 }
 
-function compactDesignDna(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
-  return Object.entries(value)
-    .flatMap(([key, entry]) => {
-      if (Array.isArray(entry)) return cleanArray(entry, 6).map((item) => `${key}: ${item}`);
-      if (entry && typeof entry === "object") return [];
-      const text = clean(entry);
-      return text ? [`${key}: ${text}`] : [];
-    })
-    .slice(0, 10);
-}
-
-function buildRetrievalDocument(bookmark, aiMetadata, designDna) {
+function buildRetrievalDocument(bookmark, aiMetadata) {
   const lines = [`Retrieval schema: bookmark-v${RETRIEVAL_SCHEMA_VERSION}`];
 
   addLine(lines, "Title", bookmark.title);
@@ -101,12 +89,6 @@ function buildRetrievalDocument(bookmark, aiMetadata, designDna) {
   addArrayLine(lines, "Visual style", aiMetadata?.visual_style);
   addArrayLine(lines, "Notable UI details", aiMetadata?.components);
   addArrayLine(lines, "Fonts", bookmark.fonts);
-  addArrayLine(lines, "Design DNA typography", designDna?.typography?.map((font) => `${font.role} ${font.fontFamily} ${font.fontWeight}`));
-  addArrayLine(lines, "Design DNA components", designDna?.components);
-  addArrayLine(lines, "Design DNA layout patterns", designDna?.layout_patterns);
-
-  const compactDna = compactDesignDna(bookmark.ai_design_dna);
-  if (compactDna.length) lines.push(`AI design DNA: ${compactDna.join("; ")}`);
 
   return lines.join("\n").slice(0, 8_000);
 }
@@ -160,19 +142,17 @@ async function main() {
     if (!bookmarks?.length) break;
 
     const ids = bookmarks.map((bookmark) => bookmark.id);
-    const [{ data: metadataRows }, { data: designDnaRows }, { data: embeddingRows }] = await Promise.all([
+    const [{ data: metadataRows }, { data: embeddingRows }] = await Promise.all([
       supabase.from("bookmark_ai_metadata").select("*").in("bookmark_id", ids),
-      supabase.from("design_dna").select("*").in("bookmark_id", ids),
       supabase.from("bookmark_embeddings").select("bookmark_id, content_hash, model, retrieval_schema_version").in("bookmark_id", ids),
     ]);
 
     const metadataById = new Map((metadataRows ?? []).map((row) => [row.bookmark_id, row]));
-    const designDnaById = new Map((designDnaRows ?? []).map((row) => [row.bookmark_id, row]));
     const embeddingById = new Map((embeddingRows ?? []).map((row) => [row.bookmark_id, row]));
 
     for (const bookmark of bookmarks) {
       scanned += 1;
-      const text = buildRetrievalDocument(bookmark, metadataById.get(bookmark.id), designDnaById.get(bookmark.id));
+      const text = buildRetrievalDocument(bookmark, metadataById.get(bookmark.id));
       const hash = contentHash(text);
       const existing = embeddingById.get(bookmark.id);
       const isCurrent =

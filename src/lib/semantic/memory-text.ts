@@ -2,11 +2,10 @@ import "server-only";
 
 import crypto from "node:crypto";
 import { getDomain } from "@/lib/data";
-import type { Bookmark, BookmarkAiMetadata, DesignDna } from "@/lib/types";
+import type { Bookmark, BookmarkAiMetadata } from "@/lib/types";
 
 type BookmarkLike = Partial<Bookmark> & {
   ai_metadata?: BookmarkAiMetadata | null;
-  design_dna?: DesignDna | null;
 };
 
 export const BOOKMARK_RETRIEVAL_SCHEMA_VERSION = 2;
@@ -48,24 +47,6 @@ function cleanArray(value: unknown, limit = 16) {
   }
 
   return values;
-}
-
-function compactJsonRecord(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
-
-  return Object.entries(value as Record<string, unknown>)
-    .map(([key, entry]) => {
-      if (Array.isArray(entry)) {
-        const items = cleanArray(entry, 8);
-        return items.length ? `${key}: ${items.join(", ")}` : "";
-      }
-
-      if (entry && typeof entry === "object") return "";
-      const text = clean(entry);
-      return text ? `${key}: ${text}` : "";
-    })
-    .filter(Boolean)
-    .slice(0, 12);
 }
 
 function addLine(lines: string[], label: string, value: unknown) {
@@ -149,7 +130,6 @@ export function buildBookmarkMemoryText(bookmark: BookmarkLike): string {
   const lines: string[] = [];
   const domain = bookmark.url ? getDomain(bookmark.url) : "";
   const aiMetadata = bookmark.ai_metadata;
-  const designDna = bookmark.design_dna;
 
   lines.push(`Retrieval schema: bookmark-v${BOOKMARK_RETRIEVAL_SCHEMA_VERSION}`);
   addLine(lines, "Title", bookmark.title);
@@ -169,13 +149,6 @@ export function buildBookmarkMemoryText(bookmark: BookmarkLike): string {
   addSpecificArrayLine(lines, "Visual style", aiMetadata?.visual_style);
   addSpecificArrayLine(lines, "Notable UI details", aiMetadata?.components);
   addArrayLine(lines, "Fonts", bookmark.fonts);
-  addSpecificArrayLine(lines, "Design DNA colors", designDna?.colors?.map((color) => `${color.name} ${color.usage}`), 8);
-  addArrayLine(lines, "Design DNA typography", designDna?.typography?.map((font) => `${font.role} ${font.fontFamily} ${font.fontWeight}`));
-  addArrayLine(lines, "Design DNA components", designDna?.components);
-  addArrayLine(lines, "Design DNA layout patterns", designDna?.layout_patterns);
-
-  const compactDna = compactJsonRecord(bookmark.ai_design_dna);
-  if (compactDna.length) lines.push(`AI design DNA: ${compactDna.join("; ")}`);
 
   return lines.join("\n").slice(0, 8_000);
 }

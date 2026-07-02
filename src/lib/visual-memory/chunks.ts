@@ -1,12 +1,11 @@
 import crypto from "node:crypto";
-import type { Bookmark, BookmarkAiMetadata, DesignDna } from "@/lib/types";
+import type { Bookmark, BookmarkAiMetadata } from "@/lib/types";
 import type { SectionFacts, VisualFactsRow } from "./types";
 import { uniqueStrings } from "./taxonomy";
 
 export type MemoryChunkInput = {
   bookmark: Partial<Bookmark>;
   aiMetadata?: Partial<BookmarkAiMetadata> | null;
-  designDna?: Partial<DesignDna> | null;
   visualFacts?: Partial<VisualFactsRow> | null;
 };
 
@@ -59,7 +58,6 @@ function contentHash(text: string) {
 export function buildMemoryChunks({
   bookmark,
   aiMetadata,
-  designDna,
   visualFacts,
 }: MemoryChunkInput): MemoryChunk[] {
   const chunks: MemoryChunk[] = [];
@@ -69,12 +67,10 @@ export function buildMemoryChunks({
   const components = uniqueStrings([
     ...(vf?.detected_components ?? []),
     ...(aiMetadata?.components ?? []),
-    ...(designDna?.components ?? []),
   ], 40);
   const patterns = uniqueStrings([
     ...(vf?.detected_patterns ?? []),
     ...(aiMetadata?.ui_patterns ?? []),
-    ...(designDna?.layout_patterns ?? []),
   ], 40);
   const styles = uniqueStrings([
     ...(vf?.detected_styles ?? []),
@@ -167,4 +163,3 @@ export function buildMemoryChunks({
 export function getMemoryChunkContentHash(chunk: MemoryChunk) {
   return contentHash(`${chunk.chunk_type}\n${chunk.chunk_label}\n${chunk.chunk_text}`);
 }
-

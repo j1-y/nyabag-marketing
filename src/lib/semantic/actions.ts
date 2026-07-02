@@ -11,7 +11,6 @@ import {
 import { parseBookmarkSearchQuery, type TemporalFilter } from "@/lib/bookmark-search/temporal-query";
 import type { BookmarkSearchPayload, BookmarkSearchRequest, BookmarkSearchResult } from "@/lib/bookmark-search/types";
 import { attachAiMetadataToBookmarks, getBookmarkAiMetadata } from "@/lib/bookmarks/ai-metadata";
-import { getDesignDnaForBookmark } from "@/lib/design-dna/data";
 import {
   createBookmarkDocumentEmbedding,
   createBookmarkQueryEmbedding,
@@ -26,7 +25,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { buildMemoryChunks, getMemoryChunkContentHash } from "@/lib/visual-memory/chunks";
 import { searchBookmarksHybridVisual } from "@/lib/visual-memory/hybrid-search";
-import type { ActionResult, Bookmark, BookmarkAiMetadata, DesignDna } from "@/lib/types";
+import type { ActionResult, Bookmark, BookmarkAiMetadata } from "@/lib/types";
 
 type BackfillPayload = {
   processed: number;
@@ -36,7 +35,6 @@ type BackfillPayload = {
 
 type SemanticBookmark = Bookmark & {
   ai_metadata?: BookmarkAiMetadata | null;
-  design_dna?: DesignDna | null;
 };
 
 type LexicalSearchRow = {
@@ -82,7 +80,6 @@ function unique(values: Array<string | null | undefined>, limit = 20) {
 
 function buildSemanticFields(bookmark: SemanticBookmark) {
   const ai = bookmark.ai_metadata;
-  const designDna = bookmark.design_dna;
 
   const aiDescription = bookmark.ai_description || ai?.design_context || bookmark.summary || null;
 
@@ -98,28 +95,12 @@ function buildSemanticFields(bookmark: SemanticBookmark) {
   const aiPatterns = unique([
     ...(bookmark.ai_patterns ?? []),
     ...(ai?.ui_patterns ?? []),
-    ...(designDna?.layout_patterns ?? []),
-    ...(designDna?.components ?? []),
   ]);
-
-  const aiDesignDna =
-    bookmark.ai_design_dna && Object.keys(bookmark.ai_design_dna).length > 0
-      ? bookmark.ai_design_dna
-      : {
-          page_type: ai?.page_type ?? null,
-          industry: ai?.industry ?? null,
-          visual_style: ai?.visual_style ?? [],
-          components: ai?.components ?? [],
-          layout_patterns: designDna?.layout_patterns ?? [],
-          colors: designDna?.colors?.slice(0, 10) ?? bookmark.palette,
-          typography: designDna?.typography?.slice(0, 10) ?? bookmark.fonts,
-        };
 
   return {
     ai_description: aiDescription,
     ai_tags: aiTags,
     ai_patterns: aiPatterns,
-    ai_design_dna: aiDesignDna,
   };
 }
 
@@ -146,15 +127,11 @@ async function getSemanticBookmark(
 
   if (error || !data) return null;
 
-  const [aiMetadata, designDna] = await Promise.all([
-    getBookmarkAiMetadata(supabase, bookmarkId, userId),
-    getDesignDnaForBookmark(supabase, bookmarkId, userId),
-  ]);
+  const aiMetadata = await getBookmarkAiMetadata(supabase, bookmarkId, userId);
 
   return {
     ...(data as Bookmark),
     ai_metadata: aiMetadata,
-    design_dna: designDna,
   };
 }
 
@@ -175,7 +152,6 @@ async function upsertMemoryChunksForBookmark(
   const chunks = buildMemoryChunks({
     bookmark,
     aiMetadata: bookmark.ai_metadata,
-    designDna: bookmark.design_dna,
     visualFacts,
   });
 

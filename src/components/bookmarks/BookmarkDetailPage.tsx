@@ -12,7 +12,6 @@ import { BookmarksProvider } from "@/hooks/useBookmarks";
 import { Button } from "@/components/ui/button";
 import { DeleteBookmarkDialog } from "./DeleteBookmarkDialog";
 import { BookmarkColorPalette } from "./BookmarkColorPalette";
-import { DesignDnaBookmarkPanel } from "@/components/design-dna/DesignDnaBookmarkPanel";
 
 function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
   const router = useRouter();
@@ -148,11 +147,6 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
             <ArrowUpRight size={14} />
           </a>
 
-          <DesignDnaBookmarkPanel
-            bookmarkId={currentBookmark.id}
-            initialDesignDna={bookmark.design_dna ?? null}
-          />
-
           <div className="detail-section detail-memory-section">
             <h2><Sparkles size={15} /> Design Memory</h2>
             {currentBookmark.ai_description || aiMetadata?.design_context ? (
@@ -190,7 +184,7 @@ function BookmarkDetailInner({ bookmark }: { bookmark: Bookmark }) {
 
           <div className="detail-section">
             <h2><Palette size={15} /> Extracted colors</h2>
-            <BookmarkColorPalette colors={currentBookmark.palette} designDna={bookmark.design_dna ?? null} />
+            <BookmarkColorPalette colors={currentBookmark.palette} />
           </div>
 
           <div className="detail-section">
