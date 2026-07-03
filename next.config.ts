@@ -4,13 +4,11 @@ const isDev = process.env.NODE_ENV === "development";
 
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""} https://platform.twitter.com https://connect.facebook.net;
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' data: blob: https://*.supabase.co https://*.ytimg.com https://i.vimeocdn.com https://*.twimg.com https://*.fbcdn.net https://*.licdn.com;
-  media-src 'self' blob: https://*.supabase.co;
-  frame-src https://www.youtube.com https://player.vimeo.com https://platform.twitter.com https://syndication.twitter.com https://www.facebook.com https://web.facebook.com https://www.linkedin.com;
-  connect-src 'self' https://*.supabase.co https://publish.twitter.com https://platform.twitter.com https://syndication.twitter.com https://cdn.syndication.twimg.com;
+  script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""} https://www.googletagmanager.com https://www.google-analytics.com;
+  style-src 'self' 'unsafe-inline';
+  font-src 'self';
+  img-src 'self' data: blob: https://www.google-analytics.com https://www.googletagmanager.com;
+  connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com;
   frame-ancestors 'none';
   form-action 'self';
   base-uri 'self';
@@ -19,7 +17,7 @@ const cspHeader = `
   .trim();
 
 const nextConfig: NextConfig = {
-  poweredByHeader: false, // Remove X-Powered-By: Next.js header
+  poweredByHeader: false,
 
   async headers() {
     return [

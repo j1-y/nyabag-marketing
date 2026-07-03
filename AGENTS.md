@@ -1,30 +1,27 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# Nyabag Marketing Agent Guide
 
-This version has breaking changes - APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+This repo is marketing-only.
 
-# Nyabag agent entrypoint
+Keep work scoped to public pages, SEO/blog content, legal/contact pages, public assets, the live early-access waitlist, and deployment metadata.
 
-Before making any change in this repo, read these files in order:
+Do not add authenticated app code here:
 
-1. `AGENTS.md`
-2. `.ai-memory/README.md`
-3. `.ai-memory/product.md`
-4. `.ai-memory/architecture.md`
-5. `.ai-memory/coding-rules.md`
-6. `.ai-memory/roadmap.md`
-7. `docs/NYABAG_TECHNICAL_DOCUMENTATION.md`
+- no `/app`, `/admin`, `/login`, `/signup`, or onboarding routes
+- no bookmark, canvas, folder, profile, extension, Telegram, processor, or admin features
+- no Supabase auth/cookie clients
+- no app schema beyond `early_access_signups`
 
-If the task touches a specific workflow, also read `.ai-memory/workflows.md` and `.ai-memory/feature-registry.md`.
+The product app lives in a separate Nyabag app repository.
 
-Maintain the memory layer as part of the change:
+## Main Files
 
-- New or changed route: update `.ai-memory/architecture.md`
-- New or changed feature surface: update `.ai-memory/feature-registry.md`
-- Workflow change: update `.ai-memory/workflows.md`
-- Architectural decision: append `.ai-memory/decision-log.md`
-- Roadmap change: update `.ai-memory/roadmap.md`
-- Major functional change: update `docs/NYABAG_TECHNICAL_DOCUMENTATION.md`
+- `src/app/page.tsx` and `src/app/LandingPage.tsx`
+- `src/app/about`, `src/app/blog`, `src/app/contact`, `src/app/privacy`, `src/app/terms`
+- `src/components/site/*`
+- `src/lib/blog.ts`
+- `src/lib/early-access-actions.ts`
+- `supabase/schema.sql`
 
-Use `CODEX_PROMPT.md` for short reusable task briefs instead of pasting large context dumps.
+## Verification
+
+Run `npm run lint` and `npm run build` after changes. For waitlist changes, verify invalid email handling, duplicate email handling, missing Supabase env handling, and optional Resend notification behavior.

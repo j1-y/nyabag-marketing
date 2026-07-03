@@ -1,12 +1,19 @@
 "use server";
 
 import { Resend } from "resend";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 import type { EarlyAccessFormState } from "@/lib/early-access-state";
-import type { ActionResult } from "@/lib/types";
-import { checkRateLimit, getClientIp, ipLimitKey } from "@/lib/rate-limit";
+
+type ActionResult<T> =
+  | {
+      success: true;
+      data: T;
+    }
+  | {
+      success: false;
+      error: string;
+    };
 
 type EarlyAccessResult = {
   duplicate: boolean;
@@ -21,20 +28,20 @@ function isUniqueViolation(error: { code?: string; message?: string }) {
   return error.code === "23505" || error.message?.toLowerCase().includes("duplicate");
 }
 
-async function createEarlyAccessClient() {
+function createEarlyAccessClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (url && serviceRoleKey) {
-    return createSupabaseClient(url, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+  if (!url || !serviceRoleKey) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
   }
 
-  return createServerSupabaseClient();
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 }
 
 async function sendEarlyAccessNotification(email: string, source: string) {
@@ -83,31 +90,22 @@ export async function submitEarlyAccessSignup(
     };
   }
 
-  const ip = await getClientIp();
-
-  const rate = await checkRateLimit({
-    scope: "early-access-signup",
-    identifier: ipLimitKey(ip),
-    limit: 5,
-    windowSeconds: 60 * 60,
-  });
-
-  if (!rate.allowed) {
+  let supabase: ReturnType<typeof createEarlyAccessClient>;
+  try {
+    supabase = createEarlyAccessClient();
+  } catch (error) {
+    console.error("[early-access] Supabase env vars missing:", error);
     return {
       success: false,
-      error: "Too many signup attempts. Please try again later.",
+      error: "Could not join early access. Please email hello@nyabag.com.",
     };
   }
 
-  const supabase = await createEarlyAccessClient();
   const { email, source } = parsed.data;
-
-  const { error } = await supabase
-    .from("early_access_signups")
-    .insert({
-      email,
-      source,
-    });
+  const { error } = await supabase.from("early_access_signups").insert({
+    email,
+    source,
+  });
 
   if (error) {
     if (isUniqueViolation(error)) {

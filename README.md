@@ -1,44 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nyabag Marketing
 
-## Getting Started
+This repository hosts only the public marketing site for Nyabag.
 
-First, run the development server:
+The authenticated product app, dashboard, canvas, bookmark search, browser extension APIs, Telegram capture flow, processors, and admin tooling belong in the separate Nyabag app repository.
+
+## Public Routes
+
+- `/` - landing page and early-access form
+- `/about` - product and creator overview
+- `/blog` and `/blog/[slug]` - SEO/blog content
+- `/contact` - support, feedback, and privacy contact paths
+- `/privacy` - privacy policy
+- `/terms` - terms of service
+- `/sitemap.xml`, `/robots.txt`, `/llms.txt` - crawl and AI-readable metadata
+
+## Environment
+
+Required for the live early-access form:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Optional email notification:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+RESEND_API_KEY=
+EARLY_ACCESS_TO_EMAIL=
+EARLY_ACCESS_FROM_EMAIL=
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The early-access action writes to `public.early_access_signups` using the Supabase service-role key on the server. It does not use Supabase auth, app cookies, admin tables, rate-limit tables, or product-app schema.
 
-## Learn More
+## Development
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+npm run dev
+npm run lint
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open `http://localhost:3000`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Database
 
-## Deploy on Vercel
+The marketing database surface is intentionally small:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `supabase/schema.sql`
+- `supabase/migrations/20260703_marketing_early_access.sql`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Do not add bookmark, canvas, auth, processor, extension, Telegram, or admin schema to this repository.
 
-## AI Development Context
+## Deployment
 
-For agent-facing project memory and task prompts, read:
-
-- [AGENTS.md](./AGENTS.md)
-- [.ai-memory/](./.ai-memory/)
-- [CODEX_PROMPT.md](./CODEX_PROMPT.md)
+Deploy as a standard Next.js app, with the environment variables above configured in the hosting provider. Google Analytics is loaded from the homepage and allowed by `next.config.ts` CSP.

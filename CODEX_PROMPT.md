@@ -1,24 +1,15 @@
-# Nyabag Codex Prompt
+# Nyabag Marketing Prompt
 
 Task:
-- <describe the change>
+- <describe the public marketing change>
 
-Context to read first:
-- `AGENTS.md`
-- `.ai-memory/README.md`
-- `.ai-memory/product.md`
-- `.ai-memory/architecture.md`
-- `.ai-memory/coding-rules.md`
-- `.ai-memory/roadmap.md`
-- `docs/NYABAG_TECHNICAL_DOCUMENTATION.md`
+Context:
+- This repo hosts only Nyabag marketing pages.
+- Keep public routes, SEO/blog content, legal/contact pages, assets, and the early-access waitlist.
+- Do not reintroduce the authenticated product app, admin tooling, processors, extension APIs, Telegram routes, or app Supabase schema.
 
 Acceptance Criteria:
-- <list the observable results>
-
-Memory Updates:
-- <architecture.md / feature-registry.md / decision-log.md / roadmap.md / docs>
-
-Notes:
-- Keep the prompt short.
-- Do not paste the full repo history.
-- Update the matching memory file whenever the task changes the project surface.
+- `npm run lint`
+- `npm run build`
+- Public routes still compile and render.
+- No removed app routes are reintroduced.

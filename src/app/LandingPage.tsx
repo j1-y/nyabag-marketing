@@ -31,7 +31,7 @@ const SchemaOrg = () => (
         },
         featureList: [
           "Visual bookmark moodboard",
-          "Automatic website screenshots via Microlink",
+          "Automatic website screenshots",
           "Color palette extraction",
           "Font detection",
           "Metadata scraping",
@@ -827,7 +827,7 @@ export function LandingPage() {
                     <div className="lp-tab-text">
                       <h3 className="lp-tab-h3">See it, not just the URL.</h3>
                       <p className="lp-tab-p">
-                        Nyabag uses Microlink to capture a full-page screenshot of every saved website. So instead of a dead link or a forgotten domain, you see exactly what you saved — even if the site changes later.
+                        Nyabag captures a full-page screenshot of every saved website. So instead of a dead link or a forgotten domain, you see exactly what you saved - even if the site changes later.
                       </p>
                     </div>
                     <div className="lp-tab-visual" aria-hidden="true">

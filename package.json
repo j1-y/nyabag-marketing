@@ -1,66 +1,37 @@
 {
-  "name": "nyabag",
+  "name": "nyabag-marketing",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node scripts/evaluate-bookmark-search.mjs && tsx scripts/evaluate-temporal-search.ts",
-    "lint": "eslint",
-    "check:colors": "node scripts/check-colors.mjs",
-    "check:design-system": "node scripts/check-design-system.mjs",
-    "check:bookmark-processor": "node scripts/check-bookmark-processor.mjs",
-    "telegram:set-webhook": "node scripts/set-telegram-webhook.mjs",
-    "telegram:check-webhook": "node scripts/check-telegram-webhook.mjs"
+    "lint": "eslint"
   },
   "dependencies": {
-    "@google/genai": "^2.8.0",
-    "@radix-ui/react-dialog": "^1.1.15",
-    "@radix-ui/react-dropdown-menu": "^2.1.16",
-    "@radix-ui/react-label": "^2.1.8",
-    "@radix-ui/react-popover": "^1.1.15",
-    "@radix-ui/react-separator": "^1.1.8",
-    "@radix-ui/react-slot": "^1.2.4",
-    "@radix-ui/react-tabs": "^1.1.13",
-    "@radix-ui/react-tooltip": "^1.2.8",
-    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
-    "@tiptap/extension-link": "^3.25.0",
-    "@tiptap/extension-placeholder": "^3.25.0",
-    "@tiptap/extension-task-item": "^3.25.0",
-    "@tiptap/extension-task-list": "^3.25.0",
-    "@tiptap/extension-underline": "^3.25.0",
-    "@tiptap/react": "^3.25.0",
-    "@tiptap/starter-kit": "^3.25.0",
-    "cheerio": "^1.2.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "culori": "^4.0.2",
-    "lucide-react": "^1.17.0",
-    "luxon": "^3.7.2",
-    "next": "16.2.6",
-    "postcss-safe-parser": "^7.0.1",
+    "next": "16.2.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.12.4",
     "sharp": "^0.34.5",
-    "tailwind-merge": "^3.6.0",
-    "zod": "^4.4.3",
-    "zustand": "^5.0.14"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.0",
-    "@types/luxon": "^3.7.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.5.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.2.10",
     "postcss": "^8.5.14",
     "tailwindcss": "^4.3.0",
-    "tsx": "^4.22.4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.16"
+    }
   }
 }
