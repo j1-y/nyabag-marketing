@@ -38,7 +38,7 @@ export function SiteFooter() {
           <span className={styles.spacer}>
           &copy; {new Date().getFullYear()} Nyabag. Made with {"\u2764\uFE0F"} by{" "}
           <a
-            href="https://www.linkedin.com/in/jayanzth"
+            href="https://www.linkedin.com/in/thejayanthkumar"
             target="_blank"
             rel="noopener noreferrer"
             className={styles.footerCreditLink}
