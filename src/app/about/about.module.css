@@ -1,7 +1,7 @@
 .root {
-  --about-bg: var(--text);
-  --about-bg-1: var(--text);
-  --about-bg-2: var(--text);
+  --about-bg: #08090a;
+  --about-bg-1: #0f1010;
+  --about-bg-2: #161717;
   --about-bg-3: var(--surface-inverse-muted);
   --about-border: var(--surface-inverse-muted);
   --about-border-2: var(--surface-inverse-muted);
@@ -83,11 +83,13 @@
 .title {
   max-width: 840px;
   color: var(--about-white);
-  font-size: clamp(42px, 7vw, 86px);
-  font-weight: 760;
-  letter-spacing: -0.055em;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(38px, 6.5vw, 80px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
   line-height: 0.98;
   margin: 0 0 28px;
+  font-style: italic;
 }
 
 .subtitle {
@@ -155,9 +157,10 @@
 .sectionTitle {
   max-width: 760px;
   color: var(--about-white);
-  font-size: clamp(30px, 4.4vw, 54px);
-  font-weight: 720;
-  letter-spacing: -0.045em;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(28px, 4vw, 50px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
   line-height: 1.05;
   margin: 0 0 24px;
 }
@@ -252,7 +255,8 @@
 .principleCard h3,
 .faqItem h3 {
   color: var(--about-white);
-  letter-spacing: -0.03em;
+  font-family: var(--font-heading), sans-serif;
+  letter-spacing: -0.02em;
   line-height: 1.1;
   margin: 0;
 }
@@ -413,9 +417,10 @@
 
 .ctaInner h2 {
   color: var(--about-white);
-  font-size: clamp(32px, 5vw, 58px);
-  font-weight: 740;
-  letter-spacing: -0.05em;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(30px, 4.5vw, 54px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
   line-height: 1.04;
   margin: 0 auto 18px;
   max-width: 720px;

@@ -1,7 +1,7 @@
 .root {
-  --contact-bg: var(--text);
-  --contact-bg-1: var(--text);
-  --contact-bg-2: var(--text);
+  --contact-bg: #08090a;
+  --contact-bg-1: #0f1010;
+  --contact-bg-2: #161717;
   --contact-border: var(--surface-inverse-muted);
   --contact-border-2: var(--surface-inverse-muted);
   --contact-text: var(--text-inverse);
@@ -78,11 +78,13 @@
 .title {
   max-width: 840px;
   color: var(--contact-white);
-  font-size: clamp(42px, 7vw, 86px);
-  font-weight: 760;
-  letter-spacing: -0.055em;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(38px, 6.5vw, 80px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
   line-height: 0.98;
   margin: 0 0 28px;
+  font-style: italic;
 }
 
 .subtitle,

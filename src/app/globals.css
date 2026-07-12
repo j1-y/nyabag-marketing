@@ -28,6 +28,7 @@
   --muted-foreground: hsl(240 4% 65%);
 
   --font: var(--font-inter, Inter, system-ui, sans-serif);
+  --font-heading: var(--font-bricolage, 'Bricolage Grotesque', system-ui, sans-serif);
 }
 
 *,

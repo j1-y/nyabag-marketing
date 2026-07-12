@@ -223,7 +223,7 @@ function BookmarkCard({
 }
 
 /* ─────────────────────────────────────────
-   FeatureTab panel
+   FeatureTab panel — auto-cycle with progress
 ───────────────────────────────────────── */
 function FeatureTabs({
   tabs,
@@ -231,6 +231,24 @@ function FeatureTabs({
   tabs: { label: string; content: React.ReactNode }[];
 }) {
   const [active, setActive] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const tabsLen = tabs.length;
+  const DURATION = 5000;
+
+  useEffect(() => {
+    setProgress(0);
+    const startTime = Date.now();
+    const id = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min((elapsed / DURATION) * 100, 100);
+      setProgress(pct);
+      if (elapsed >= DURATION) {
+        setActive((prev) => (prev + 1) % tabsLen);
+      }
+    }, 30);
+    return () => clearInterval(id);
+  }, [active, tabsLen]);
+
   return (
     <div className="lp-ftabs">
       <div className="lp-ftab-list" role="tablist">
@@ -242,7 +260,13 @@ function FeatureTabs({
             className={`lp-ftab-btn${i === active ? " active" : ""}`}
             onClick={() => setActive(i)}
           >
-            {t.label}
+            <span className="lp-ftab-label">
+              {t.label}
+              <span
+                className="lp-ftab-progress"
+                style={{ width: i === active ? `${progress}%` : "0%" }}
+              />
+            </span>
           </button>
         ))}
       </div>
@@ -516,6 +540,27 @@ function FadeSection({ children, className = "" }: { children: React.ReactNode; 
 }
 
 /* ─────────────────────────────────────────
+   RotatingWord — cycles the hero payoff word
+   Shares the shimmer treatment with the static
+   headline line so the whole H1 reads as one
+   cohesive animated surface.
+───────────────────────────────────────── */
+const HERO_WORDS = ["design.", "inspiration.", "craft.", "thinking."];
+
+function RotatingWord() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setI((w) => (w + 1) % HERO_WORDS.length), 2600);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <em className="lp-rotating-word" key={i}>
+      {HERO_WORDS[i]}
+    </em>
+  );
+}
+
+/* ─────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────── */
 function EarlyAccessForm({
@@ -645,8 +690,8 @@ export function LandingPage() {
             </div>
 
             <h1 id="hero-headline" className="lp-hero-h1">
-              Your second memory<br />
-              <em>for design.</em>
+              <span className="lp-hero-shimmer-line">Your second memory</span><br />
+              for <RotatingWord />
             </h1>
 
             <p className="lp-hero-sub">
@@ -1270,7 +1315,7 @@ export function LandingPage() {
    (move to landing.module.css if preferred)
 ───────────────────────────────────────── */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Inter+Display:ital,wght@0,300;0,400;0,500;0,600;0,700;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Inter:wght@300;400;500&display=swap');
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -1344,18 +1389,55 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 .lp-hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(ellipse 90% 60% at 50% 0%,black 30%,transparent 100%);-webkit-mask-image:radial-gradient(ellipse 90% 60% at 50% 0%,black 30%,transparent 100%)}
 .lp-hero-radial{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:500px;background:radial-gradient(ellipse,rgba(255,255,255,0.04) 0%,transparent 65%)}
 .lp-hero-content{position:relative;z-index:1;text-align:center;max-width:800px;margin:0 auto;animation:lp-fade-up .9s ease both}
-.lp-badge{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:100px;border:1px solid rgba(255,255,255,0.1);font-size:12px;color:var(--muted);margin-bottom:36px;letter-spacing:.02em}
+.lp-badge{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:100px;border:1px solid rgba(255,255,255,0.16);font-size:12px;color:#a8a8a8;margin-bottom:24px;letter-spacing:.02em}
 .lp-badge-dot{width:5px;height:5px;border-radius:50%;background:#4ade80;flex-shrink:0;box-shadow:0 0 6px #4ade80}
-.lp-hero-h1{font-family:'Inter Display',sans-serif;font-size:clamp(44px,6.5vw,84px);font-weight:700;line-height:1.0;letter-spacing:-0.045em;color:var(--white);margin-bottom:24px}
-.lp-hero-h1 em{font-style:italic;color:var(--muted)}
-.lp-hero-sub{font-size:clamp(15px,1.4vw,18px);color:var(--muted);max-width:540px;margin:0 auto 30px;line-height:1.7}
+
+/* HERO HEADLINE — shimmer surface shared by both lines for a cohesive feel.
+   Static line shimmers slowly + subtly; rotating word shimmers a touch
+   brighter/faster and gets a fresh entrance animation on every word swap. */
+.lp-hero-h1{
+  font-family:'Bricolage Grotesque',system-ui,sans-serif;
+  font-size:clamp(38px,5.2vw,68px);
+  font-weight:700;
+  line-height:1.08;
+  letter-spacing:-0.03em;
+  margin-bottom:22px;
+}
+.lp-hero-shimmer-line,
+.lp-rotating-word{
+  font-style:normal;
+  display:inline-block;
+  background:linear-gradient(90deg,#888 0%,#fff 50%,#888 100%);
+  background-size:200% auto;
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+.lp-hero-shimmer-line{
+  animation:lp-text-shimmer 7s ease-in-out infinite;
+}
+.lp-rotating-word{
+  animation:
+    lp-text-shimmer 4s ease-in-out infinite,
+    lp-word-in .5s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes lp-text-shimmer{
+  0%{background-position:200% center}
+  100%{background-position:-200% center}
+}
+@keyframes lp-word-in{
+  from{opacity:0;transform:translateY(10px);filter:blur(4px)}
+  to{opacity:1;transform:none;filter:blur(0)}
+}
+
+.lp-hero-sub{font-size:clamp(15px,1.4vw,18px);color:var(--muted);max-width:540px;margin:0 auto 26px;line-height:1.7}
 .lp-hero-actions{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
 /* EARLY ACCESS FORM */
 .lp-ea-form{width:min(100%,560px);margin:0 auto 18px}
 .lp-ea-form-cta{margin-bottom:0}
 .lp-ea-row{display:flex;align-items:center;gap:8px;padding:6px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.13);border-radius:var(--r12);box-shadow:0 18px 60px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05)}
 .lp-ea-input{min-width:0;flex:1;height:auto;background:transparent;border:0;outline:0;color:var(--white);font:inherit;font-size:14.5px;padding:0px 14px}
-.lp-ea-input::placeholder{color:#565656}
+.lp-ea-input::placeholder{color:#7a7a7a}
 .lp-ea-input:disabled{opacity:.72}
 .lp-ea-submit{height:46px;white-space:nowrap;border:0;border-radius:var(--r8);background:var(--white);color:#08090a;padding:0 18px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s,transform .2s}
 .lp-ea-submit:hover:not(:disabled){opacity:.9;transform:translateY(-1px)}
@@ -1396,7 +1478,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 .lp-dash-switch.active{background:#050506;color:#f6f6f6;box-shadow:0 8px 22px rgba(0,0,0,.36)}
 .lp-dash-switch-icon{font-size:11px}
 .lp-dash-main{position:relative;display:flex;flex-direction:column;align-items:center;min-height:594px;padding:88px 28px 42px;overflow:hidden}
-.lp-dash-title{margin:28px 0 50px;font-family:'Inter Display',sans-serif;font-size:clamp(32px,4.3vw,60px);font-weight:600;letter-spacing:-.055em;line-height:1;color:#f7f7f7;text-align:center;text-shadow:0 14px 52px rgba(0,0,0,.32)}
+.lp-dash-title{margin:28px 0 50px;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:clamp(32px,4.3vw,60px);font-weight:700;letter-spacing:-0.03em;line-height:1;color:#f7f7f7;text-align:center;text-shadow:0 14px 52px rgba(0,0,0,.32)}
 .lp-dash-actions{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:54px}
 .lp-rainbow-button,.lp-import-button{position:relative;display:inline-flex;align-items:center;justify-content:center;height:42px;border:0;border-radius:9px;padding:0 19px;font:inherit;font-size:13px;font-weight:600;letter-spacing:-.01em;color:#f7f7f7;background:#111214;cursor:default}
 .lp-rainbow-button{isolation:isolate;box-shadow:0 18px 44px rgba(0,0,0,.38)}
@@ -1466,11 +1548,11 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 .lp-section-alt{background:var(--bg1)}
 .lp-container{max-width:1080px;margin:0 auto;padding:0 40px}
 .lp-section-label{max-width:1080px;margin:0 auto 56px;padding:0 40px;display:flex;align-items:center;gap:12px}
-.lp-section-num{font-family:'Inter Display',sans-serif;font-size:12px;color:var(--dim);letter-spacing:.08em}
-.lp-section-slug{font-family:'Inter Display',sans-serif;font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.lp-section-num{font-size:12px;color:var(--dim);letter-spacing:.06em}
+.lp-section-slug{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 .lp-section-eyebrow{font-size:11.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:18px}
 .lp-section-intro{max-width:1080px;margin:0 auto 56px;padding:0 40px}
-.lp-section-h2{font-family:'Inter Display',sans-serif;font-size:clamp(28px,3.8vw,48px);font-weight:600;letter-spacing:-0.035em;line-height:1.1;color:var(--white);margin-bottom:16px}
+.lp-section-h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:clamp(28px,3.8vw,48px);font-weight:700;letter-spacing:-0.03em;line-height:1.1;color:var(--white);margin-bottom:16px}
 .lp-section-body{font-size:16px;color:var(--muted);max-width:440px;line-height:1.7}
 
 /* FEATURE TABS */
@@ -1481,14 +1563,16 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 .lp-ftab-btn::after{content:'';position:absolute;left:18px;right:18px;bottom:0;height:1px;background:transparent;transition:background .2s}
 .lp-ftab-btn:hover{color:var(--text)}
 .lp-ftab-btn.active{color:var(--white)}
-.lp-ftab-btn.active::after{background:var(--white)}
+.lp-ftab-btn.active::after{background:transparent}
+.lp-ftab-label{position:relative;display:inline-block}
+.lp-ftab-progress{position:absolute;left:0;bottom:-11px;height:1.5px;background:var(--white);transition:none;pointer-events:none}
 
 /* TAB CONTENT */
 .lp-ftab-panel{animation:lp-fade-tab .3s ease}
 .lp-tab-content{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
 .lp-tab-content-canvas{align-items:stretch}
 .lp-tab-text{}
-.lp-tab-h3{font-family:'Inter Display',sans-serif;font-size:22px;font-weight:600;letter-spacing:-0.03em;color:var(--white);margin-bottom:12px}
+.lp-tab-h3{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.025em;color:var(--white);margin-bottom:12px}
 .lp-tab-p{font-size:14.5px;color:var(--muted);line-height:1.7}
 .lp-feature-list{margin-top:20px;display:flex;flex-direction:column;gap:8px;list-style:none}
 .lp-feature-list li{font-size:13.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
@@ -1599,19 +1683,19 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Inter Display',
 
 /* DIFFERENTIATION */
 .lp-diff-section{padding:100px 0;border-top:1px solid var(--border)}
-.lp-diff-h2{font-family:'Inter Display',sans-serif;font-size:clamp(28px,3.5vw,44px);font-weight:600;letter-spacing:-0.035em;color:var(--white);margin-bottom:14px}
+.lp-diff-h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:clamp(28px,3.5vw,44px);font-weight:700;letter-spacing:-0.03em;color:var(--white);margin-bottom:14px}
 .lp-diff-sub{font-size:16px;color:var(--muted);max-width:480px;margin-bottom:60px;line-height:1.7}
 .lp-diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r12);overflow:hidden}
 .lp-diff-item{background:var(--bg1);padding:36px 32px}
 .lp-diff-old{font-size:12px;color:var(--dim);text-decoration:line-through;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-.lp-diff-new{font-family:'Inter Display',sans-serif;font-size:20px;font-weight:600;color:var(--white);letter-spacing:-0.03em;margin-bottom:12px}
+.lp-diff-new{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:20px;font-weight:700;color:var(--white);letter-spacing:-0.025em;margin-bottom:12px}
 .lp-diff-body{font-size:13.5px;color:var(--muted);line-height:1.65}
 
 /* CTA */
 .lp-cta-section{padding:140px 0;border-top:1px solid var(--border);text-align:center;position:relative;overflow:hidden}
 .lp-cta-inner{position:relative}
 .lp-cta-glow{position:absolute;top:-300px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(ellipse,rgba(255,255,255,.04) 0%,transparent 65%);pointer-events:none}
-.lp-cta-h2{font-family:'Inter Display',sans-serif;font-size:clamp(32px,5vw,60px);font-weight:700;letter-spacing:-0.04em;color:var(--white);margin-bottom:18px;line-height:1.05}
+.lp-cta-h2{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:clamp(32px,5vw,60px);font-weight:700;letter-spacing:-0.03em;color:var(--white);margin-bottom:18px;line-height:1.05}
 .lp-cta-body{font-size:16px;color:var(--muted);max-width:460px;margin:0 auto 44px;line-height:1.7}
 .lp-cta-actions{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
 

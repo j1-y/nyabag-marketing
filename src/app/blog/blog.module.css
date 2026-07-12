@@ -1,7 +1,7 @@
 .root {
-  --blog-bg: var(--text);
-  --blog-bg-1: var(--text);
-  --blog-bg-2: var(--surface-inverse-muted);
+  --blog-bg: #08090a;
+  --blog-bg-1: #0f1010;
+  --blog-bg-2: #161717;
   --blog-bg-3: var(--surface-inverse-muted);
   --blog-border: var(--surface-inverse-muted);
   --blog-border-light: var(--surface-inverse-muted);
@@ -75,21 +75,25 @@
 .title {
   max-width: 760px;
   color: var(--blog-white);
-  font-size: clamp(44px, 7vw, 84px);
-  font-weight: 750;
-  letter-spacing: -0.055em;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(40px, 6.5vw, 78px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
   line-height: 0.98;
   margin: 0 0 28px;
+  font-style: italic;
 }
 
 .articleTitle {
   max-width: 900px;
   color: var(--blog-white);
-  font-size: clamp(40px, 6vw, 76px);
-  font-weight: 750;
-  letter-spacing: -0.052em;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(36px, 5.5vw, 72px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: 1;
   margin: 0 0 28px;
+  font-style: italic;
 }
 
 .subtitle,

@@ -73,7 +73,7 @@
   padding: 60px 40px 100px;
   background:
     linear-gradient(180deg, hsl(var(--text-inverse-token) / 0.018), transparent 34%),
-    var(--text);
+    #08090a;
 }
 
 .footer::before {
