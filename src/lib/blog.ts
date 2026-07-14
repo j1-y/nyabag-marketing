@@ -100,7 +100,7 @@ export const blogPosts: BlogPost[] = [
     author: "Jayanth Kumar",
     authorBio:
       "Jayanth Kumar is a designer-builder working on Nyabag, a visual bookmark and notes workspace for designers. He writes about practical design workflows, indie maker tools, and the messy gap between inspiration, execution, and shipping.",
-    authorSameAs: "https://www.linkedin.com/in/jayanzth",
+    authorSameAs: "https://www.linkedin.com/in/thejayanthkumar",
     readTime: "18 min read",
     category: "Design Tools",
     keywords: [
@@ -1043,7 +1043,7 @@ export const blogPosts: BlogPost[] = [
     author: "Jayanth Kumar",
     authorBio:
       "Jayanth Kumar is the founder of Nyabag, a visual memory system for designers. He writes about design inspiration workflows, visual bookmarking, UI research, and building systems that make references reusable.",
-    authorSameAs: "https://www.linkedin.com/in/jayanzth",
+    authorSameAs: "https://www.linkedin.com/in/thejayanthkumar",
     includeFaqSchema: false,
     readTime: "8 min read",
     category: "Design Inspiration",
@@ -1431,7 +1431,7 @@ export const blogPosts: BlogPost[] = [
     author: "Jayanth Kumar",
     authorBio:
       "Jayanth Kumar is the founder of Nyabag, a visual memory system for designers. He writes about design inspiration workflows, visual bookmarking, UI research, and building systems that make creative references easier to reuse.",
-    authorSameAs: "https://www.linkedin.com/in/jayanzth",
+    authorSameAs: "https://www.linkedin.com/in/thejayanthkumar",
     includeFaqSchema: true,
     readTime: "16 min read",
     category: "Design Tools",
