@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Bricolage_Grotesque } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 
@@ -33,6 +34,11 @@ export default function RootLayout({
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <body className={`${inter.variable} ${bricolageGrotesque.variable}`}>
         {children}
+        <Script
+          src="https://analytics.ahrefs.com/analytics.js"
+          data-key="vvLaRaosysObAPkI/BX/Dw"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
