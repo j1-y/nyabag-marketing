@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { blogPosts, getBlogUrl, SITE_URL } from "@/lib/blog";
+import { BlogIndexContent } from "./BlogIndexContent";
 import styles from "./blog.module.css";
 
 export const metadata: Metadata = {
@@ -18,14 +19,6 @@ export const metadata: Metadata = {
       "Design inspiration, visual memory, UI research, and creative reference workflows from Nyabag.",
     url: getBlogUrl(),
     siteName: "Nyabag",
-    images: [
-      {
-        url: "/opengraph-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Nyabag Blog",
-      },
-    ],
     type: "website",
   },
   twitter: {
@@ -33,7 +26,6 @@ export const metadata: Metadata = {
     title: "Nyabag Blog",
     description:
       "Design inspiration, visual memory, UI research, and creative reference workflows from Nyabag.",
-    images: ["/opengraph-image.png"],
   },
 };
 
@@ -54,8 +46,9 @@ function BlogCta() {
 }
 
 export default function BlogIndexPage() {
-  const [featuredPost, ...otherPosts] = blogPosts;
-
+  const sortedPosts = [...blogPosts].sort(
+    (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+  );
   const collectionJsonLd = {
     "@context": "https://schema.org",
     "@type": "Blog",
@@ -67,7 +60,7 @@ export default function BlogIndexPage() {
       url: SITE_URL,
       logo: `${SITE_URL}/assets/Nyabag-Dark-Logo.svg`,
     },
-    blogPost: blogPosts.map((post) => ({
+    blogPost: sortedPosts.map((post) => ({
       "@type": "BlogPosting",
       headline: post.title,
       url: getBlogUrl(post.slug),
@@ -90,62 +83,24 @@ export default function BlogIndexPage() {
 
       <header className={styles.hero}>
         <div className={styles.container}>
-          <p className={styles.eyebrow}>Nyabag Blog</p>
-          <h1 className={styles.title}>Design inspiration that stays useful.</h1>
-          <p className={styles.subtitle}>
-            Practical guides on visual memory, UI research, moodboards, reference libraries,
-            and the workflows designers use to find the right idea again.
-          </p>
+          <h1 className={styles.title}>Blog</h1>
         </div>
       </header>
 
       <main className={styles.section}>
         <div className={styles.container}>
-          <div className={styles.postGrid}>
-            <Link href={`/blog/${featuredPost.slug}`} className={styles.postCard}>
-              <div>
-                <p className={styles.cardCategory}>{featuredPost.category}</p>
-                <h2 className={styles.cardTitle}>{featuredPost.title}</h2>
-                <p className={styles.cardExcerpt}>{featuredPost.excerpt}</p>
-              </div>
-              <div className={styles.cardFooter}>
-                <span>{featuredPost.author}</span>
-                <span>{featuredPost.readTime}</span>
-              </div>
-            </Link>
-
-            <aside className={styles.sideCard}>
-              <h2>For designers building a visual memory</h2>
-              <p>
-                The Nyabag blog covers design inspiration apps, UI research workflows,
-                visual bookmarking, reference organization, and clean systems for remembering
-                what inspired you.
-              </p>
-              <div className={styles.tagList}>
-                {featuredPost.keywords.slice(0, 7).map((keyword) => (
-                  <span key={keyword} className={styles.tag}>{keyword}</span>
-                ))}
-              </div>
-            </aside>
-          </div>
-
-          {otherPosts.length > 0 && (
-            <div className={styles.morePosts}>
-              {otherPosts.map((post) => (
-                <Link key={post.slug} href={`/blog/${post.slug}`} className={styles.postCard}>
-                  <div>
-                    <p className={styles.cardCategory}>{post.category}</p>
-                    <h2 className={styles.cardTitle}>{post.title}</h2>
-                    <p className={styles.cardExcerpt}>{post.excerpt}</p>
-                  </div>
-                  <div className={styles.cardFooter}>
-                    <span>{post.author}</span>
-                    <span>{post.readTime}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          <BlogIndexContent
+            posts={sortedPosts.map(({ slug, title, excerpt, publishedAt, author, category, bannerImage, bannerAlt }) => ({
+              slug,
+              title,
+              excerpt,
+              publishedAt,
+              author,
+              category,
+              bannerImage,
+              bannerAlt,
+            }))}
+          />
         </div>
       </main>
       <BlogCta />

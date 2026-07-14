@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/site/SiteFooter";
@@ -35,8 +36,10 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     description: post.description,
     keywords: post.keywords,
     robots:
-      post.slug === "how-to-organize-design-inspiration"
-        ? {
+      post.slug === "visual-bookmark-manager-for-designers"
+        ? "max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+        : post.slug === "how-to-organize-design-inspiration"
+          ? {
             googleBot: {
               index: true,
               follow: true,
@@ -45,7 +48,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
               "max-video-preview": -1,
             },
           }
-        : undefined,
+          : undefined,
     alternates: {
       canonical: url,
     },
@@ -57,21 +60,12 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt,
       authors: [post.author],
-      images: [
-        {
-          url: "/opengraph-image.png",
-          width: 1200,
-          height: 630,
-          alt: post.title,
-        },
-      ],
       type: "article",
     },
     twitter: {
       card: "summary_large_image",
       title: post.ogTitle ?? post.title,
       description: post.ogDescription ?? post.description,
-      images: ["/opengraph-image.png"],
     },
   };
 }
@@ -132,16 +126,21 @@ function renderInline(content: BlogInline[], keyPrefix: string) {
 }
 
 function renderBlock(block: BlogContentBlock, index: number) {
+  if (block.type === "heading") {
+    return <h3 key={`heading-${index}`} id={block.id}>{block.content}</h3>;
+  }
+
   if (block.type === "paragraph") {
     return <p key={`paragraph-${index}`}>{renderInline(block.content, `paragraph-${index}`)}</p>;
   }
 
+  const ListTag = block.ordered ? "ol" : "ul";
   return (
-    <ul key={`list-${index}`} className={styles.articleList}>
+    <ListTag key={`list-${index}`} className={styles.articleList}>
       {block.items.map((item, itemIndex) => (
         <li key={`list-${index}-${itemIndex}`}>{renderInline(item, `list-${index}-${itemIndex}`)}</li>
       ))}
-    </ul>
+    </ListTag>
   );
 }
 
@@ -158,7 +157,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       "@id": `${articleUrl}#article`,
       headline: post.title,
       description: post.description,
-      image: [`${SITE_URL}/opengraph-image.png`],
       datePublished: post.publishedAt,
       dateModified: post.updatedAt,
       inLanguage: "en-IN",
@@ -253,7 +251,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <Link href="/blog" className={styles.backLink}>Blog</Link>
           <p className={styles.eyebrow}>{post.category}</p>
           <h1 className={styles.articleTitle}>{post.title}</h1>
-          <p className={styles.articleDescription}>{post.description}</p>
+          <p className={styles.articleDescription}>{post.dek ?? post.description}</p>
           <div className={styles.metaRow}>
             <span>By {post.author}</span>
             <span className={styles.dot} aria-hidden="true" />
@@ -263,6 +261,17 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <span className={styles.dot} aria-hidden="true" />
             <span>{post.readTime}</span>
           </div>
+          {post.bannerImage && (
+            <div className={styles.articleBanner}>
+              <Image
+                src={post.bannerImage}
+                alt={post.bannerAlt ?? ""}
+                fill
+                priority
+                sizes="(max-width: 700px) 100vw, 1100px"
+              />
+            </div>
+          )}
         </div>
       </header>
 
@@ -327,7 +336,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
             <section id="faq">
               <p className={styles.sectionEyebrow}>FAQ</p>
-              <h2>Design inspiration app questions</h2>
+              <h2>{post.faqTitle ?? "Design inspiration app questions"}</h2>
               <div className={styles.faqList}>
                 {post.faqs.map((faq) => (
                   <div key={faq.question} className={styles.faq}>

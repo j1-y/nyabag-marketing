@@ -38,6 +38,13 @@ export type BlogContentBlock =
   | {
       type: "list";
       items: BlogInline[][];
+      ordered?: boolean;
+    }
+  | {
+      type: "heading";
+      level: 3;
+      id?: string;
+      content: string;
     };
 
 export type BlogComparison = {
@@ -52,9 +59,12 @@ export type BlogPost = {
   title: string;
   metaTitle?: string;
   description: string;
+  dek?: string;
   ogTitle?: string;
   ogDescription?: string;
   excerpt: string;
+  bannerImage?: string;
+  bannerAlt?: string;
   publishedAt: string;
   updatedAt: string;
   author: string;
@@ -68,6 +78,7 @@ export type BlogPost = {
   comparison?: BlogComparison;
   sections: BlogSection[];
   faqs: BlogFaq[];
+  faqTitle?: string;
 };
 
 export const blogPosts: BlogPost[] = [
@@ -82,11 +93,13 @@ export const blogPosts: BlogPost[] = [
       "Compare free browser-based graphic design tools by workflow, free-tier limits, export options, and where each tool fits in a designer's stack.",
     excerpt:
       "A practical comparison of 14 browser-based design tools, from all-rounders and UI tools to editors, infographic makers, marketing platforms, and Nyabag's reference-capture layer.",
+    bannerImage: "/blog/banners/free-online-design-tools.webp",
+    bannerAlt: "Abstract grid of modular design tools and alignment guides",
     publishedAt: "2026-06-03",
     updatedAt: "2026-06-03",
-    author: "Jayanth Kumar R V",
+    author: "Jayanth Kumar",
     authorBio:
-      "Jayanth Kumar R V is a designer-builder working on Nyabag, a visual bookmark and notes workspace for designers. He writes about practical design workflows, indie maker tools, and the messy gap between inspiration, execution, and shipping.",
+      "Jayanth Kumar is a designer-builder working on Nyabag, a visual bookmark and notes workspace for designers. He writes about practical design workflows, indie maker tools, and the messy gap between inspiration, execution, and shipping.",
     authorSameAs: "https://www.linkedin.com/in/jayanzth",
     readTime: "18 min read",
     category: "Design Tools",
@@ -833,9 +846,11 @@ export const blogPosts: BlogPost[] = [
       "A practical comparison of the best design inspiration apps for designers in 2026, including Nyabag, Mobbin, Dribbble, Behance, and Awwwards.",
     excerpt:
       "Designers do not just need more inspiration. They need a way to save, remember, compare, and rediscover the right reference when it matters.",
+    bannerImage: "/blog/banners/best-design-inspiration-apps.webp",
+    bannerAlt: "Abstract orbit of curated visual references around a workspace",
     publishedAt: "2026-06-01",
     updatedAt: "2026-06-01",
-    author: "Nyabag Editorial",
+    author: "Jayanth Kumar",
     readTime: "9 min read",
     category: "Design Inspiration",
     keywords: [
@@ -1021,6 +1036,8 @@ export const blogPosts: BlogPost[] = [
       "A practical workflow for organizing websites, screenshots, UI references, notes, colors, and fonts so your saved inspiration stays reusable.",
     excerpt:
       "Designers do not need more saved references. They need a system that makes screenshots, websites, UI patterns, notes, colors, and fonts easy to find again when the work begins.",
+    bannerImage: "/blog/banners/organize-design-inspiration.webp",
+    bannerAlt: "Scattered visual references converging into an organized archive",
     publishedAt: "2026-06-02",
     updatedAt: "2026-06-02",
     author: "Jayanth Kumar",
@@ -1393,6 +1410,218 @@ export const blogPosts: BlogPost[] = [
         answer:
           "A mood board is usually project-specific and helps explore direction, feeling, and style. A design reference library is broader and long-lived. It stores reusable screenshots, websites, UI patterns, notes, and ideas that you may return to across many projects.",
       },
+    ],
+  },
+  {
+    slug: "visual-bookmark-manager-for-designers",
+    title: "Best Visual Bookmark Managers for Designers in 2026",
+    metaTitle: "Best Visual Bookmark Managers for Designers in 2026 | Nyabag",
+    description:
+      "Explore the best visual bookmark managers for designers to save websites, screenshots, UI references, notes, colors, and design inspiration.",
+    dek: "Designers do not just save links. They save websites, screenshots, UI patterns, palettes, typography, product flows, and ideas. Here are the best visual bookmark managers to keep those references easy to find later.",
+    ogTitle: "Best Visual Bookmark Managers for Designers in 2026",
+    ogDescription:
+      "Compare ten visual bookmarking tools for saving websites, screenshots, UI references, notes, and design inspiration.",
+    excerpt:
+      "A practical comparison of ten visual bookmark managers for designers, from searchable reference libraries and local asset managers to moodboards and AI-assisted recall.",
+    bannerImage: "/blog/banners/visual-bookmark-managers.webp",
+    bannerAlt: "Connected visual references forming a searchable design memory",
+    publishedAt: "2026-07-14",
+    updatedAt: "2026-07-14",
+    author: "Jayanth Kumar",
+    authorBio:
+      "Jayanth Kumar is the founder of Nyabag, a visual memory system for designers. He writes about design inspiration workflows, visual bookmarking, UI research, and building systems that make creative references easier to reuse.",
+    authorSameAs: "https://www.linkedin.com/in/jayanzth",
+    includeFaqSchema: true,
+    readTime: "16 min read",
+    category: "Design Tools",
+    keywords: [
+      "visual bookmark manager for designers",
+      "best visual bookmark manager",
+      "bookmark manager for designers",
+      "design reference manager",
+      "save design inspiration",
+      "organize design bookmarks",
+      "website inspiration organizer",
+      "design inspiration organizer",
+      "visual bookmarking tools",
+      "tools to organize design inspiration",
+      "design reference library",
+    ],
+    tools: [],
+    comparison: {
+      eyebrow: "At a glance",
+      title: "Visual bookmark managers for designers compared",
+      columns: ["Tool", "Best for", "Visual previews", "Tags / collections", "Notes / context", "Search", "Free plan", "Main limitation"],
+      rows: [
+        ["Nyabag", "Design-reference memory", "Yes", "Tags and visual library", "Yes", "Saved-reference search", "Early access; check availability", "Early product; desktop-first"],
+        ["Raindrop.io", "General bookmarking", "Grid and masonry views", "Yes", "Highlights; annotations are Pro", "Title, URL, tags; full text is Pro", "Yes", "Not design-specific"],
+        ["Eagle", "Local visual assets", "Yes", "Folders, tags, smart folders", "Annotations", "Keyword, color, filters", "Trial, not a permanent free plan", "Desktop app and local-library workflow"],
+        ["Milanote", "Moodboards and creative planning", "Yes", "Flexible boards", "Notes, comments, tasks", "Board search", "Yes, with limits", "Large archives can require manual upkeep"],
+        ["Notion", "Custom reference databases", "Gallery views", "Database properties and tags", "Excellent", "Workspace search", "Yes", "Requires setup and maintenance"],
+        ["Pinterest", "Inspiration discovery", "Excellent", "Boards and sections", "Descriptions", "Platform and board discovery", "Yes", "Weaker private research context"],
+        ["Cosmos", "Curated visual discovery", "Excellent", "Collections", "Image context and attribution", "Keyword, color, visual similarity", "Free access advertised", "Less suited to detailed project notes"],
+        ["Are.na", "Curated research collections", "Mixed-media blocks", "Channels and connections", "Text blocks and descriptions", "Basic; advanced filters are paid", "Yes, limited blocks", "Less immediately visual than moodboard tools"],
+        ["mymind", "Automatic private organization", "Yes", "Automatic tags and Smart Spaces", "Quick notes", "AI tags and image text", "No permanent free plan advertised", "Paid-first and intentionally low-control"],
+        ["Fabric", "Search across mixed knowledge", "File and link previews", "Collections and connected content", "Yes", "AI-assisted cross-format search", "Check current plans", "Broader knowledge tool, not design-specific"],
+      ],
+    },
+    sections: [
+      {
+        id: "introduction",
+        eyebrow: "Introduction",
+        title: "Designers need visual memory, not another bookmark folder",
+        paragraphs: [
+          "Ordinary browser bookmarks are built around page titles and URLs. Design work is built around what a page looked like and why a detail mattered. You may save a landing page for its hero composition, a checkout for its error states, or a portfolio for one typographic transition. Weeks later, the domain name alone rarely brings that reasoning back.",
+          "The result is a familiar scatter: browser folders, desktop screenshots, Pinterest boards, Notion databases, Figma inspiration pages, messaging-app saved posts, and notes named something like ideas-final-2. Each place can hold a reference, but the collection stops behaving like a useful library when context and retrieval are split across five systems.",
+          "A visual bookmark manager for designers closes that gap. It preserves a recognisable preview, the original source, and enough context to make the reference reusable. The best tool is not necessarily the one with the longest feature list. It is the one that makes capture easy and rediscovery dependable for the way you actually design.",
+        ],
+      },
+      {
+        id: "what-is-a-visual-bookmark-manager",
+        title: "What is a visual bookmark manager?",
+        paragraphs: [
+          "A visual bookmark manager saves web pages or creative references with more than a text label. Depending on the tool, that can include a thumbnail or full-page screenshot, source URL, page metadata, tags, notes, highlights, colors, and searchable content. Instead of scanning a list of titles, you can recognise the reference from its visual shape and then recover the context around it.",
+          "That distinction matters for design research. A normal bookmark answers, “Where was this page?” A design reference manager should also help answer, “What did I notice, which project was it for, and can I find similar examples?” Some tools focus on durable web bookmarks, some on local image libraries, and others on moodboards or AI-assisted recall. There is no universal winner across all four jobs.",
+        ],
+      },
+      {
+        id: "why-browser-bookmarks-fall-short",
+        title: "Why designers need more than browser bookmarks",
+        paragraphs: [],
+        blocks: [
+          { type: "paragraph", content: ["Browser bookmarks are efficient for opening frequently visited sites, but weak as a long-term design inspiration organizer. They are text-heavy, usually do not capture the page as it looked when saved, and rarely record why the reference mattered. Folder trees also become ambiguous quickly: does a pricing page belong under SaaS, conversion, tables, or the current client?"] },
+          { type: "paragraph", content: ["Designers rely heavily on recognition. The ", { text: "Nielsen Norman Group guidance on recognition and recall", href: "https://www.nngroup.com/articles/recognition-and-recall/", external: true }, " explains why visible options and cues reduce memory load. In a reference library, thumbnails, screenshots, colors, and short notes become those cues. They let you browse toward an idea even when you cannot remember the company name or exact tag."] },
+          { type: "paragraph", content: ["A landing page is rarely saved because its URL is intrinsically valuable. It is saved because of the hero layout, pricing table, navigation, typography, color palette, onboarding flow, or interaction pattern. When the saved object loses that visual context, it loses much of its design value."] },
+        ],
+      },
+      {
+        id: "selection-criteria",
+        title: "What to look for in a visual bookmark manager for designers",
+        paragraphs: ["Use these criteria as a practical checklist. Weight them according to whether you mostly collect websites, local assets, research, or project-specific moodboards."],
+        blocks: [
+          { type: "list", ordered: true, items: [
+            ["Visual previews or screenshots that remain recognisable at a glance."],
+            ["Preservation of the original source URL and useful page metadata."],
+            ["Tags, folders, collections, or another lightweight grouping system."],
+            ["Search across titles, URLs, notes, tags, and metadata."],
+            ["A place to record why the reference was saved."],
+            ["Moodboard or canvas-style organisation when spatial comparison matters."],
+            ["A browser extension, share sheet, or fast capture flow."],
+            ["Support for images, media, files, and links you genuinely collect."],
+            ["Export or portability so the library does not become a trap."],
+            ["A free plan or price that makes sense at the size of your archive."],
+          ] },
+        ],
+      },
+      {
+        id: "best-tools",
+        eyebrow: "The shortlist",
+        title: "Best visual bookmark managers for designers in 2026",
+        paragraphs: ["This list compares different philosophies rather than pretending every product is interchangeable. Feature and plan details were checked against first-party product, help, and pricing pages on July 14, 2026."],
+        blocks: [
+          { type: "heading", level: 3, id: "nyabag", content: "1. Nyabag" },
+          { type: "paragraph", content: ["Best for: designers who want a visual memory system for design inspiration."] },
+          { type: "paragraph", content: ["Nyabag is built to save websites, full-page screenshots, UI references, colors, font hints, notes, links, media, and ideas in one searchable visual workspace. It combines a visual bookmark library with a freeform canvas, so references can move from passive collection into groups, comparisons, and early concept development."] },
+          { type: "paragraph", content: ["Designers may like its focused vocabulary: the source URL, visual capture, metadata, tags, notes, and canvas all serve reference reuse rather than generic read-later behaviour. The honest limitations are that Nyabag is still early, its workflow is desktop-first, and public pricing and team features are not yet published. Check ", { text: "Nyabag early access", href: `${SITE_URL}/#early-access` }, " for current availability. Verdict: best suited to designers who want something more focused than a general bookmark manager and more reusable than a temporary moodboard."] },
+
+          { type: "heading", level: 3, id: "raindrop", content: "2. Raindrop.io" },
+          { type: "paragraph", content: ["Best for: a polished, all-around bookmark manager."] },
+          { type: "paragraph", content: [{ text: "Raindrop.io", href: "https://raindrop.io/", external: true }, " combines collections, tags, filters, highlights, multiple visual views, browser extensions, apps, sharing, and import/export. Its official pricing page lists unlimited bookmarks, collections, and devices on the free plan. Full-text search, web archives, annotations, backups, and cleanup tools are Pro features."] },
+          { type: "paragraph", content: ["Designers get a dependable cross-platform library with grid and masonry browsing, but it remains a general bookmark product rather than a design-specific workspace. Verdict: the safest default if you need mature capture, organisation, portability, and sync more than a canvas or detailed visual analysis."] },
+
+          { type: "heading", level: 3, id: "eagle", content: "3. Eagle" },
+          { type: "paragraph", content: ["Best for: local visual asset libraries and large image collections."] },
+          { type: "paragraph", content: [{ text: "Eagle", href: "https://en.eagle.cool/", external: true }, " is a desktop asset manager for images, screenshots, fonts, videos, and other design files. Its browser extension supports drag-and-drop collection, batch saving, area or full-page screenshots, and categorisation during capture. Inside the library, folders, tags, smart folders, annotations, ratings, color search, filters, and duplicate tools help with large collections."] },
+          { type: "paragraph", content: ["The tradeoff is architectural: Eagle is strongest when you want a local-first desktop library, not a lightweight cloud bookmark service. The extension depends on the desktop app, and it is sold as licensed software rather than a permanent free service. Verdict: excellent for designers who collect actual visual files and want fast local browsing."] },
+
+          { type: "heading", level: 3, id: "milanote", content: "4. Milanote" },
+          { type: "paragraph", content: ["Best for: moodboards, creative planning, and visual project boards."] },
+          { type: "paragraph", content: [{ text: "Milanote", href: "https://milanote.com/product/online-whiteboard", external: true }, " offers flexible, non-linear boards containing images, links, text, videos, files, comments, and tasks. Its web clipper saves inspiration directly from websites, while templates and sharing make it useful for briefs, moodboards, and client-facing creative direction."] },
+          { type: "paragraph", content: ["Milanote is better at arranging references for a project than maintaining an effortless multi-year archive. Free accounts are available with limits; current allowances should be checked on Milanote’s pricing page before committing a large library. Verdict: choose it when composition, collaboration, and presentation matter more than deep bookmark retrieval."] },
+
+          { type: "heading", level: 3, id: "notion", content: "5. Notion" },
+          { type: "paragraph", content: ["Best for: custom databases and structured reference systems."] },
+          { type: "paragraph", content: [{ text: "Notion’s official Web Clipper", href: "https://www.notion.com/web-clipper", external: true }, " can save pages into a chosen workspace database, where each item can gain notes, tags, assignees, relations, and custom properties. Gallery views make clipped references more visual, and linked databases can create project-specific views without duplicating the source library."] },
+          { type: "paragraph", content: ["Its flexibility is also its limitation. You must design the schema, decide which fields matter, maintain templates, and accept that website screenshots are not the core experience. Notion has a free plan, with paid tiers for broader team and advanced needs. Verdict: best for people who enjoy building their own system and want references connected to project documentation."] },
+
+          { type: "heading", level: 3, id: "pinterest", content: "6. Pinterest" },
+          { type: "paragraph", content: ["Best for: broad inspiration discovery and fast visual boards."] },
+          { type: "paragraph", content: [{ text: "Pinterest boards", href: "https://help.pinterest.com/en/article/boards", external: true }, " save and organise Pins, while public, secret, and collaborative boards support different sharing needs. The browser Save extension can capture visual ideas from websites, and Pinterest’s recommendation system makes it unusually strong for branching from one aesthetic reference into many related examples."] },
+          { type: "paragraph", content: ["The weakness is precision. Pinterest is designed for discovery and circulation, not for preserving detailed private research notes or exact page states. Source quality can also vary as images are re-pinned. Accounts are free. Verdict: use it when discovery volume matters more than a controlled, contextual design reference library."] },
+
+          { type: "heading", level: 3, id: "cosmos", content: "7. Cosmos" },
+          { type: "paragraph", content: ["Best for: curated visual inspiration and taste-driven discovery."] },
+          { type: "paragraph", content: [{ text: "Cosmos", href: "https://www.cosmos.so/", external: true }, " presents saved references and collections as a searchable visual space. Its current product pages highlight keyword, color, and visual-similarity search, one-tap saving, shared collections, AI-content controls, and research that attempts to surface an image’s artist, source, and story."] },
+          { type: "paragraph", content: ["That makes Cosmos compelling for visual exploration and provenance, but less natural for detailed project notes, structured UI-pattern taxonomies, or local design files. The service advertises free access, while in-app purchases and plan details may change. Verdict: a strong choice when inspiration discovery and visual taste are the center of the workflow."] },
+
+          { type: "heading", level: 3, id: "arena", content: "8. Are.na" },
+          { type: "paragraph", content: ["Best for: curated research, creative collections, and connected references."] },
+          { type: "paragraph", content: [{ text: "Are.na", href: "https://www.are.na/about", external: true }, " is organised around blocks and channels. A block can be an image, text, link, attachment, or embed, and the same block can connect across channels. This makes it useful for research that evolves through relationships rather than a rigid folder hierarchy."] },
+          { type: "paragraph", content: ["Are.na feels deliberately calmer than feed-driven discovery products, but its mixed-media interface is not as immediately visual as a dedicated moodboard. Its official pricing currently lists a free Guest tier capped at 200 blocks and paid plans with unlimited blocks and advanced search features. Verdict: excellent for thoughtful, networked research and less ideal for rapid screenshot-heavy asset management."] },
+
+          { type: "heading", level: 3, id: "mymind", content: "9. mymind" },
+          { type: "paragraph", content: ["Best for: private saving with automatic organisation."] },
+          { type: "paragraph", content: [{ text: "mymind", href: "https://access.mymind.com/pricing", external: true }, " automatically categorises bookmarks, tags images, reads text inside saved images, and groups related material into Smart Spaces. It also supports quick notes, visual browsing, and private-by-default saving. The appeal is that you can capture first and avoid maintaining a complex taxonomy."] },
+          { type: "paragraph", content: ["The limitation is control: designers who want explicit folders, exhaustive manual tags, or team knowledge structures may find the product’s low-organisation philosophy restrictive. Current official pricing is paid-first and no permanent free plan is advertised. Verdict: best for individuals who value private, AI-assisted recall more than a hand-built filing system."] },
+
+          { type: "heading", level: 3, id: "fabric", content: "10. Fabric" },
+          { type: "paragraph", content: ["Best for: AI-assisted search across files, links, and notes."] },
+          { type: "paragraph", content: [{ text: "Fabric", href: "https://fabric.so/", external: true }, " positions itself as a workspace for collecting and finding mixed knowledge across links, files, images, and notes. Its broader cross-format approach can suit designers whose references live alongside research documents, meeting notes, and project material rather than in a purely visual gallery."] },
+          { type: "paragraph", content: ["Because Fabric is a general personal knowledge product, design-specific capture and visual comparison are not its only priorities. Public features and plans can evolve quickly, so check the live site before choosing it on price alone. Verdict: consider it when semantic recall across many content types matters more than a dedicated inspiration moodboard."] },
+        ],
+      },
+      {
+        id: "which-tool",
+        title: "Which visual bookmark manager should you choose?",
+        paragraphs: ["Choose around your dominant retrieval problem, not the feature checklist."],
+        blocks: [
+          { type: "list", items: [
+            ["Choose Nyabag if you want a focused visual memory for reusable design references and a canvas for developing them."],
+            ["Choose Raindrop.io if you need a mature general bookmark manager with strong sync, collections, and portability."],
+            ["Choose Eagle if most of your collection is made of local images, screenshots, fonts, and design files."],
+            ["Choose Milanote if references need to become moodboards, briefs, or collaborative creative presentations."],
+            ["Choose Notion if you want a DIY database tied closely to project documentation."],
+            ["Choose Pinterest if finding more inspiration matters more than preserving private research context."],
+            ["Choose Cosmos for taste-driven visual discovery, or Are.na for slower, connected research collections."],
+            ["Choose mymind or Fabric if AI-assisted recall and low-maintenance search matter most."],
+          ] },
+          { type: "paragraph", content: ["If you are still comparing the wider category, see our guide to the ", { text: "best design inspiration apps", href: `${SITE_URL}/blog/best-design-inspiration-apps` }, ". For a practical system independent of any one product, read ", { text: "how to organize design inspiration", href: `${SITE_URL}/blog/how-to-organize-design-inspiration` }, "."] },
+        ],
+      },
+      {
+        id: "better-workflow",
+        title: "How to build a better design reference workflow",
+        paragraphs: ["A good tool cannot rescue a collection with no context. This five-step habit keeps the system useful without turning inspiration management into a second job."],
+        blocks: [
+          { type: "list", ordered: true, items: [
+            ["Capture the reference while the reason for saving it is still clear."],
+            ["Add one sentence: “I saved this because…” Specific context beats a perfect taxonomy."],
+            ["Tag by reusable pattern, use case, or active project rather than by vague aesthetic alone."],
+            ["Review the inbox weekly. Delete weak references and add context to the few worth keeping."],
+            ["At the start of a project, combine search with visual browsing so forgotten references can resurface."],
+          ] },
+          { type: "paragraph", content: ["Useful starter tags include landing-page, dashboard, pricing, onboarding, typography, mobile, checkout, navigation, dark-ui, editorial, SaaS, and portfolio. Start with a small vocabulary. Add a new tag only when it will help you retrieve several items, not because one reference happens to permit another label."] },
+        ],
+      },
+      {
+        id: "final-thoughts",
+        title: "Final thoughts",
+        paragraphs: [
+          "A good visual bookmark manager does not just help you save more. It helps you find the right reference when the work begins.",
+          "The most reliable systems preserve three things together: the visual cue, the original source, and your reason for caring. Whether you choose a general bookmark manager, local asset library, moodboard, or AI-assisted memory tool, test it with a real project and see whether useful references return at the moment of decision.",
+          "Nyabag is being built around this exact idea: turning scattered design inspiration into a searchable visual memory. It will not be the right choice for every workflow, but its focus is the part ordinary bookmark folders tend to lose—the bridge between seeing an idea and using it later.",
+        ],
+      },
+    ],
+    faqTitle: "Visual bookmark manager questions",
+    faqs: [
+      { question: "What is the best visual bookmark manager for designers?", answer: "It depends on the workflow. Nyabag is useful for design-inspiration memory, Raindrop.io is strong for general bookmarking, Eagle is strong for local assets, Milanote is good for moodboards, and Notion works well for custom databases." },
+      { question: "Are browser bookmarks enough for design inspiration?", answer: "They work for simple link saving, but designers often need screenshots, notes, tags, visual previews, and context to recognise and reuse a reference later." },
+      { question: "What is the difference between a moodboard and a visual bookmark manager?", answer: "A moodboard is usually visual and specific to one project or direction. A visual bookmark manager is a broader, longer-lived library for saving and retrieving references across many projects." },
+      { question: "How do designers organize website inspiration?", answer: "Save the original URL and a screenshot, note why the reference matters, tag it by pattern or project, and review the collection regularly so it remains trustworthy." },
+      { question: "Is Nyabag free?", answer: "Nyabag is currently in early access, and public pricing has not been announced. Check the Nyabag website for current availability and plan information rather than assuming a permanent free tier." },
+      { question: "What should I save in a design reference library?", answer: "Save landing pages, dashboards, mobile screens, UI patterns, typography, color palettes, onboarding flows, pricing pages, product flows, and short notes that explain what is worth reusing." },
     ],
   },
 ];
